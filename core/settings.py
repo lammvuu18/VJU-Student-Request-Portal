@@ -11,6 +11,9 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
 import os
+from urllib.parse import quote
+
+import dj_database_url
 from dotenv import load_dotenv
 load_dotenv()
 from pathlib import Path
@@ -44,6 +47,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -75,15 +79,17 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
+# Trên Render: dùng DATABASE_URL được set tự động.
+# Ở local: không có DATABASE_URL → dùng container Postgres "db" trong docker-compose.
+# Mật khẩu được quote() vì chứa ký tự đặc biệt (#, %, &, ...) làm hỏng URL.
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("POSTGRES_DB"),
-        "USER": os.getenv("POSTGRES_USER"),
-        "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
-        "HOST": "db",
-        "PORT": "5432",
-    }
+    "default": dj_database_url.config(
+        default=(
+            f"postgresql://{quote(os.getenv('POSTGRES_USER', ''), safe='')}"
+            f":{quote(os.getenv('POSTGRES_PASSWORD', ''), safe='')}"
+            f"@db:5432/{os.getenv('POSTGRES_DB', '')}"
+        )
+    )
 }
 
 
@@ -121,7 +127,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 
 # Email
