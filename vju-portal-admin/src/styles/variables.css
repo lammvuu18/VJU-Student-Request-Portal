@@ -1,0 +1,83 @@
+/* ===== VJU Portal Design Tokens ===== */
+:root {
+  /* Brand */
+  --vju-red: #AA2327;
+  --vju-red-hover: #8E1D20;
+  --vju-red-light: #FEF2F2;
+  --vju-red-border: #FECACA;
+
+  /* Neutrals */
+  --color-white: #FFFFFF;
+  --color-bg: #F5F5F5;
+  --color-dark: #1F2937;
+  --color-text: #1F2937;
+  --color-text-secondary: #4B5563;
+  --color-text-muted: #6B7280;
+  --color-text-placeholder: #9CA3AF;
+  --color-border: #E2E5EA;
+  --color-border-light: #E5E7EB;
+  --color-input-bg: #FFFFFF;
+  --color-input-disabled: #F3F4F6;
+  --color-overlay: rgba(0, 0, 0, 0.4);
+
+  /* Status colors */
+  --status-active: #059669;
+  --status-active-bg: #ECFDF5;
+  --status-paused: #D97706;
+  --status-paused-bg: #FFFBEB;
+  --status-locked: #6B7280;
+  --status-locked-bg: #F3F4F6;
+  --status-studying: #2563EB;
+  --status-studying-bg: #EFF6FF;
+  --status-reserved: #7C3AED;
+  --status-reserved-bg: #F5F3FF;
+  --status-quit: #DC2626;
+  --status-quit-bg: #FEF2F2;
+
+  /* Segmented tab */
+  --tab-bg: #E8EAEE;
+  --tab-active-bg: #FFFFFF;
+  --tab-active-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+
+  /* Card */
+  --card-radius: 12px;
+  --card-border: 1px solid var(--color-border);
+  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+
+  /* Spacing */
+  --sidebar-width: 200px;
+  --header-height: 64px;
+  --page-padding: 32px;
+  --content-padding: 24px;
+
+  /* Typography */
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-size-xs: 12px;
+  --font-size-sm: 13px;
+  --font-size-base: 14px;
+  --font-size-md: 16px;
+  --font-size-lg: 18px;
+  --font-size-xl: 20px;
+  --font-size-2xl: 24px;
+  --font-size-3xl: 28px;
+
+  /* Input */
+  --input-height: 40px;
+  --input-radius: 8px;
+  --input-border: 1px solid var(--color-border);
+  --input-focus-border: 1px solid var(--vju-red);
+  --input-padding: 0 12px;
+
+  /* Button */
+  --btn-height: 40px;
+  --btn-radius: 8px;
+  --btn-padding: 0 20px;
+
+  /* Modal */
+  --modal-radius: 16px;
+  --modal-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  --modal-width: 480px;
+
+  /* Transition */
+  --transition: 0.2s ease;
+}

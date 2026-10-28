@@ -1,0 +1,13 @@
+.staff-tab {
+  /* inherits table + filter styles */
+}
+
+.level-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+}
+
+.level-head {
+  color: var(--vju-red);
+  font-weight: 500;
+}

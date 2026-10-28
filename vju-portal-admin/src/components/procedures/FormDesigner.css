@@ -1,0 +1,266 @@
+.form-designer {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  max-width: 1000px;
+}
+
+.fd-left,
+.fd-right {
+  background: var(--color-white);
+  border-radius: var(--card-radius);
+  border: var(--card-border);
+  padding: 24px;
+}
+
+.fd-section-title {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 16px;
+}
+
+/* Field list */
+.fd-field-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.fd-field-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.fd-field-card:hover {
+  border-color: #C4C4C4;
+}
+
+.fd-field-card.selected {
+  border-color: var(--vju-red);
+  background: var(--vju-red-light);
+}
+
+.fd-field-drag {
+  cursor: grab;
+  padding: 4px;
+  opacity: 0.5;
+}
+
+.fd-field-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.fd-field-name {
+  display: block;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text);
+  margin-bottom: 4px;
+}
+
+.fd-field-meta {
+  display: flex;
+  gap: 6px;
+}
+
+.fd-type-badge {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.type-text { color: #2563EB; background: #EFF6FF; }
+.type-dropdown { color: #7C3AED; background: #F5F3FF; }
+.type-number { color: #059669; background: #ECFDF5; }
+.type-radio { color: #D97706; background: #FFFBEB; }
+.type-textarea { color: #6B7280; background: #F3F4F6; }
+.type-file { color: #DC2626; background: #FEF2F2; }
+
+.fd-required-badge {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.fd-required-badge.required {
+  color: var(--vju-red);
+  background: var(--vju-red-light);
+}
+
+.fd-required-badge.optional {
+  color: var(--color-text-muted);
+  background: var(--color-input-disabled);
+}
+
+.fd-field-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.fd-icon-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition);
+}
+
+.fd-icon-btn:hover {
+  background: var(--color-bg);
+}
+
+.fd-add-field {
+  width: 100%;
+  padding: 12px;
+  border: 1px dashed var(--color-border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.fd-add-field:hover {
+  border-color: var(--vju-red);
+  color: var(--vju-red);
+  background: var(--vju-red-light);
+}
+
+/* Config form */
+.fd-config-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.fd-config-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fd-config-field label {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.fd-config-field input,
+.fd-config-field select {
+  height: var(--input-height);
+  padding: var(--input-padding);
+  border: var(--input-border);
+  border-radius: var(--input-radius);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  outline: none;
+}
+
+.fd-config-field input:focus,
+.fd-config-field select:focus {
+  border-color: var(--vju-red);
+}
+
+.fd-config-field select {
+  appearance: none;
+  padding-right: 32px;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236B7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-color: var(--color-white);
+  cursor: pointer;
+}
+
+.fd-config-field .input-muted {
+  background: var(--color-input-disabled);
+  color: var(--color-text-muted);
+}
+
+/* Value list */
+.fd-value-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fd-value-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fd-value-item input {
+  flex: 1;
+  height: 36px;
+}
+
+.fd-value-remove {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.fd-value-remove:hover {
+  background: var(--color-bg);
+}
+
+.fd-add-value {
+  background: none;
+  border: none;
+  color: var(--vju-red);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 0;
+  text-align: left;
+}
+
+.fd-add-value:hover {
+  text-decoration: underline;
+}
+
+/* Toggle row */
+.fd-config-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.fd-config-toggle-row label {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+/* Actions */
+.fd-config-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 4px;
+}
