@@ -1,0 +1,64 @@
+.principal-tab {
+  max-width: 900px;
+}
+
+.principal-header {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+
+.principal-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+  background: var(--color-white);
+  border-radius: var(--card-radius);
+  border: var(--card-border);
+}
+
+.principal-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--color-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.principal-initials {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.principal-info {
+  flex: 1;
+}
+
+.principal-name {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 2px;
+}
+
+.principal-email {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.principal-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.principal-status {
+  font-size: var(--font-size-sm);
+  color: var(--status-active);
+  font-weight: 500;
+}

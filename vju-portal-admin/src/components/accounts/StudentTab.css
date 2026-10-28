@@ -1,0 +1,66 @@
+.student-tab {
+  /* Reuses data-table and filter-bar from ProcedureList */
+}
+
+.tab-filter-bar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  align-items: center;
+}
+
+.tab-filter-bar .filter-search {
+  position: relative;
+}
+
+.tab-filter-bar .filter-search .search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.tab-filter-bar .filter-search input {
+  width: 100%;
+  height: var(--input-height);
+  padding: 0 12px 0 36px;
+  border: var(--input-border);
+  border-radius: var(--input-radius);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  outline: none;
+}
+
+.tab-filter-bar .filter-search input::placeholder {
+  color: var(--color-text-placeholder);
+}
+
+.tab-filter-bar .filter-search input:focus {
+  border-color: var(--vju-red);
+}
+
+.tab-filter-bar .filter-select {
+  height: var(--input-height);
+  padding: 0 32px 0 12px;
+  border: var(--input-border);
+  border-radius: var(--input-radius);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  background: var(--color-white);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236B7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  cursor: pointer;
+  min-width: 130px;
+}
+
+.tab-filter-bar .filter-select:focus {
+  outline: none;
+  border-color: var(--vju-red);
+}
+
+.col-email {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}

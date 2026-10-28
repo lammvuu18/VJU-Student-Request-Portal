@@ -1,0 +1,21 @@
+.account-page {
+  max-width: 1200px;
+}
+
+.account-page .page-title {
+  font-size: var(--font-size-3xl);
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 24px;
+}
+
+.account-tabs {
+  margin-bottom: 24px;
+}
+
+.account-card {
+  background: var(--color-white);
+  border-radius: var(--card-radius);
+  border: var(--card-border);
+  padding: var(--content-padding);
+}
