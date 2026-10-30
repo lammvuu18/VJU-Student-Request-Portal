@@ -1,0 +1,124 @@
+/* ===== Staff Pages Styles ===== */
+
+/* Radio card group */
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.radio-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1.5px solid var(--color-border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.radio-card:hover {
+  border-color: var(--vju-red);
+}
+
+.radio-card--active {
+  border-color: var(--vju-red);
+  background: var(--vju-red-light);
+}
+
+.radio-card input[type="radio"] {
+  margin-top: 3px;
+  accent-color: var(--vju-red);
+}
+
+.radio-card div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.radio-card strong {
+  font-size: var(--font-size-sm);
+}
+
+.radio-card span {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+/* Form styles */
+.form-group {
+  margin-bottom: 18px;
+}
+
+.form-label {
+  display: block;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text);
+  margin-bottom: 6px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: var(--input-border);
+  border-radius: 8px;
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  background: var(--color-white);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+
+.form-input:focus {
+  border-color: var(--vju-red);
+}
+
+textarea.form-input {
+  resize: vertical;
+  font-family: var(--font-family);
+}
+
+/* Modal field */
+.modal-field {
+  margin-bottom: 16px;
+}
+
+.modal-field label {
+  display: block;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text);
+  margin-bottom: 6px;
+}
+
+.modal-field textarea,
+.modal-field select {
+  width: 100%;
+  padding: 10px 12px;
+  border: var(--input-border);
+  border-radius: 8px;
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  font-family: var(--font-family);
+  outline: none;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.modal-field textarea:focus,
+.modal-field select:focus {
+  border-color: var(--vju-red);
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}

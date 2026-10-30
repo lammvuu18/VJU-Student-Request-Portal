@@ -16,7 +16,6 @@
   cursor: not-allowed;
 }
 
-/* Sizes */
 .btn--sm {
   height: 32px;
   padding: 0 12px;
@@ -29,7 +28,12 @@
   font-size: var(--font-size-sm);
 }
 
-/* Variants */
+.btn--lg {
+  height: 48px;
+  padding: 0 28px;
+  font-size: var(--font-size-md);
+}
+
 .btn--primary {
   background: var(--vju-red);
   color: var(--color-white);
@@ -59,6 +63,15 @@
   background: var(--vju-red-light);
 }
 
+.btn--danger {
+  background: #DC2626;
+  color: var(--color-white);
+}
+
+.btn--danger:hover:not(:disabled) {
+  background: #B91C1C;
+}
+
 .btn--ghost {
   background: transparent;
   color: var(--color-text-secondary);
@@ -66,6 +79,15 @@
 
 .btn--ghost:hover:not(:disabled) {
   background: var(--color-bg);
+}
+
+.btn--success {
+  background: #059669;
+  color: var(--color-white);
+}
+
+.btn--success:hover:not(:disabled) {
+  background: #047857;
 }
 
 .btn--link {

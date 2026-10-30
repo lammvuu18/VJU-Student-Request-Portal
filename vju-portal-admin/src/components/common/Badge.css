@@ -17,3 +17,11 @@
   font-size: var(--font-size-xs);
   font-weight: 600;
 }
+
+.badge--priority {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}

@@ -36,10 +36,6 @@
   cursor: not-allowed;
 }
 
-.pagination-arrow {
-  font-size: 16px;
-}
-
 .pagination-dots {
   min-width: 34px;
   height: 34px;
@@ -47,5 +43,4 @@
   align-items: center;
   justify-content: center;
   color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
 }
