@@ -1,0 +1,47 @@
+.procedure-edit-page {
+  max-width: 1100px;
+}
+
+.procedure-edit-page .page-title {
+  font-size: var(--font-size-3xl);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.procedure-edit-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.procedure-edit-links {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.procedure-edit-page .link-btn {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: all var(--transition);
+}
+
+.procedure-edit-page .link-btn:hover {
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.procedure-edit-tabs {
+  margin-bottom: 24px;
+}
+
+.procedure-edit-content {
+  /* Content renders here */
+}

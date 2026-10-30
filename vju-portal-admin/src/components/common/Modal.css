@@ -28,9 +28,7 @@
   margin-bottom: 24px;
 }
 
-.modal-header-text {
-  flex: 1;
-}
+.modal-header-text { flex: 1; }
 
 .modal-title {
   font-size: var(--font-size-lg);
@@ -60,9 +58,7 @@
   transition: background var(--transition);
 }
 
-.modal-close:hover {
-  background: var(--color-bg);
-}
+.modal-close:hover { background: var(--color-bg); }
 
 .modal-body {
   display: flex;
@@ -70,7 +66,6 @@
   gap: 20px;
 }
 
-/* Form elements inside modal */
 .modal-field {
   display: flex;
   flex-direction: column;
@@ -84,7 +79,8 @@
 }
 
 .modal-field input,
-.modal-field select {
+.modal-field select,
+.modal-field textarea {
   height: var(--input-height);
   border: var(--input-border);
   border-radius: var(--input-radius);
@@ -96,8 +92,16 @@
   transition: border-color var(--transition);
 }
 
+.modal-field textarea {
+  height: auto;
+  min-height: 100px;
+  padding: 12px;
+  resize: vertical;
+}
+
 .modal-field input:focus,
-.modal-field select:focus {
+.modal-field select:focus,
+.modal-field textarea:focus {
   border-color: var(--vju-red);
 }
 
@@ -138,7 +142,6 @@
   color: var(--color-text);
 }
 
-/* Modal footer buttons */
 .modal-footer {
   display: flex;
   justify-content: center;

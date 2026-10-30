@@ -1,0 +1,101 @@
+.student-tab {
+  width: 100%;
+}
+
+.student-tab .tab-filter-bar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  align-items: center;
+}
+
+.student-tab .tab-filter-bar .filter-search {
+  position: relative;
+}
+
+.student-tab .tab-filter-bar .filter-search .search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.student-tab .tab-filter-bar .filter-search input {
+  width: 100%;
+  height: var(--input-height);
+  padding: 0 12px 0 36px;
+  border: var(--input-border);
+  border-radius: var(--input-radius);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  outline: none;
+}
+
+.student-tab .tab-filter-bar .filter-search input::placeholder {
+  color: var(--color-text-placeholder);
+}
+
+.student-tab .tab-filter-bar .filter-search input:focus {
+  border-color: var(--vju-red);
+}
+
+.student-tab .tab-filter-bar .filter-select {
+  height: var(--input-height);
+  padding: 0 32px 0 12px;
+  border: var(--input-border);
+  border-radius: var(--input-radius);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  background: var(--color-white);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236B7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  cursor: pointer;
+  min-width: 130px;
+}
+
+.student-tab .tab-filter-bar .filter-select:focus {
+  outline: none;
+  border-color: var(--vju-red);
+}
+
+.student-tab .table-wrapper {
+  overflow-x: auto;
+}
+
+.student-tab .data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.student-tab .data-table th {
+  text-align: left;
+  padding: 12px 16px;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.student-tab .data-table td {
+  padding: 14px 16px;
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  border-bottom: 1px solid var(--color-border-light);
+  vertical-align: middle;
+}
+
+.student-tab .data-table tbody tr:hover {
+  background: #FAFAFA;
+}
+
+.student-tab .data-table .col-name {
+  font-weight: 500;
+}
+
+.student-tab .col-email {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}

@@ -1,0 +1,11 @@
+.app-layout {
+  min-height: 100vh;
+  background: var(--color-bg);
+}
+
+.app-main {
+  margin-left: var(--sidebar-width);
+  margin-top: var(--header-height);
+  padding: var(--page-padding);
+  min-height: calc(100vh - var(--header-height));
+}

@@ -2,22 +2,20 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import './Sidebar.css';
 
-function Sidebar() {
+function Sidebar({ items }) {
   return (
-    <aside className="admin-sidebar">
+    <aside className="app-sidebar">
       <nav className="sidebar-nav">
-        <NavLink
-          to="/procedures"
-          className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
-        >
-          Quản lý thủ tục
-        </NavLink>
-        <NavLink
-          to="/accounts"
-          className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
-        >
-          Tài khoản & phân quyền
-        </NavLink>
+        {items.map((item) => (
+          <NavLink
+            key={item.path}
+            to={item.path}
+            className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+          >
+            {item.icon && <span className="sidebar-icon">{item.icon}</span>}
+            {item.label}
+          </NavLink>
+        ))}
       </nav>
     </aside>
   );

@@ -34,6 +34,20 @@
   --status-quit: #DC2626;
   --status-quit-bg: #FEF2F2;
 
+  /* Request statuses */
+  --status-pending: #D97706;
+  --status-pending-bg: #FFFBEB;
+  --status-processing: #2563EB;
+  --status-processing-bg: #EFF6FF;
+  --status-supplement: #F59E0B;
+  --status-supplement-bg: #FFFBEB;
+  --status-approved: #059669;
+  --status-approved-bg: #ECFDF5;
+  --status-rejected: #DC2626;
+  --status-rejected-bg: #FEF2F2;
+  --status-completed: #059669;
+  --status-completed-bg: #ECFDF5;
+
   /* Segmented tab */
   --tab-bg: #E8EAEE;
   --tab-active-bg: #FFFFFF;
@@ -45,7 +59,7 @@
   --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 
   /* Spacing */
-  --sidebar-width: 200px;
+  --sidebar-width: 220px;
   --header-height: 64px;
   --page-padding: 32px;
   --content-padding: 24px;

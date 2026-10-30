@@ -1,7 +1,7 @@
 import React from 'react';
 import './Pagination.css';
 
-function Pagination({ currentPage = 1, totalPages = 12, onPageChange }) {
+function Pagination({ currentPage = 1, totalPages = 5, onPageChange }) {
   const getPageNumbers = () => {
     const pages = [];
     if (totalPages <= 7) {
@@ -18,32 +18,20 @@ function Pagination({ currentPage = 1, totalPages = 12, onPageChange }) {
 
   return (
     <div className="pagination">
-      <button
-        className="pagination-btn pagination-arrow"
-        disabled={currentPage === 1}
-        onClick={() => onPageChange(currentPage - 1)}
-      >
-        ←
+      <button className="pagination-btn pagination-arrow" disabled={currentPage === 1} onClick={() => onPageChange(currentPage - 1)}>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 4l-4 4 4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
       </button>
-      {getPageNumbers().map((page, index) => (
+      {getPageNumbers().map((page, i) => (
         page === '...' ? (
-          <span key={`dots-${index}`} className="pagination-dots">...</span>
+          <span key={`d${i}`} className="pagination-dots">...</span>
         ) : (
-          <button
-            key={page}
-            className={`pagination-btn ${page === currentPage ? 'active' : ''}`}
-            onClick={() => onPageChange(page)}
-          >
+          <button key={page} className={`pagination-btn ${page === currentPage ? 'active' : ''}`} onClick={() => onPageChange(page)}>
             {page}
           </button>
         )
       ))}
-      <button
-        className="pagination-btn pagination-arrow"
-        disabled={currentPage === totalPages}
-        onClick={() => onPageChange(currentPage + 1)}
-      >
-        →
+      <button className="pagination-btn pagination-arrow" disabled={currentPage === totalPages} onClick={() => onPageChange(currentPage + 1)}>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
       </button>
     </div>
   );
