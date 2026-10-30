@@ -104,6 +104,16 @@
   border: 1.5px solid #DBEAFE;
 }
 
+.header-avatar-circle.user-avatar-outline {
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .header-user-name {
   font-size: var(--font-size-base);
   font-weight: 500;

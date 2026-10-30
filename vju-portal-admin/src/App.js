@@ -52,10 +52,9 @@ import { users } from './data/mockData';
 
 // Sidebar configs per role
 const studentSidebar = [
-  { label: 'Trang chủ', path: '/student', icon: '🏠' },
-  { label: 'Danh mục thủ tục', path: '/student/procedures', icon: '📋' },
-  { label: 'Yêu cầu của tôi', path: '/student/dashboard', icon: '📄' },
-  { label: 'Hồ sơ', path: '/student/profile', icon: '👤' },
+  { label: 'Yêu cầu của tôi', path: '/student/dashboard' },
+  { label: 'Danh mục thủ tục', path: '/student/procedures' },
+  { label: 'Hồ sơ cá nhân', path: '/student/profile' },
 ];
 
 const deptHeadSidebar = [

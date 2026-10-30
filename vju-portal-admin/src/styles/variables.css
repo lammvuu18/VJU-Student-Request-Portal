@@ -1,14 +1,14 @@
 /* ===== VJU Portal Design Tokens ===== */
 :root {
   /* Brand */
-  --vju-red: #AA2327;
-  --vju-red-hover: #8E1D20;
-  --vju-red-light: #FEF2F2;
+  --vju-red: #8B1D24;
+  --vju-red-hover: #73171D;
+  --vju-red-light: #FDF2F2;
   --vju-red-border: #FECACA;
 
   /* Neutrals */
   --color-white: #FFFFFF;
-  --color-bg: #F5F5F5;
+  --color-bg: #F8F9FA;
   --color-dark: #1F2937;
   --color-text: #1F2937;
   --color-text-secondary: #4B5563;
