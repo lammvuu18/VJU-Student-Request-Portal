@@ -125,11 +125,13 @@ function Header({ userName = 'User' }) {
       <header className="app-header">
         <div className="header-left">
           <div className="header-logo" onClick={() => navigate('/')}>
-            <svg viewBox="0 0 40 40" width="40" height="40">
-              <circle cx="20" cy="20" r="18" fill="none" stroke="#AA2327" strokeWidth="2"/>
-              <circle cx="20" cy="20" r="14" fill="none" stroke="#AA2327" strokeWidth="1.5"/>
-              <text x="20" y="25" textAnchor="middle" fill="#AA2327" fontSize="11" fontWeight="700">VJU</text>
-            </svg>
+            <img
+              src="/vju-logo.png"
+              alt="VJU Logo"
+              width="36"
+              height="36"
+              style={{ objectFit: 'contain', flexShrink: 0 }}
+            />
             <span className="header-title">VJU PORTAL</span>
           </div>
         </div>
