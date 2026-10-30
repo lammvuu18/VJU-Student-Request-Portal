@@ -28,23 +28,11 @@ function LoginPage() {
     <div className="login-page">
       {/* Top Left Brand Header */}
       <div className="login-header" onClick={() => navigate('/login')}>
-        <svg className="login-header-logo" viewBox="0 0 100 100" fill="none">
-          <circle cx="50" cy="50" r="46" stroke="#8B1D24" strokeWidth="3" fill="#FFFFFF"/>
-          <circle cx="50" cy="50" r="40" stroke="#8B1D24" strokeWidth="1" strokeDasharray="3 2" fill="none"/>
-          {/* Cherry Blossom Crest */}
-          <g fill="#8B1D24" opacity="0.95">
-            <circle cx="50" cy="36" r="7.5"/>
-            <circle cx="62" cy="45" r="7.5"/>
-            <circle cx="57.5" cy="59" r="7.5"/>
-            <circle cx="42.5" cy="59" r="7.5"/>
-            <circle cx="38" cy="45" r="7.5"/>
-            <circle cx="50" cy="49" r="6" fill="#FFFFFF"/>
-            <circle cx="50" cy="49" r="3" fill="#8B1D24"/>
-          </g>
-          <text x="50" y="78" textAnchor="middle" fill="#8B1D24" fontSize="10.5" fontWeight="700" fontFamily="sans-serif">
-            VJU
-          </text>
-        </svg>
+        <img
+          src="/vju-logo.png"
+          alt="Vietnam Japan University"
+          className="login-header-logo"
+        />
         <div className="login-header-text">
           <span className="login-header-title">VJU PORTAL</span>
           <span className="login-header-subtitle">Trường Đại học Việt Nhật</span>
