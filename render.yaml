@@ -5,6 +5,7 @@ databases:
     user: vju_dev
 
 services:
+  # Backend API (Django)
   - type: web
     name: vju-onestop
     plan: free
@@ -22,3 +23,22 @@ services:
         value: "False"
       - key: PYTHON_VERSION
         value: "3.12.2"
+
+  # Frontend Portal & Admin Interface (React SPA)
+  - type: web
+    name: vju-portal-interface
+    runtime: static
+    plan: free
+    branch: interface
+    rootDir: vju-portal-admin
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./build
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: NODE_VERSION
+        value: "18.20.0"
+      - key: REACT_APP_API_BASE_URL
+        value: "https://vju-onestop.onrender.com/api"
