@@ -143,7 +143,7 @@ textarea.form-input {
   color: #1F2937;
   font-size: 28px;
   font-family: 'Inter', sans-serif;
-  fontWeight: 600;
+  font-weight: 600;
   margin: 0;
   line-height: 1.3;
   word-wrap: break-word;
@@ -550,4 +550,207 @@ textarea.form-input {
   height: 1px;
   background: #E2E5EA;
   width: 100%;
+}
+
+/* ===== Staff Request Detail (Figma Spec) ===== */
+.staff-detail-container {
+  width: 100%;
+  min-height: calc(100vh - 88px);
+  padding: 28px 36px 40px 36px;
+  background: #F5F6F8;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 24px;
+  box-sizing: border-box;
+  font-family: 'Inter', sans-serif;
+}
+
+.staff-detail-topbar {
+  align-self: stretch;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.staff-detail-title {
+  flex: 1 1 0;
+  color: #1F2937;
+  font-size: 28px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  margin: 0;
+  line-height: 1.3;
+  word-wrap: break-word;
+}
+
+.staff-detail-btn-back {
+  padding: 8px 14px;
+  background: #FFFFFF;
+  border-radius: 8px;
+  outline: 1px #E2E5EA solid;
+  outline-offset: -1px;
+  border: none;
+  color: #6B7280;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  user-select: none;
+  text-decoration: none;
+}
+
+.staff-detail-btn-back:hover {
+  background: #F9FAFB;
+  color: #1F2937;
+  outline-color: #D1D5DB;
+  text-decoration: none;
+}
+
+.staff-detail-card {
+  align-self: stretch;
+  padding: 24px 28px 20px 28px;
+  background: #FFFFFF;
+  border-radius: 12px;
+  outline: 1px #E2E5EA solid;
+  outline-offset: -1px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.staff-detail-section-title {
+  align-self: stretch;
+  color: #1F2937;
+  font-size: 16px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  margin: 0;
+  word-wrap: break-word;
+}
+
+.staff-detail-divider {
+  align-self: stretch;
+  height: 1px;
+  background: #E2E5EA;
+  width: 100%;
+}
+
+.staff-detail-row {
+  align-self: stretch;
+  padding-top: 14px;
+  padding-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.staff-detail-label {
+  width: 180px;
+  flex-shrink: 0;
+  color: #6B7280;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  word-wrap: break-word;
+}
+
+.staff-detail-value {
+  flex: 1 1 0;
+  color: #1F2937;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  word-wrap: break-word;
+}
+
+.staff-detail-btn-doc {
+  padding: 4px 10px;
+  background: #AA2327;
+  border-radius: 6px;
+  border: none;
+  color: #FFFFFF;
+  font-size: 12px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s ease;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.staff-detail-btn-doc:hover {
+  background: #931E22;
+}
+
+.staff-detail-actions-row {
+  align-self: stretch;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.staff-btn-action-outline {
+  padding: 10px 16px;
+  background: #FFFFFF;
+  border-radius: 8px;
+  outline: 1px #E2E5EA solid;
+  outline-offset: -1px;
+  border: none;
+  color: #1F2937;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.staff-btn-action-outline:hover {
+  background: #F9FAFB;
+  outline-color: #BEC2C8;
+}
+
+.staff-btn-action-primary {
+  padding: 10px 20px;
+  background: #AA2327;
+  border-radius: 8px;
+  border: none;
+  color: #FFFFFF;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s ease;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.staff-btn-action-primary:hover {
+  background: #931E22;
 }
