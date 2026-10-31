@@ -1,73 +1,163 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import Badge from '../common/Badge';
-import { staffStats, statusConfig } from '../../data/mockData';
 import './StaffPages.css';
 
 function StaffOverview() {
   const navigate = useNavigate();
 
+  // 4 stat cards data (Figma Spec)
   const statCards = [
-    { label: 'Được giao', value: staffStats.assigned, color: '#2563EB', icon: '📋' },
-    { label: 'Đang xử lý', value: staffStats.processing, color: '#D97706', icon: '⏳' },
-    { label: 'Hoàn thành', value: staffStats.completed, color: '#059669', icon: '✅' },
-    { label: 'Quá hạn', value: staffStats.overdue, color: '#DC2626', icon: '⚠️' },
+    { num: '15', label: 'Đã được giao', isOverdue: false },
+    { num: '08', label: 'Đang thẩm định', isOverdue: false },
+    { num: '04', label: 'Chờ bổ sung', isOverdue: false },
+    { num: '02', label: 'Quá hạn', isOverdue: true },
+  ];
+
+  // 5 upcoming / overdue deadline requests (Figma Spec)
+  const deadlineRequests = [
+    {
+      code: 'VJU-2026-0842',
+      procedure: 'Cấp bảng điểm',
+      student: 'Nguyễn M. Anh',
+      status: 'Đang thẩm định',
+      statusTheme: 'blue',
+      deadline: '28/10/2026',
+      overdue: '—',
+      isOverdueRow: false,
+    },
+    {
+      code: 'VJU-2026-0835',
+      procedure: 'Phúc khảo',
+      student: 'Lê Thị Cúc',
+      status: 'Đang thẩm định',
+      statusTheme: 'blue',
+      deadline: '27/10/2026',
+      overdue: '—',
+      isOverdueRow: false,
+    },
+    {
+      code: 'VJU-2026-0830',
+      procedure: 'Cấp bảng điểm',
+      student: 'Phạm Đ. Dũng',
+      status: 'Chờ bổ sung',
+      statusTheme: 'yellow',
+      deadline: '29/10/2026',
+      overdue: '—',
+      isOverdueRow: false,
+    },
+    {
+      code: 'VJU-2026-0820',
+      procedure: 'Cấp bảng điểm',
+      student: 'Đỗ T. Giang',
+      status: 'Đang thẩm định',
+      statusTheme: 'blue',
+      deadline: '24/10/2026',
+      overdue: '2 ngày',
+      isOverdueRow: true,
+    },
+    {
+      code: 'VJU-2026-0818',
+      procedure: 'Phúc khảo',
+      student: 'Vũ Văn Hải',
+      status: 'Đang thẩm định',
+      statusTheme: 'blue',
+      deadline: '25/10/2026',
+      overdue: '1 ngày',
+      isOverdueRow: true,
+    },
   ];
 
   return (
-    <div className="staff-overview">
-      <h1 className="page-title">Tổng quan công việc</h1>
-      <p className="page-subtitle">Chuyên viên — Lê Hoàng Nam</p>
+    <div className="staff-overview-container">
+      {/* Page Title */}
+      <h1 className="staff-overview-title">Tổng quan công việc của Nam</h1>
 
-      <div className="stat-cards">
-        {statCards.map((s, i) => (
-          <div key={i} className="stat-card stat-card--border-left" style={{ borderLeftColor: s.color }}>
-            <span className="stat-card-label">{s.label}</span>
-            <span className="stat-card-value">{s.value}</span>
+      {/* 4 Stat Cards Row */}
+      <div className="staff-stat-cards-row">
+        {statCards.map((card, idx) => (
+          <div
+            key={idx}
+            className={`staff-stat-card ${card.isOverdue ? 'staff-stat-card--overdue' : ''}`}
+          >
+            <div className={`staff-stat-num ${card.isOverdue ? 'staff-stat-num--overdue' : ''}`}>
+              {card.num}
+            </div>
+            <div className={`staff-stat-label ${card.isOverdue ? 'staff-stat-label--overdue' : ''}`}>
+              {card.label}
+            </div>
           </div>
         ))}
       </div>
 
-      <div className="card">
-        <div className="card-body">
-          <div className="card-header-row">
-            <h3 className="section-title">Sắp đến hạn</h3>
-            <Badge label={`${staffStats.deadlines.length} yêu cầu`} color="#D97706" bg="#FFFBEB" />
+      {/* Main Table Card: Hồ sơ sắp đến hạn */}
+      <div className="staff-table-card">
+        {/* Card Header Row */}
+        <div className="staff-card-header">
+          <h2 className="staff-card-title">Hồ sơ sắp đến hạn</h2>
+          <button
+            type="button"
+            className="btn-staff-view-all"
+            onClick={() => navigate('/staff/requests')}
+          >
+            Xem tất cả yêu cầu →
+          </button>
+        </div>
+
+        {/* Spacer */}
+        <div style={{ width: 10, height: 18 }} />
+
+        {/* Table Container */}
+        <div className="staff-table-wrapper">
+          {/* Table Header Row */}
+          <div className="staff-th-row">
+            <div className="staff-th-cell">Mã yêu cầu</div>
+            <div className="staff-th-cell">Thủ tục</div>
+            <div className="staff-th-cell">Sinh viên</div>
+            <div className="staff-th-cell">Trạng thái</div>
+            <div className="staff-th-cell">Deadline</div>
+            <div className="staff-th-cell">Đã quá hạn</div>
+            <div className="staff-th-cell">Thao tác</div>
           </div>
-          <div className="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th>Mã YC</th>
-                  <th>Sinh viên</th>
-                  <th>Thủ tục</th>
-                  <th>Hạn chót</th>
-                  <th>Còn lại</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {staffStats.deadlines.map((d) => (
-                  <tr key={d.id}>
-                    <td><strong>{d.id}</strong></td>
-                    <td>{d.student}</td>
-                    <td>{d.procedure}</td>
-                    <td>{d.deadline}</td>
-                    <td>
-                      <span style={{ color: d.daysLeft <= 0 ? '#DC2626' : d.daysLeft <= 2 ? '#D97706' : '#059669', fontWeight: 600 }}>
-                        {d.daysLeft <= 0 ? `Quá ${Math.abs(d.daysLeft)} ngày` : `${d.daysLeft} ngày`}
-                      </span>
-                    </td>
-                    <td>
-                      <button className="btn btn--link btn--sm" onClick={() => navigate(`/staff/request/${d.id}`)}>
-                        Xử lý →
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+
+          <div className="staff-table-divider" style={{ minWidth: 820 }} />
+
+          {/* Table Data Rows */}
+          {deadlineRequests.map((row) => (
+            <React.Fragment key={row.code}>
+              <div className={`staff-tr-row ${row.isOverdueRow ? 'staff-tr-row--overdue' : ''}`}>
+                <div className="staff-td-cell">{row.code}</div>
+                <div className="staff-td-cell">{row.procedure}</div>
+                <div className="staff-td-cell">{row.student}</div>
+
+                {/* Status Badge */}
+                <div className="staff-td-cell">
+                  <span className={`staff-badge-status staff-badge-status--${row.statusTheme}`}>
+                    {row.status}
+                  </span>
+                </div>
+
+                <div className="staff-td-cell">{row.deadline}</div>
+
+                {/* Overdue */}
+                <div className="staff-td-cell">
+                  <span className="staff-overdue-val">{row.overdue}</span>
+                </div>
+
+                {/* Action button */}
+                <div className="staff-td-cell">
+                  <button
+                    type="button"
+                    className="btn-staff-detail-red"
+                    onClick={() => navigate(`/staff/request/${row.code}`)}
+                  >
+                    Xem chi tiết
+                  </button>
+                </div>
+              </div>
+
+              <div className="staff-table-divider" style={{ minWidth: 820 }} />
+            </React.Fragment>
+          ))}
         </div>
       </div>
     </div>

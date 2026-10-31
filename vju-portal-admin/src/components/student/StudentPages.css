@@ -3448,3 +3448,100 @@
   border-color: #D1D5DB;
   color: #374151;
 }
+
+
+/* ===== Student Profile Page (Frame: Hồ sơ cá nhân) ===== */
+.student-profile-container {
+  width: 100%;
+  max-width: 1208px;
+  min-height: calc(100vh - 88px);
+  padding: 28px 36px 40px;
+  background: #F5F6F8;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 24px;
+  box-sizing: border-box;
+  font-family: 'Inter', sans-serif;
+  margin: 0 auto;
+}
+
+.student-profile-title {
+  align-self: stretch;
+  color: #1F2937;
+  font-size: 28px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  margin: 0;
+  word-wrap: break-word;
+}
+
+.student-profile-card {
+  align-self: stretch;
+  padding: 24px 28px 20px 28px;
+  background: #FFFFFF;
+  border-radius: 12px;
+  border: 1px solid #E2E5EA;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  box-sizing: border-box;
+}
+
+.student-profile-card-title {
+  align-self: stretch;
+  color: #1F2937;
+  font-size: 16px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  margin: 0;
+  word-wrap: break-word;
+}
+
+.student-profile-row {
+  align-self: stretch;
+  padding: 14px 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-sizing: border-box;
+}
+
+.student-profile-label {
+  width: 160px;
+  color: #6B7280;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  flex-shrink: 0;
+  word-wrap: break-word;
+}
+
+.student-profile-value {
+  flex: 1 1 0;
+  color: #1F2937;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  word-wrap: break-word;
+}
+
+.student-status-badge {
+  padding: 3px 10px;
+  background: #DCFCE7;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.student-status-badge-text {
+  color: #168039;
+  font-size: 12px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  line-height: 1.4;
+  word-wrap: break-word;
+}

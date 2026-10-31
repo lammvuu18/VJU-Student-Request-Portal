@@ -59,18 +59,18 @@ const studentSidebar = [
 ];
 
 const deptHeadSidebar = [
-  { label: 'Tổng quan', path: '/dept-head', icon: '📊' },
-  { label: 'Tất cả yêu cầu', path: '/dept-head/requests', icon: '📋' },
-  { label: 'Thống kê', path: '/dept-head/statistics', icon: '📈' },
+  { label: 'Tổng quan', path: '/dept-head' },
+  { label: 'Tất cả yêu cầu', path: '/dept-head/requests' },
+  { label: 'Thống kê phòng', path: '/dept-head/statistics' },
 ];
 
 const staffSidebar = [
-  { label: 'Tổng quan', path: '/staff', icon: '📊' },
-  { label: 'Yêu cầu được giao', path: '/staff/requests', icon: '📋' },
+  { label: 'Tổng quan', path: '/staff' },
+  { label: 'Tất cả yêu cầu', path: '/staff/requests' },
 ];
 
 const principalSidebar = [
-  { label: 'Quyết định', path: '/principal/decisions', icon: '📝' },
+  { label: 'Quyết định', path: '/principal/decisions' },
 ];
 
 function App() {
@@ -110,6 +110,12 @@ function App() {
         <Route path="/dept-head" element={<AppLayout userName={users.deptHead.name} sidebarItems={deptHeadSidebar} />}>
           <Route index element={<DeptHeadOverview />} />
           <Route path="requests" element={<DeptHeadRequestList />} />
+          <Route path="request/supplement" element={<DeptHeadRequestDetail defaultOpenSupplement={true} />} />
+          <Route path="request/supplement-sent" element={<DeptHeadRequestDetail defaultStatus="Cần bổ sung" defaultToast="Đã gửi yêu cầu bổ sung cho SV" />} />
+          <Route path="request/reject" element={<DeptHeadRequestDetail defaultOpenReject={true} />} />
+          <Route path="request/reject-modal" element={<DeptHeadRequestDetail defaultOpenReject={true} />} />
+          <Route path="request/rejected" element={<DeptHeadRequestDetail defaultStatus="Từ chối" defaultToast="Đã từ chối yêu cầu VJU-2026-0840" />} />
+          <Route path="request/c4d" element={<DeptHeadRequestDetail defaultStatus="Từ chối" defaultToast="Đã từ chối yêu cầu VJU-2026-0840" />} />
           <Route path="request/:id" element={<DeptHeadRequestDetail />} />
           <Route path="statistics" element={<DeptHeadStatistics />} />
         </Route>
