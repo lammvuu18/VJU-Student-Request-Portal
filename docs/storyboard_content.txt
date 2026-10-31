@@ -1,0 +1,111 @@
+I.Màn hình sinh viên 
+1.1. Đăng nhập 
+Hình 1. Màn hình đăng nhập 
+Sinh viên nhập tài khoản và mật khẩu sau đó ấn nút đăng nhập để tiến hành đăng nhập vào hệ thống  
+Sinh viên có thể đăng nhập bằng tài khoản email của trường bằng cách ấn vào biểu tượng Google ở trên màn hình 
+Sau khi đăng nhập thành công, sinh viên sẽ được chuyển sang màn hình tổng quan dashboard 
+Hình 2. Màn hình tổng quan dashboard của sinh viên 
+1.2. Sinh viên tiến hành nộp thủ tục mới 
+Sinh viên bắt đầu tiến hành việc nộp thủ tục mới bằng cách ấn vào nút Nộp yêu cầu ở góc bên phải màn hình tổng quan (hình 2) hoặc tab Danh mục thủ tục ở thanh menu bar của màn. 
+Sau khi ấn, sinh viên sẽ được chuyển đến màn Danh mục thủ tục
+Hình 3. Màn hình danh mục thủ tục 
+Tại màn này, sinh viên ấn vào nút Nộp ngay ở thủ tục mà mình muốn đăng ký. Sau khi ấn, sinh viên được chuyển đến màn hình chứa thông tin cụ thể về thủ tục (hình 4) để sinh viên nắm được quy trình và các thông tin cần thiết về thủ tục trước khi đăng ký. Sau khi đọc hết và hiểu, sinh viên ấn vào nút Nộp giấy tờ bên góc phải màn hình, sau khi ấn sinh viên sẽ được chuyển sang màn hình điền thông tin đăng ký thủ tục (hình 5)
+Hình 4. Màn hình chứa thông tin chi tiết về thủ tục
+Hình 5. Màn hình điền thông tin đăng ký thủ tục
+Sinh viên tiến hành điền các thông tin, upload các file cần thiết tại màn này, sau khi hoàn tất ấn nút gửi và thanh toán, sinh viên sẽ được chuyển sang màn hình thanh toán để tiến hành bước thanh toán 
+Hình 6. Màn hình thanh toán 
+Tại màn này sẽ hiện các thông tin về số tiền phải thanh toán, phương thức thanh toán. Sinh viên chọn hình thức thanh toán phù hợp rồi ấn nút thanh toán ngay trên màn hình để tiến hành thanh toán 
+Sau khi thanh toán thành công, hệ thống sẽ hiển thị màn hình thông báo thanh toán thành công. Lúc đó được coi là thủ tục đã được đăng ký thành công 
+Hình 7. Màn hình thông báo thanh toán thành công 
+1.3. Xem chi tiết hồ sơ đã gửi và bổ sung hồ sơ 
+Tại màn hình tổng quan của sinh viên (hình 2), tại phần danh sách các yêu cầu đã gửi ở cuối màn hình, sinh viên ấn nút Xem chi tiết ở thủ tục mình muốn xem chi tiết. Sau khi ấn, sinh viên sẽ được chuyển sang màn chi tiết hồ sơ đã gửi 
+Hình 8. Màn hình chi tiết hồ sơ đã gửi 
+Tại màn này, sinh viên có thể xem được các thông tin về hồ sơ đã nộp của mình 
+Nếu trong trường hợp sinh viên có yêu cầu bổ sung hồ sơ từ phía chuyên viên, nút cập nhật thay đổi sẽ được activate để sinh viên tiến hành bổ sung 
+Sinh viên ấn vào nút cập nhật thay đổi để tiến hành bổ sung hồ sơ. Khi ấn vào nút này, sinh viên sẽ được chuyển sang màn hình bổ sung hồ sơ 
+Hình 9. Màn hình bổ sung hồ sơ
+Tại màn này, sinh viên tiến hành điều chỉnh theo những yêu cầu từ phía chuyên viên để bổ sung hồ sơ. Sau khi điều chỉnh, sinh viên tiến hành ấn nút cập nhật thay đổi để lưu các thay đổi bổ sung
+Sau khi ấn nút cập nhật thay đổi, sẽ có màn hình thông báo đã bổ sung thành công hồ sơ. Lúc này được coi là sinh viên đã bổ sung thành công hồ sơ
+Hình 10. Màn hình thông báo bổ sung hồ sơ thành công 
+1.4. Xem các thông báo liên quan đến yêu cầu đã nộp 
+Tại màn hình tổng quan (hình 2), sinh viên ấn vào icon chuông ở góc bên phải để xem được hết những thông báo liên quan đến những yêu cầu đã gửi 
+Hình 11. Cách xem thông báo trên màn tổng quan
+ 
+1.5. Nhận kết quả yêu cầu 
+Tại màn hình chi tiết hồ sơ (hình 8), khi yêu cầu đã có kết quả, nút Nhận kết quả sẽ được activate. Sinh viên ấn nút Nhận kết quả sinh viên sẽ được chuyển sang màn hiển thị kết quả để có thể xem và download kết quả liên quan đến yêu cầu của mình  
+Hình 12. Màn hình nhận kết quả 
+Tại màn này, sinh viên sẽ thấy kết quả yêu cầu của mình, nếu muốn download về, sinh viên ấn vào nút Tải pdf để tiến hành tải về 
+1.6. Đánh giá  
+Để tiến hành đánh giá về quá trình xử lý đơn, sinh viên trên màn hình chi tiết hồ sơ (hình 8), ấn vào nút Đánh giá. Sinh viên sẽ được chuyển sang màn hình đánh giá
+Hình 13. Màn hình đánh giá 
+Tại màn này, sinh viên tiến hành đánh giá. Sau khi đánh giá xong, sinh viên ấn vào nút gửi đánh giá. Sau khi ấn, màn hình thông báo đánh giá đã được ghi nhận sẽ được hiển thị 
+Hình 14. Màn hình thông báo đánh giá thành công 
+1.7. Xem hồ sơ cá nhân 
+Nếu sinh viên muốn xem profile cá nhân của mình, sinh viên ấn vào tab Hồ sơ cá nhân ở menubar, khi đó sinh viên sẽ được chuyển sang màn ghi đầy đủ thông tin profile cá nhân của mình 
+Hình 15. Màn hình hồ sơ cá nhân 
+II.Màn hình trưởng phòng 
+2.1. Đăng nhập 
+Sau khi đăng nhập thành công (màn hình đăng nhập hình 1), trưởng phòng sẽ được chuyển sang màn hình tổng quan của trưởng phòng 
+Hình 16. Màn hình tổng quan của Trưởng phòng 
+2.2. Phân công chuyên viên duyệt hồ sơ 
+Để tiến hành phân công chuyên viên sinh viên, trưởng phòng ấn vào tab tất cả yêu cầu trên menu bar để xem tất cả các yêu cầu trước 
+Hình 17. Màn hình tất cả yêu cầu 
+Tại màn này, ở bảng danh sách yêu cầu, đối với những yêu cầu ở trạng thái chờ phân công, trưởng phòng tiến hành phân công cho chuyên viên kiểm duyệt bằng cách chọn giá trị từ dropdown list ở cột người phụ trách 
+2.3. Phê duyệt, yêu cầu bổ sung, từ chối hồ sơ 
+Để phê duyệt, yêu cầu bổ sung hoặc từ chối hồ sơ, trước hết trưởng phòng trên màn hình tất cả yêu cầu (hình 17) ấn vào nút xem chi tiết ở hồ sơ mà mình muốn tiến hành các thao tác trên. Sau khi ấn, màn hình hiện chi tiết hồ sơ sẽ được hiện ra 
+Hình 18. Màn hình chi tiết hồ sơ của trưởng phòng 
+Tại màn này, nếu trưởng phòng, muốn phê duyệt hồ sơ thì sẽ ấn vào nút phê duyệt
+Nếu muốn yêu cầu sinh viên bổ sung thêm hồ sơ thì ấn vào nút Yêu cầu SV bổ sung trên màn. Sau khi ấn, một modal sẽ hiện lên để trưởng phòng ghi chú cho sinh viên cần bổ sung thêm gì 
+Hình 19. Modal ghi chú bổ sung hồ sơ 
+Sau khi điền các thông tin mà sinh viên cần bổ sung, trưởng phòng ấn nút gửi yêu cầu bổ sung. Sau khi ấn gửi, màn hình thông báo gửi yêu cầu bổ sung thành công sẽ được hiện ra ở góc bên phải màn hình 
+Hình 20. Thông báo đã gửi yêu cầu bổ sung thành công được hiện ở góc phải màn hình 
+2.4. Xem thống kê 
+Nếu trưởng phòng muốn xem các chỉ số liên quan đến các thủ tục tiếp nhận, trưởng phòng ấn vào tab Thống kê phòng ở menubar. Sau khi ấn, trưởng phòng sẽ được chuyển sang màn thống kê
+Hình 21. Màn thống kê của phòng ban 
+III.Màn hình của chuyên viên 
+3.1. Đăng nhập 
+Sau khi chuyên viên đăng nhập ở màn hình đăng nhập (hình 1), chuyên viên sẽ được chuyển sang màn hình tổng quan của chuyên viên 
+Hình 22. Màn hình tổng quan của chuyên viên 
+3.2. Phê duyệt, yêu cầu bổ sung, từ chối yêu cầu 
+Để phê duyệt, yêu cầu bổ sung hoặc từ chối một yêu cầu, trước tiên chuyên viên ấn vào tab tất cả yêu cầu trên menu bar. Sau khi ấn, chuyên viên sẽ được chuyển đến màn hình tất cả yêu cầu của mình 
+Hình 23. Màn hình tất cả yêu cầu của chuyên viên 
+Tại màn này sinh viên ấn vào nút xem chi tiết đối với yêu cầu mà mình muốn phê duyệt, yêu cầu bổ sung, từ chối. Sau khi ấn, chuyên viên sẽ được chuyển đến màn hình chi tiết hồ sơ 
+Hình 24. Màn hình chi tiết hồ sơ của chuyên viên 
+Với tính năng phê duyệt, yêu cầu bổ sung, từ chối (tham khảo màn hình màn hình của trưởng phòng) 
+Trong trường hợp chuyên viên cần chuyển giấy tờ cho phòng ban khác xem xét, chuyên viên ấn vào nút chuyển phòng ban. Lúc này một modal sẽ hiện lên để chyên viên tiến hành chuyển giấy tờ sang phòng ban khác. 
+Hình 25. Modal để chuyển phòng ban 
+Tại đây, chuyên viên tiến hành chọn phòng ban muốn chuyển yêu cầu sang và ghi các ghi chú. Sau khi hoàn tất điền thông tin, chuyên viên ấn nút xác nhận chuyển. Sau khi ấn, sẽ hiển thị thông báo đã chuyển thành công ở góc bên phải màn hình 
+Hình 26. Thông báo chuyển phòng ban thành công được hiển thị ở góc phải màn hình 
+3.3. Cấp kết quả cho sinh viên 
+Nếu chuyên viên muốn cấp kết quả cho viên thì từ màn hình chi tiết hồ sơ (hình 24), chuyên viên ấn nút phê duyệt. Lúc này chuyên viên sẽ được chuyển sang màn hình để cấp kết quả 
+Hình 27. Màn hình cấp kết quả cho sinh viên 
+Tại màn hình này, chuyên viên tiến hành điền các thông tin như thời gian nhận cũng như địa điểm nhận cho sinh viên. Sau khi hoàn tất ấn nút xác nhận cấp kết quả 
+IV. Màn hình hiệu trưởng 
+4.1. Đăng nhập 
+Sau khi đăng nhập thành công tại màn hình đăng nhập (hình 1), hiệu trưởng sẽ được chuyển sang màn hình Tất cả quyết định của mình 
+Hình 28. Màn hình tất cả quyết định của hiệu trưởng 
+4.2. Ký duyệt 
+Nếu hiệu trưởng muốn ký duyệt, từ màn hình tất cả quyết định, hiệu trưởng ấn vào nút xem chi tiết đối với quyết định mà mình muốn ký. Sau khi ấn, hiệu trưởng sẽ được chuyển sang màn hình chi tiết quyết định đó. 
+Hình 29. Màn hình chi tiết quyết định 
+Để ký quyết định, hiệu trưởng ấn vào nút ký số SmartCA 
+V.Màn hình admin 
+5.1. Đăng nhập 
+Sau khi đăng nhập thành công ở màn hình đăng nhập (hình 1), admin sẽ được chuyển sang màn hình quản lý thủ tục
+Hình 30. Màn hình quản lý thủ tục 
+5.2. Cấu hình thủ tục và form điền nội dung 
+Nếu admin muốn cấu hình các trường trong thủ tục hoặc form nội dung, admin ấn vào nút chỉnh sửa từ màn quản lý thủ tục. Lúc đó, admin sẽ được điều hướng sang màn cấu hình thủ tục 
+Màn 31. Màn cấu hình thủ tục (cấu hình thủ tục)
+Tại màn này sẽ có hai tab, cấu hình thủ tục và thiết kế form. Admin điều chỉnh các trường theo mong muốn rồi ấn vào button lưu thay đổi 
+Hình 32. Màn cấu hình thủ tục (thiết kế form)
+5.3. Tài khoản và phân quyền 
+Admin ấn vào tab Tài khoản và phân quyền trên menu bar để chuyển hướng sang màn tài khoản và phân quyền 
+Hình 33. Màn hình tài khoản và phân quyền (sinh viên)
+Có 3 tab ứng với tài khoản của mỗi role (sinh viên, cán bộ, hiệu trưởng) 
+Nếu muốn sửa thông tin tài khoản sinh viên, admin ấn vào nút sửa đối với với tài khoản sinh viên mà mình muốn thay đổi. Khi ấn vào một modal để admin thay đổi thông tin sẽ hiện lên
+Hình 34. Modal để chỉnh sửa thông tin tài khoản sinh viên 
+Chỉnh sửa tài khoản của cán bộ, admin ấn vào tab cán bộ để thấy danh sách tài khoản. Sau đó ấn vào nút sửa ở tài khoản mà admin muốn sửa. Một modal sửa thông tin sẽ được hiện ra. Admin tiến hành điều chỉnh các thông tin, rồi ấn lưu
+Hình 35. Màn hình tài khoản và phân quyền (cán bộ)
+Hình 36. Modal chỉnh sửa thông tin cán bộ 
+Thao tác tương tự với tab Hiệu trưởng 
+Hình 37. Màn hình tài khoản và phân quyền (Hiệu trưởng) 
+Hình 38. Modal chỉnh sửa thông tin tài khoản hiệu trưởng 

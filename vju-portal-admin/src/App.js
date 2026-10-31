@@ -8,6 +8,8 @@ import './styles/global.css';
 // Common components & layouts
 import AppLayout from './components/common/AppLayout';
 import AdminLayout from './components/layouts/AdminLayout';
+import ProtectedRoute from './components/common/ProtectedRoute';
+import { getAuthToken, getSavedRole, ROLE_ACCOUNTS, normalizeRole } from './services/api';
 
 // Auth
 import LoginPage from './components/auth/LoginPage';
@@ -77,11 +79,35 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Root redirect */}
+        <Route
+          path="/"
+          element={
+            getAuthToken() ? (
+              <Navigate
+                to={
+                  (ROLE_ACCOUNTS[normalizeRole(getSavedRole())] || ROLE_ACCOUNTS.student).homePath
+                }
+                replace
+              />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+
         {/* Login */}
         <Route path="/login" element={<LoginPage />} />
 
         {/* Student Routes */}
-        <Route path="/student" element={<AppLayout userName={users.student.name} sidebarItems={studentSidebar} />}>
+        <Route
+          path="/student"
+          element={
+            <ProtectedRoute allowedRole="student">
+              <AppLayout userName={users.student.name} sidebarItems={studentSidebar} />
+            </ProtectedRoute>
+          }
+        >
           <Route index element={<Navigate to="/student/dashboard" replace />} />
           <Route path="dashboard" element={<StudentDashboard />} />
           <Route path="procedures" element={<ProcedureCatalog />} />
@@ -107,7 +133,14 @@ function App() {
         </Route>
 
         {/* Dept Head Routes */}
-        <Route path="/dept-head" element={<AppLayout userName={users.deptHead.name} sidebarItems={deptHeadSidebar} />}>
+        <Route
+          path="/dept-head"
+          element={
+            <ProtectedRoute allowedRole="deptHead">
+              <AppLayout userName={users.deptHead.name} sidebarItems={deptHeadSidebar} />
+            </ProtectedRoute>
+          }
+        >
           <Route index element={<DeptHeadOverview />} />
           <Route path="requests" element={<DeptHeadRequestList />} />
           <Route path="request/supplement" element={<DeptHeadRequestDetail defaultOpenSupplement={true} />} />
@@ -121,7 +154,14 @@ function App() {
         </Route>
 
         {/* Staff Routes */}
-        <Route path="/staff" element={<AppLayout userName={users.staff.name} sidebarItems={staffSidebar} />}>
+        <Route
+          path="/staff"
+          element={
+            <ProtectedRoute allowedRole="staff">
+              <AppLayout userName={users.staff.name} sidebarItems={staffSidebar} />
+            </ProtectedRoute>
+          }
+        >
           <Route index element={<StaffOverview />} />
           <Route path="requests" element={<StaffRequestList />} />
           <Route path="request/transfer" element={<StaffRequestDetail />} />
@@ -139,7 +179,14 @@ function App() {
         </Route>
 
         {/* Principal Routes */}
-        <Route path="/principal" element={<AppLayout userName={users.principal.name} sidebarItems={principalSidebar} />}>
+        <Route
+          path="/principal"
+          element={
+            <ProtectedRoute allowedRole="principal">
+              <AppLayout userName={users.principal.name} sidebarItems={principalSidebar} />
+            </ProtectedRoute>
+          }
+        >
           <Route index element={<PrincipalDecisionList />} />
           <Route path="decisions" element={<PrincipalDecisionList />} />
           <Route path="decision" element={<PrincipalDecisionDetail />} />
@@ -148,7 +195,14 @@ function App() {
         </Route>
 
         {/* Admin Routes */}
-        <Route path="/admin" element={<AdminLayout />}>
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute allowedRole="admin">
+              <AdminLayout />
+            </ProtectedRoute>
+          }
+        >
           <Route index element={<Navigate to="procedures" replace />} />
           <Route path="procedures" element={<ProcedureList />} />
           <Route path="procedures/edit" element={<ProcedureEdit />} />

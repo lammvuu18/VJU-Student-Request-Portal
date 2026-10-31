@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { setSavedRole, setAuthToken } from '../../services/api';
+import { loginWithRole, findAccountByEmail } from '../../services/api';
 import './LoginPage.css';
 
 function LoginPage() {
@@ -9,19 +9,38 @@ function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  const selectRoleAndGo = (role, path) => {
-    setSavedRole(role);
-    setAuthToken(`mock-jwt-token-${role}-${Date.now()}`);
-    navigate(path);
-  };
-
   const handleLogin = (e) => {
     e.preventDefault();
-    if (email.includes('admin')) selectRoleAndGo('admin', '/admin');
-    else if (email.includes('truongphong') || email.includes('thuha')) selectRoleAndGo('deptHead', '/dept-head');
-    else if (email.includes('chuyenvien') || email.includes('hoangnam')) selectRoleAndGo('staff', '/staff');
-    else if (email.includes('hieutruong') || email.includes('vanbinh')) selectRoleAndGo('principal', '/principal');
-    else selectRoleAndGo('student', '/student');
+    if (!email.trim()) return;
+
+    const matchedAccount = findAccountByEmail(email);
+    if (matchedAccount) {
+      const acc = loginWithRole(matchedAccount.role);
+      navigate(acc.homePath);
+    } else {
+      const lower = email.toLowerCase();
+      if (lower.includes('admin') || lower.includes('quantri')) {
+        const acc = loginWithRole('admin');
+        navigate(acc.homePath);
+      } else if (lower.includes('truongphong') || lower.includes('thuha') || lower.includes('depthead') || lower.includes('ha.tt')) {
+        const acc = loginWithRole('deptHead');
+        navigate(acc.homePath);
+      } else if (lower.includes('chuyenvien') || lower.includes('hoangnam') || lower.includes('staff') || lower.includes('nam.lh')) {
+        const acc = loginWithRole('staff');
+        navigate(acc.homePath);
+      } else if (lower.includes('hieutruong') || lower.includes('vanbinh') || lower.includes('principal') || lower.includes('binh.nv')) {
+        const acc = loginWithRole('principal');
+        navigate(acc.homePath);
+      } else {
+        const acc = loginWithRole('student');
+        navigate(acc.homePath);
+      }
+    }
+  };
+
+  const handleGoogleLogin = () => {
+    const acc = loginWithRole('student');
+    navigate(acc.homePath);
   };
 
   return (
@@ -110,7 +129,14 @@ function LoginPage() {
 
             {/* Forgot Password Link */}
             <div className="forgot-password-row">
-              <a href="#forgot" className="forgot-password-link" onClick={(e) => { e.preventDefault(); alert('Vui lòng liên hệ Phòng Đào tạo / CTSV hoặc IT Support để cấp lại mật khẩu.'); }}>
+              <a
+                href="#forgot"
+                className="forgot-password-link"
+                onClick={(e) => {
+                  e.preventDefault();
+                  alert('Vui lòng liên hệ Phòng Đào tạo / CTSV hoặc IT Support để cấp lại mật khẩu.');
+                }}
+              >
                 Forgot password?
               </a>
             </div>
@@ -132,7 +158,7 @@ function LoginPage() {
           <button
             type="button"
             className="google-sign-in-btn"
-            onClick={() => selectRoleAndGo('student', '/student')}
+            onClick={handleGoogleLogin}
             aria-label="Đăng nhập bằng Google"
           >
             <svg width="24" height="24" viewBox="0 0 24 24">
