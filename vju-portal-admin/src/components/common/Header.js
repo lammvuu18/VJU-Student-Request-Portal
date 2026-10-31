@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Modal from './Modal';
 import Button from './Button';
 import { users } from '../../data/mockData';
+import { loginWithRole, logout, getCurrentUser, getSavedRole, ROLE_ACCOUNTS, normalizeRole } from '../../services/api';
 import './Header.css';
 
 const initialNotifications = [
@@ -64,24 +65,27 @@ function Header({ userName = 'User' }) {
   const [confirmPass, setConfirmPass] = useState('');
 
   // Determine active profile info
-  let profile = users.admin;
-  if (userName.includes('Minh Anh') || userName.toLowerCase().includes('sinh viên')) {
-    profile = { ...users.student, role: 'Sinh viên' };
-  } else if (userName.includes('Thu Hà') || userName.toLowerCase().includes('trưởng phòng')) {
-    profile = { ...users.deptHead, role: 'Trưởng phòng Đào tạo' };
-  } else if (userName.includes('Hoàng Nam') || userName.toLowerCase().includes('chuyên viên')) {
-    profile = { ...users.staff, role: 'Chuyên viên Đào tạo' };
-  } else if (userName.includes('Bình') || userName.toLowerCase().includes('hiệu trưởng')) {
-    profile = { ...users.principal, role: 'Hiệu trưởng' };
-  } else {
-    profile = {
-      name: userName,
-      email: 'admin@vju.ac.vn',
-      role: 'Quản trị viên Hệ thống',
-      department: 'Trung tâm CNTT & Quản trị mạng',
-      phone: '024 7306 6001',
-    };
-  }
+  const currentRole = normalizeRole(getSavedRole());
+  const activeUser = getCurrentUser() || users[currentRole] || users.admin;
+  let profile = {
+    name: activeUser.full_name || activeUser.name || userName,
+    email: activeUser.email || `${currentRole}@vju.ac.vn`,
+    role: (ROLE_ACCOUNTS[currentRole] && ROLE_ACCOUNTS[currentRole].roleName) || 'Người dùng',
+    department: activeUser.department_name || activeUser.department || '',
+    phone: activeUser.phone || '',
+  };
+
+  const handleSwitchRole = (roleKey) => {
+    setShowUserMenu(false);
+    const acc = loginWithRole(roleKey);
+    navigate(acc.homePath);
+  };
+
+  const handleLogout = () => {
+    setShowUserMenu(false);
+    logout();
+    navigate('/login');
+  };
 
   const initials = profile.name
     ? profile.name.split(' ').map(w => w[0]).filter(Boolean).slice(-2).join('').toUpperCase()
@@ -322,10 +326,7 @@ function Header({ userName = 'User' }) {
                 <button
                   type="button"
                   className="user-menu-item"
-                  onClick={() => {
-                    setShowUserMenu(false);
-                    navigate('/admin');
-                  }}
+                  onClick={() => handleSwitchRole('admin')}
                 >
                   <span className="user-menu-icon">⚙️</span>
                   <span>Quản trị (Admin)</span>
@@ -335,10 +336,7 @@ function Header({ userName = 'User' }) {
                 <button
                   type="button"
                   className="user-menu-item"
-                  onClick={() => {
-                    setShowUserMenu(false);
-                    navigate('/student');
-                  }}
+                  onClick={() => handleSwitchRole('student')}
                 >
                   <span className="user-menu-icon">🧑‍🎓</span>
                   <span>Sinh viên</span>
@@ -347,10 +345,7 @@ function Header({ userName = 'User' }) {
                 <button
                   type="button"
                   className="user-menu-item"
-                  onClick={() => {
-                    setShowUserMenu(false);
-                    navigate('/dept-head');
-                  }}
+                  onClick={() => handleSwitchRole('deptHead')}
                 >
                   <span className="user-menu-icon">👔</span>
                   <span>Trưởng phòng</span>
@@ -359,10 +354,7 @@ function Header({ userName = 'User' }) {
                 <button
                   type="button"
                   className="user-menu-item"
-                  onClick={() => {
-                    setShowUserMenu(false);
-                    navigate('/staff');
-                  }}
+                  onClick={() => handleSwitchRole('staff')}
                 >
                   <span className="user-menu-icon">💼</span>
                   <span>Chuyên viên</span>
@@ -371,10 +363,7 @@ function Header({ userName = 'User' }) {
                 <button
                   type="button"
                   className="user-menu-item"
-                  onClick={() => {
-                    setShowUserMenu(false);
-                    navigate('/principal');
-                  }}
+                  onClick={() => handleSwitchRole('principal')}
                 >
                   <span className="user-menu-icon">🎓</span>
                   <span>Hiệu trưởng</span>
@@ -385,10 +374,7 @@ function Header({ userName = 'User' }) {
                 <button
                   type="button"
                   className="user-menu-item danger"
-                  onClick={() => {
-                    setShowUserMenu(false);
-                    navigate('/login');
-                  }}
+                  onClick={handleLogout}
                 >
                   <span className="user-menu-icon">🚪</span>
                   <span>Đăng xuất</span>

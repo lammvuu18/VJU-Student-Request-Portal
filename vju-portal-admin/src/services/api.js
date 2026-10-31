@@ -19,8 +19,141 @@ export const setAuthToken = (token) => {
   }
 };
 
-export const getSavedRole = () => localStorage.getItem('vju_role') || 'student';
-export const setSavedRole = (role) => localStorage.setItem('vju_role', role);
+export const normalizeRole = (r) => {
+  if (!r) return 'student';
+  if (r === 'dept_head') return 'deptHead';
+  return r;
+};
+
+export const getSavedRole = () => normalizeRole(localStorage.getItem('vju_role'));
+export const setSavedRole = (role) => localStorage.setItem('vju_role', normalizeRole(role));
+
+// 5 Dedicated Accounts corresponding to 5 Roles
+export const ROLE_ACCOUNTS = {
+  student: {
+    role: 'student',
+    roleCode: 'student',
+    roleName: 'Sinh viên',
+    email: 'student@vju.ac.vn',
+    secondaryEmail: 'minhanh@vju.ac.vn',
+    password: 'password123',
+    defaultPassword: '123456',
+    name: 'Nguyễn Minh Anh',
+    department: 'Khóa K2021 - Khoa học Máy tính',
+    homePath: '/student/dashboard',
+    allowedPrefix: '/student',
+    badgeColor: '#10B981',
+    userObj: mock.users.student,
+  },
+  staff: {
+    role: 'staff',
+    roleCode: 'staff',
+    roleName: 'Chuyên viên',
+    email: 'staff@vju.ac.vn',
+    secondaryEmail: 'nam.lh@vju.ac.vn',
+    password: 'password123',
+    defaultPassword: '123456',
+    name: 'Lê Hoàng Nam',
+    department: 'Phòng Đào tạo',
+    homePath: '/staff',
+    allowedPrefix: '/staff',
+    badgeColor: '#3B82F6',
+    userObj: mock.users.staff,
+  },
+  deptHead: {
+    role: 'deptHead',
+    roleCode: 'dept_head',
+    roleName: 'Trưởng phòng',
+    email: 'depthead@vju.ac.vn',
+    secondaryEmail: 'thuha@vju.ac.vn',
+    password: 'password123',
+    defaultPassword: '123456',
+    name: 'Trần Thu Hà',
+    department: 'Phòng Đào tạo',
+    homePath: '/dept-head',
+    allowedPrefix: '/dept-head',
+    badgeColor: '#8B5CF6',
+    userObj: mock.users.deptHead,
+  },
+  principal: {
+    role: 'principal',
+    roleCode: 'principal',
+    roleName: 'Hiệu trưởng',
+    email: 'principal@vju.ac.vn',
+    secondaryEmail: 'binh.nv@vju.ac.vn',
+    password: 'password123',
+    defaultPassword: '123456',
+    name: 'PGS.TS Nguyễn Văn Bình',
+    department: 'Ban Giám hiệu',
+    homePath: '/principal/decisions',
+    allowedPrefix: '/principal',
+    badgeColor: '#F59E0B',
+    userObj: mock.users.principal,
+  },
+  admin: {
+    role: 'admin',
+    roleCode: 'admin',
+    roleName: 'Quản trị viên (Admin)',
+    email: 'admin@vju.ac.vn',
+    secondaryEmail: 'quantri@vju.ac.vn',
+    password: 'password123',
+    defaultPassword: '123456',
+    name: 'Quản trị viên Hệ thống',
+    department: 'Trung tâm CNTT & Quản trị mạng',
+    homePath: '/admin/procedures',
+    allowedPrefix: '/admin',
+    badgeColor: '#AA2327',
+    userObj: mock.users.admin,
+  },
+};
+
+export const findAccountByEmail = (inputEmail) => {
+  if (!inputEmail) return null;
+  const lower = inputEmail.trim().toLowerCase();
+  for (const key of Object.keys(ROLE_ACCOUNTS)) {
+    const acc = ROLE_ACCOUNTS[key];
+    if (
+      acc.email.toLowerCase() === lower ||
+      (acc.secondaryEmail && acc.secondaryEmail.toLowerCase() === lower) ||
+      (acc.role === 'admin' && (lower.includes('admin') || lower.includes('quantri'))) ||
+      (acc.role === 'deptHead' && (lower.includes('truongphong') || lower.includes('thuha') || lower.includes('depthead'))) ||
+      (acc.role === 'staff' && (lower.includes('chuyenvien') || lower.includes('hoangnam') || lower.includes('nam.lh') || lower.includes('staff'))) ||
+      (acc.role === 'principal' && (lower.includes('hieutruong') || lower.includes('vanbinh') || lower.includes('binh.nv') || lower.includes('principal'))) ||
+      (acc.role === 'student' && (lower.includes('sinhvien') || lower.includes('minhanh') || lower.includes('student')))
+    ) {
+      return acc;
+    }
+  }
+  return null;
+};
+
+export const loginWithRole = (roleKey) => {
+  const normKey = normalizeRole(roleKey);
+  const account = ROLE_ACCOUNTS[normKey] || ROLE_ACCOUNTS.student;
+  const token = `mock-jwt-${account.role}-${Date.now()}`;
+  setAuthToken(token);
+  setSavedRole(account.role);
+  localStorage.setItem('vju_user', JSON.stringify(account.userObj));
+  return account;
+};
+
+export const logout = () => {
+  localStorage.removeItem('vju_token');
+  localStorage.removeItem('vju_role');
+  localStorage.removeItem('vju_user');
+};
+
+export const getCurrentUser = () => {
+  const raw = localStorage.getItem('vju_user');
+  if (raw) {
+    try {
+      return JSON.parse(raw);
+    } catch (e) {}
+  }
+  const currentRole = getSavedRole();
+  const acc = ROLE_ACCOUNTS[currentRole] || ROLE_ACCOUNTS.student;
+  return acc.userObj;
+};
 
 /**
  * Core fetch wrapper with timeout, Authorization header, and fallback to mock data
