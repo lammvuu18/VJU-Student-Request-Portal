@@ -223,36 +223,39 @@
 .admin-proc-table-container {
   align-self: stretch;
   position: relative;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .admin-proc-table-wrapper {
-  align-self: stretch;
+  min-width: 880px;
+  width: 100%;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  align-items: flex-start;
-  overflow: hidden;
+  align-items: stretch;
+  box-sizing: border-box;
 }
 
 .admin-proc-th-row {
   align-self: stretch;
-  padding: 10px 8px;
+  padding: 10px 12px;
   background: #F5F6F8;
-  display: flex;
-  justify-content: flex-start;
+  display: grid;
+  grid-template-columns: minmax(190px, 2.6fr) minmax(130px, 1.4fr) minmax(75px, 0.9fr) minmax(75px, 0.9fr) minmax(90px, 1.1fr) minmax(90px, 1.1fr) minmax(80px, 0.9fr);
+  column-gap: 16px;
   align-items: center;
-  gap: 4px;
   box-sizing: border-box;
 }
 
 .admin-proc-th-cell {
-  flex: 1 1 0;
   color: #1F2937;
   font-size: 12px;
   font-family: 'Inter', sans-serif;
   font-weight: 600;
   word-wrap: break-word;
+  line-height: 1.4;
+  box-sizing: border-box;
 }
 
 .admin-proc-divider {
@@ -263,11 +266,11 @@
 
 .admin-proc-tr-row {
   align-self: stretch;
-  padding: 10px 8px;
-  display: flex;
-  justify-content: flex-start;
+  padding: 12px 12px;
+  display: grid;
+  grid-template-columns: minmax(190px, 2.6fr) minmax(130px, 1.4fr) minmax(75px, 0.9fr) minmax(75px, 0.9fr) minmax(90px, 1.1fr) minmax(90px, 1.1fr) minmax(80px, 0.9fr);
+  column-gap: 16px;
   align-items: center;
-  gap: 4px;
   box-sizing: border-box;
   transition: background-color 0.12s ease;
 }
@@ -277,12 +280,30 @@
 }
 
 .admin-proc-td-cell {
-  flex: 1 1 0;
   color: #1F2937;
   font-size: 12px;
   font-family: 'Inter', sans-serif;
   font-weight: 400;
   word-wrap: break-word;
+  line-height: 1.4;
+  box-sizing: border-box;
+}
+
+.admin-proc-th-cell.col-name,
+.admin-proc-td-cell.col-name {
+  padding-right: 8px;
+}
+
+.admin-proc-th-cell.col-dept,
+.admin-proc-td-cell.col-dept {
+  padding-right: 8px;
+}
+
+.admin-proc-th-cell.col-action,
+.admin-proc-td-cell.col-action {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
 }
 
 /* Badges */

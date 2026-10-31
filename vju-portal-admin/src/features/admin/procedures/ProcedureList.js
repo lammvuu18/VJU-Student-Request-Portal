@@ -364,13 +364,13 @@ function ProcedureList() {
           <div className="admin-proc-table-wrapper">
             {/* Table Header Row */}
             <div className="admin-proc-th-row">
-              <div className="admin-proc-th-cell">Tên thủ tục</div>
-              <div className="admin-proc-th-cell">Phòng ban</div>
-              <div className="admin-proc-th-cell">Cấp duyệt</div>
-              <div className="admin-proc-th-cell">SLA</div>
-              <div className="admin-proc-th-cell">Lệ phí</div>
-              <div className="admin-proc-th-cell">Trạng thái</div>
-              <div className="admin-proc-th-cell">Thao tác</div>
+              <div className="admin-proc-th-cell col-name">Tên thủ tục</div>
+              <div className="admin-proc-th-cell col-dept">Phòng ban</div>
+              <div className="admin-proc-th-cell col-levels">Cấp duyệt</div>
+              <div className="admin-proc-th-cell col-sla">SLA</div>
+              <div className="admin-proc-th-cell col-fee">Lệ phí</div>
+              <div className="admin-proc-th-cell col-status">Trạng thái</div>
+              <div className="admin-proc-th-cell col-action">Thao tác</div>
             </div>
 
             <div className="admin-proc-divider" />
@@ -379,14 +379,14 @@ function ProcedureList() {
             {paginatedProcedures.map((row) => (
               <React.Fragment key={row.id}>
                 <div className="admin-proc-tr-row">
-                  <div className="admin-proc-td-cell">{row.name}</div>
-                  <div className="admin-proc-td-cell">{row.department}</div>
-                  <div className="admin-proc-td-cell">{row.approvalLevels}</div>
-                  <div className="admin-proc-td-cell">{row.sla}</div>
-                  <div className="admin-proc-td-cell">{row.fee}</div>
+                  <div className="admin-proc-td-cell col-name">{row.name}</div>
+                  <div className="admin-proc-td-cell col-dept">{row.department}</div>
+                  <div className="admin-proc-td-cell col-levels">{row.approvalLevels}</div>
+                  <div className="admin-proc-td-cell col-sla">{row.sla}</div>
+                  <div className="admin-proc-td-cell col-fee">{row.fee}</div>
 
                   {/* Status Badge */}
-                  <div className="admin-proc-td-cell">
+                  <div className="admin-proc-td-cell col-status">
                     <span
                       className={
                         row.status === 'active'
@@ -402,7 +402,7 @@ function ProcedureList() {
                   </div>
 
                   {/* Action Button: Chỉnh sửa */}
-                  <div className="admin-proc-td-cell">
+                  <div className="admin-proc-td-cell col-action">
                     <button
                       type="button"
                       className="btn-admin-edit-proc"
