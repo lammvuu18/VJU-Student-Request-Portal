@@ -1,124 +1,377 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import Button from '../common/Button';
-import { allRequests } from '../../data/mockData';
-import { requestApi } from '../../services/api';
+import { allRequests, studentOverviewRequests } from '../../data/mockData';
 import './StudentPages.css';
 
 function SupplementForm() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const request = allRequests.find(r => r.id === id || String(r.request_id) === String(id) || r.status === 'Cần bổ sung' || r.internal_status === 'Cần bổ sung') || allRequests[2];
+  const fileInputRef = useRef(null);
 
+  // Find request in mock data or fallback to Figma default
+  const req = (studentOverviewRequests || []).find(
+    (r) => r.id === id || r.request_code === id || String(r.request_id) === String(id)
+  ) || (allRequests || []).find(
+    (r) => r.id === id || r.request_code === id || String(r.request_id) === String(id)
+  ) || {
+    id: id || 'VJU-2026-0840',
+    student: 'Nguyễn Minh Anh',
+    mssv: '23110150',
+    procedure: 'Cấp bảng điểm',
+  };
+
+  const [fullName, setFullName] = useState(req.student || 'Nguyễn Minh Anh');
+  const [mssv, setMssv] = useState(req.mssv || '23110150');
+  const [lop, setLop] = useState('QH-2023-I/CQ-M-CLC');
+  const [khoa, setKhoa] = useState('QH-2023');
+  const [nganh, setNganh] = useState('Khoa học máy tính');
+  const [email, setEmail] = useState('23110150@vnu.edu.vn');
+  const [purpose, setPurpose] = useState('Xin việc / Ứng tuyển');
+  const [quantity, setQuantity] = useState(1);
+  const [language, setLanguage] = useState('Tiếng Việt');
+  const [deliveryMethod, setDeliveryMethod] = useState('PDF ký số');
   const [notes, setNotes] = useState('');
-  const [fileUploaded, setFileUploaded] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState(null);
+  const [toastMsg, setToastMsg] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = async () => {
-    setSubmitting(true);
-    try {
-      await requestApi.supplement(request.request_id || request.id, {
-        notes,
-        attachments: [
-          {
-            config_id: 2,
-            file_url: 'https://storage.vju.ac.vn/attachments/supplement_minh_chung.pdf',
-            file_name: 'minh_chung_bo_sung_bo_sung.pdf',
-            file_size: 1048576,
-          },
-        ],
+  const showToast = (msg) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(''), 3500);
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) {
+      setUploadedFile({
+        name: file.name,
+        size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
       });
-      navigate('/student/request/supplement/success');
-    } catch (err) {
-      alert('Lỗi nộp bổ sung: ' + err.message);
-    } finally {
-      setSubmitting(false);
+      showToast(`Đã chọn tệp: ${file.name}`);
     }
   };
 
+  const handleTriggerUpload = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    showToast('Đang lưu thông tin bổ sung...');
+    setTimeout(() => {
+      setSubmitting(false);
+      navigate('/student/request/supplement/success', {
+        state: {
+          requestCode: req.id || req.request_code || 'VJU-2026-0842',
+          procedureName: req.procedure || req.type_name || 'Cấp bảng điểm',
+          submissionDate: '21/10/2026',
+          status: 'Đang xử lý',
+        },
+      });
+    }, 500);
+  };
+
   return (
-    <div className="supplement-form">
-      <a className="back-link" onClick={() => navigate(-1)} style={{ cursor: 'pointer' }}>
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 4L6 8l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-        Quay lại chi tiết yêu cầu
-      </a>
+    <div className="supplement-page-container">
+      {/* Toast Notification */}
+      {toastMsg && (
+        <div style={{
+          position: 'fixed',
+          top: 24,
+          right: 24,
+          zIndex: 9999,
+          background: '#059669',
+          color: '#FFFFFF',
+          padding: '12px 20px',
+          borderRadius: 8,
+          boxShadow: '0 4px 14px rgba(0,0,0,0.15)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          fontSize: 14,
+          fontWeight: 600,
+          fontFamily: 'Inter, sans-serif',
+        }}>
+          <span>✓</span>
+          <span>{toastMsg}</span>
+        </div>
+      )}
 
-      <h1 className="page-title">Bổ sung hồ sơ minh chứng</h1>
-      <p className="page-subtitle">Mã hồ sơ: <strong>{request.request_code || request.id}</strong> — {request.procedure || request.type_name}</p>
+      {/* Hidden File Input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        style={{ display: 'none' }}
+        accept=".pdf"
+        onChange={handleFileChange}
+      />
 
-      <div className="card" style={{ marginTop: 24 }}>
-        <div className="card-body">
-          <div className="supplement-notice" style={{ background: '#FFFBEB', border: '1px solid #FCD34D', padding: 16, borderRadius: 8, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-            <svg width="24" height="24" viewBox="0 0 20 20" fill="none" style={{ flexShrink: 0, marginTop: 2 }}>
-              <circle cx="10" cy="10" r="8" stroke="#D97706" strokeWidth="1.5"/>
-              <path d="M10 7v3M10 13h.01" stroke="#D97706" strokeWidth="1.5" strokeLinecap="round"/>
-            </svg>
-            <div>
-              <strong style={{ color: '#92400E', fontSize: 14 }}>Yêu cầu từ cán bộ tiếp nhận ({request.assignee || 'Chuyên viên'}):</strong>
-              <p style={{ color: '#78350F', fontSize: 13, marginTop: 4 }}>
-                {request.supplement_note || 'Vui lòng bổ sung Giấy tiếp nhận thực tập có chữ ký và đóng dấu tròn của doanh nghiệp tiếp nhận. Bản tải lên trước đó chưa có dấu mộc.'}
-              </p>
-            </div>
-          </div>
+      {/* Title Bar */}
+      <div className="supplement-top-bar">
+        <h1 className="supplement-title">Bổ sung hồ sơ</h1>
+        <button
+          type="button"
+          className="btn-back-to-detail"
+          onClick={() => navigate(-1)}
+        >
+          <span>← Chi tiết yêu cầu</span>
+        </button>
+      </div>
 
-          <div className="form-group" style={{ marginTop: 24 }}>
-            <label style={{ fontWeight: 600, fontSize: 14, color: '#1F2937' }}>
-              Tải lên tệp tài liệu bổ sung *
+      {/* Form Container Card */}
+      <form className="supplement-card" onSubmit={handleSubmit}>
+        {/* Row 1: Họ và tên * & Mã số sinh viên * */}
+        <div className="supplement-form-row">
+          <div className="supplement-form-col">
+            <label className="supplement-field-label">
+              <span>Họ và tên</span>
+              <span className="supplement-required-star">*</span>
             </label>
-            <div
-              className="upload-zone"
-              onClick={() => setFileUploaded(true)}
-              style={{
-                cursor: 'pointer',
-                background: fileUploaded ? '#ECFDF5' : '#F9FAFB',
-                borderColor: fileUploaded ? '#10B981' : '#D1D5DB',
-              }}
-            >
-              <div className="upload-zone-icon">
-                {fileUploaded ? (
-                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="10" fill="#10B981"/>
-                    <path d="M8 12l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                ) : (
-                  <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                    <path d="M20 10v20M10 20h20" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round"/>
-                    <rect x="4" y="4" width="32" height="32" rx="8" stroke="#D1D5DB" strokeWidth="1.5"/>
-                  </svg>
-                )}
-              </div>
-              <p className="upload-zone-text">
-                {fileUploaded ? (
-                  <strong style={{ color: '#065F46' }}>✓ Đã chọn: giay_tiep_nhan_fpt_signed.pdf (1.8 MB)</strong>
-                ) : (
-                  <>Kéo thả file hoặc <span>chọn file từ máy tính</span></>
-                )}
-              </p>
-              <p className="upload-zone-text" style={{ fontSize: 12 }}>Định dạng cho phép: PDF, JPG, PNG (tối đa 10MB)</p>
-            </div>
-          </div>
-
-          <div className="form-group" style={{ marginTop: 16 }}>
-            <label style={{ fontWeight: 600, fontSize: 14, color: '#1F2937' }}>
-              Ghi chú giải trình của sinh viên (tùy chọn)
-            </label>
-            <textarea
-              placeholder="Nhập nội dung giải trình thêm với cán bộ thụ lý..."
-              rows={3}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              style={{ width: '100%', marginTop: 6 }}
+            <input
+              type="text"
+              className="supplement-input-box"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              required
             />
           </div>
-
-          <div className="form-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 24 }}>
-            <Button variant="secondary" onClick={() => navigate(-1)}>Hủy</Button>
-            <Button variant="primary" onClick={handleSubmit} disabled={submitting}>
-              {submitting ? 'Đang gửi...' : 'Nộp bổ sung hồ sơ'}
-            </Button>
+          <div className="supplement-form-col">
+            <label className="supplement-field-label">
+              <span>Mã số sinh viên</span>
+              <span className="supplement-required-star">*</span>
+            </label>
+            <input
+              type="text"
+              className="supplement-input-box"
+              value={mssv}
+              onChange={(e) => setMssv(e.target.value)}
+              required
+            />
           </div>
         </div>
-      </div>
+
+        {/* Row 2: Lớp * & Khóa * */}
+        <div className="supplement-form-row">
+          <div className="supplement-form-col">
+            <label className="supplement-field-label">
+              <span>Lớp</span>
+              <span className="supplement-required-star">*</span>
+            </label>
+            <input
+              type="text"
+              className="supplement-input-box"
+              value={lop}
+              onChange={(e) => setLop(e.target.value)}
+              required
+            />
+          </div>
+          <div className="supplement-form-col">
+            <label className="supplement-field-label">
+              <span>Khóa</span>
+              <span className="supplement-required-star">*</span>
+            </label>
+            <div className="supplement-select-box">
+              <select value={khoa} onChange={(e) => setKhoa(e.target.value)}>
+                <option value="QH-2023">QH-2023</option>
+                <option value="QH-2022">QH-2022</option>
+                <option value="QH-2021">QH-2021</option>
+                <option value="QH-2020">QH-2020</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Row 3: Ngành * & Email * */}
+        <div className="supplement-form-row">
+          <div className="supplement-form-col">
+            <label className="supplement-field-label">
+              <span>Ngành</span>
+              <span className="supplement-required-star">*</span>
+            </label>
+            <div className="supplement-select-box">
+              <select value={nganh} onChange={(e) => setNganh(e.target.value)}>
+                <option value="Khoa học máy tính">Khoa học máy tính</option>
+                <option value="Kỹ thuật Cơ điện tử">Kỹ thuật Cơ điện tử</option>
+                <option value="Công nghệ Kỹ thuật Xây dựng">Công nghệ Kỹ thuật Xây dựng</option>
+                <option value="Nông nghiệp Thông minh">Nông nghiệp Thông minh</option>
+                <option value="Nhật Bản học">Nhật Bản học</option>
+              </select>
+            </div>
+          </div>
+          <div className="supplement-form-col">
+            <label className="supplement-field-label">
+              <span>Email</span>
+              <span className="supplement-required-star">*</span>
+            </label>
+            <input
+              type="email"
+              className="supplement-input-box"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+        </div>
+
+        {/* Row 4: Mục đích sử dụng * */}
+        <div className="supplement-form-col" style={{ width: '100%' }}>
+          <label className="supplement-field-label">
+            <span>Mục đích sử dụng</span>
+            <span className="supplement-required-star">*</span>
+          </label>
+          <input
+            type="text"
+            className="supplement-input-box"
+            value={purpose}
+            onChange={(e) => setPurpose(e.target.value)}
+            required
+          />
+        </div>
+
+        {/* Row 5: Số bản * */}
+        <div className="supplement-form-col" style={{ width: '100%' }}>
+          <label className="supplement-field-label">
+            <span>Số bản</span>
+            <span className="supplement-required-star">*</span>
+          </label>
+          <div className="supplement-stepper">
+            <button
+              type="button"
+              className="supplement-stepper-btn"
+              disabled={quantity <= 1}
+              onClick={() => setQuantity(Math.max(1, quantity - 1))}
+            >
+              −
+            </button>
+            <div className="supplement-stepper-value">
+              {String(quantity).padStart(2, '0')}
+            </div>
+            <button
+              type="button"
+              className="supplement-stepper-btn"
+              onClick={() => setQuantity(quantity + 1)}
+            >
+              +
+            </button>
+          </div>
+        </div>
+
+        {/* Row 6: Ngôn ngữ * & Hình thức nhận * */}
+        <div className="supplement-form-row">
+          <div className="supplement-form-col">
+            <label className="supplement-field-label">
+              <span>Ngôn ngữ</span>
+              <span className="supplement-required-star">*</span>
+            </label>
+            <div className="supplement-select-box">
+              <select value={language} onChange={(e) => setLanguage(e.target.value)}>
+                <option value="Tiếng Việt">Tiếng Việt</option>
+                <option value="Tiếng Anh">Tiếng Anh</option>
+                <option value="Song ngữ Việt - Anh">Song ngữ Việt - Anh</option>
+              </select>
+            </div>
+          </div>
+          <div className="supplement-form-col">
+            <label className="supplement-field-label">
+              <span>Hình thức nhận</span>
+              <span className="supplement-required-star">*</span>
+            </label>
+            <div className="supplement-select-box">
+              <select value={deliveryMethod} onChange={(e) => setDeliveryMethod(e.target.value)}>
+                <option value="PDF ký số">PDF ký số</option>
+                <option value="Bản giấy tại phòng Một cửa">Bản giấy tại phòng Một cửa</option>
+                <option value="Chuyển phát nhanh bưu điện">Chuyển phát nhanh bưu điện</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Row 7: Ghi chú */}
+        <div className="supplement-form-col" style={{ width: '100%' }}>
+          <label className="supplement-field-label">
+            <span>Ghi chú</span>
+          </label>
+          <textarea
+            className="supplement-textarea"
+            placeholder="Nhập ghi chú bổ sung nếu có..."
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
+        </div>
+
+        {/* Row 8: Hồ sơ đính kèm */}
+        <div className="supplement-form-col" style={{ width: '100%' }}>
+          <label className="supplement-field-label">
+            <span>Hồ sơ đính kèm</span>
+          </label>
+          <div className="supplement-upload-zone">
+            {uploadedFile ? (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                background: '#ECFDF5',
+                border: '1px solid #10B981',
+                padding: '10px 16px',
+                borderRadius: 8,
+              }}>
+                <span style={{ color: '#059669', fontSize: 16 }}>✓</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#065F46' }}>
+                  {uploadedFile.name} ({uploadedFile.size})
+                </span>
+                <button
+                  type="button"
+                  style={{
+                    marginLeft: 12,
+                    background: 'none',
+                    border: 'none',
+                    color: '#DC2626',
+                    cursor: 'pointer',
+                    fontSize: 14,
+                    fontWeight: 600,
+                  }}
+                  onClick={() => setUploadedFile(null)}
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="supplement-upload-title">Kéo thả tệp vào đây hoặc</div>
+                <button
+                  type="button"
+                  className="btn-upload-file"
+                  onClick={handleTriggerUpload}
+                >
+                  <span>Chọn tệp ↑</span>
+                </button>
+                <div className="supplement-upload-subtext">Chấp nhận PDF · Tối đa 5 MB</div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Bottom Actions */}
+        <div className="supplement-bottom-actions">
+          <button
+            type="button"
+            className="btn-supplement-back"
+            onClick={() => navigate(-1)}
+          >
+            ← Quay lại
+          </button>
+          <button
+            type="submit"
+            className="btn-supplement-submit"
+            disabled={submitting}
+          >
+            <span>{submitting ? 'Đang lưu...' : 'Cập nhật thay đổi →'}</span>
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
