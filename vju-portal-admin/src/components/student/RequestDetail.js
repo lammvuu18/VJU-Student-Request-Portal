@@ -234,7 +234,9 @@ function RequestDetail() {
         <button
           type="button"
           className="btn-req-action-outline"
-          onClick={() => setShowFeedbackModal(true)}
+          onClick={() => navigate(`/student/request/${requestCode}/feedback`, {
+            state: { requestCode, procedureName, department: 'Phòng Đào tạo' }
+          })}
         >
           Đánh giá
         </button>
