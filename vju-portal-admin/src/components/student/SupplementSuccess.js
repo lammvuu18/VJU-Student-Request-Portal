@@ -1,23 +1,97 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import Button from '../common/Button';
+import { useNavigate, useLocation } from 'react-router-dom';
 import './StudentPages.css';
 
 function SupplementSuccess() {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const requestCode = location.state?.requestCode || 'VJU-2026-0842';
+  const procedureName = location.state?.procedureName || 'Cấp bảng điểm';
+  const submissionDate = location.state?.submissionDate || '21/10/2026';
+  const status = location.state?.status || 'Đang xử lý';
+
+  const getStatusPillClass = (st) => {
+    if (st === 'Đang xử lý') return 'processing';
+    if (st === 'Cần bổ sung') return 'supplement';
+    if (st === 'Chờ thanh toán') return 'payment';
+    if (st === 'Hoàn thành') return 'completed';
+    if (st === 'Đã hủy') return 'cancelled';
+    return 'processing';
+  };
 
   return (
-    <div className="success-page">
-      <div className="success-icon">
-        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-          <path d="M8 16l6 6 10-10" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-      </div>
-      <h2 className="success-title">Bổ sung hồ sơ thành công!</h2>
-      <p className="success-desc">Hồ sơ bổ sung đã được gửi. Yêu cầu sẽ tiếp tục được xử lý.</p>
-      <div className="action-buttons" style={{ justifyContent: 'center' }}>
-        <Button variant="secondary" onClick={() => navigate('/student/dashboard')}>Về danh sách yêu cầu</Button>
-        <Button variant="primary" onClick={() => navigate('/student/request/REQ-20261030-003')}>Xem chi tiết hồ sơ</Button>
+    <div className="supplement-success-container">
+      <div className="supplement-success-content">
+        {/* Success Icon */}
+        <div className="supplement-success-badge">
+          <span>✓</span>
+        </div>
+
+        {/* Text Group: Title & Subtitle */}
+        <div className="supplement-success-text-group">
+          <h1 className="supplement-success-heading">Cập nhật hồ sơ thành công</h1>
+          <p className="supplement-success-subheading">
+            Hồ sơ bổ sung đã được cập nhật và gửi đến Phòng Đào tạo xử lý.
+          </p>
+        </div>
+
+        {/* Card: Thủ tục vừa được cập nhật */}
+        <div className="supplement-success-card">
+          <div className="supplement-card-header-title">
+            Thủ tục vừa được cập nhật
+          </div>
+          <div className="req-detail-divider" />
+
+          {/* Row 1: Mã yêu cầu */}
+          <div className="supplement-success-row">
+            <div className="supplement-success-label">Mã yêu cầu</div>
+            <div className="supplement-success-value">{requestCode}</div>
+          </div>
+          <div className="req-detail-divider" />
+
+          {/* Row 2: Tên thủ tục */}
+          <div className="supplement-success-row">
+            <div className="supplement-success-label">Tên thủ tục</div>
+            <div className="supplement-success-value">{procedureName}</div>
+          </div>
+          <div className="req-detail-divider" />
+
+          {/* Row 3: Ngày gửi */}
+          <div className="supplement-success-row">
+            <div className="supplement-success-label">Ngày gửi</div>
+            <div className="supplement-success-value">{submissionDate}</div>
+          </div>
+          <div className="req-detail-divider" />
+
+          {/* Row 4: Trạng thái */}
+          <div className="supplement-success-row">
+            <div className="supplement-success-label">Trạng thái</div>
+            <div className="supplement-success-value">
+              <span className={`req-status-pill ${getStatusPillClass(status)}`}>
+                {status}
+              </span>
+            </div>
+          </div>
+          <div className="req-detail-divider" />
+
+          {/* Action button */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            paddingTop: 16,
+            width: '100%',
+            boxSizing: 'border-box',
+          }}>
+            <button
+              type="button"
+              className="btn-supplement-view-detail"
+              onClick={() => navigate(`/student/request/${requestCode}`)}
+            >
+              <span>Xem chi tiết →</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
