@@ -95,6 +95,41 @@ const initialRequests = [
   },
 ];
 
+const extraProcsList = ['Cấp bảng điểm', 'Phúc khảo', 'Xác nhận SV', 'Bảo lưu KQ', 'Miễn giảm HP', 'Cấp lại thẻ SV'];
+const extraStudentsList = [
+  'Bùi Thị Hạnh', 'Đặng Minh Khôi', 'Đinh Thị Lan', 'Dương Văn Nam',
+  'Lý Thị Oanh', 'Mai Văn Phong', 'Phan Thị Quỳnh', 'Trịnh Văn Sang',
+  'Võ Thị Tâm', 'Lương Văn Uyên', 'Cao Thị Vân', 'Hồ Văn Xuân'
+];
+const extraStatusesList = [
+  { status: 'Đang thẩm định', theme: 'blue', isOverdue: false },
+  { status: 'Chờ bổ sung', theme: 'yellow', isOverdue: false },
+  { status: 'Hoàn thành', theme: 'green', isOverdue: false },
+  { status: 'Quá hạn', theme: 'red', isOverdue: true },
+  { status: 'Đang thẩm định', theme: 'blue', isOverdue: false },
+];
+
+if (initialRequests.length < 50) {
+  for (let i = initialRequests.length; i < 50; i++) {
+    const p = extraProcsList[i % extraProcsList.length];
+    const s = extraStudentsList[i % extraStudentsList.length];
+    const st = extraStatusesList[i % extraStatusesList.length];
+    const day = String((i % 28) + 1).padStart(2, '0');
+    const dDay = String(((i + 4) % 28) + 1).padStart(2, '0');
+    const num = String(800 - (i - 9) * 3).padStart(4, '0');
+    initialRequests.push({
+      code: `VJU-2026-${num}`,
+      procedure: p,
+      student: s,
+      assignedDate: `${day}/10/2026`,
+      deadline: `${dDay}/10/2026`,
+      status: st.status,
+      statusTheme: st.theme,
+      isOverdueRow: st.isOverdue,
+    });
+  }
+}
+
 const procedureOptions = ['Tất cả', 'Cấp bảng điểm', 'Phúc khảo', 'Bảo lưu KQ', 'Xác nhận SV'];
 const statusOptions = ['Tất cả', 'Đang thẩm định', 'Chờ bổ sung', 'Quá hạn', 'Hoàn thành'];
 const timeRangeOptions = ['Tất cả', '7 ngày qua', '30 ngày qua', 'Tháng này'];
@@ -106,6 +141,11 @@ function StaffRequestList() {
   const [filterStatus, setFilterStatus] = useState('');
   const [filterTimeRange, setFilterTimeRange] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [jumpPage, setJumpPage] = useState('');
+  const pageSize = 10; // 10 yêu cầu mỗi trang
 
   // Dropdown states
   const [openProcedureMenu, setOpenProcedureMenu] = useState(false);
@@ -147,6 +187,25 @@ function StaffRequestList() {
     return true;
   });
 
+  const totalPages = Math.max(1, Math.ceil(filteredRequests.length / pageSize));
+  const paginatedRequests = filteredRequests.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
+  const getPageItems = () => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    if (currentPage <= 4) {
+      return [1, 2, 3, 4, 5, 'right-dots', totalPages];
+    }
+    if (currentPage >= totalPages - 3) {
+      return [1, 'left-dots', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    }
+    return [1, 'left-dots', currentPage - 1, currentPage, currentPage + 1, 'right-dots', totalPages];
+  };
+
   return (
     <div className="staff-overview-container" ref={containerRef}>
       {/* Page Title: Tất cả yêu cầu */}
@@ -187,6 +246,7 @@ function StaffRequestList() {
                     onClick={() => {
                       setFilterProcedure(opt === 'Tất cả' ? '' : opt);
                       setOpenProcedureMenu(false);
+                      setCurrentPage(1);
                     }}
                   >
                     {opt}
@@ -223,6 +283,7 @@ function StaffRequestList() {
                     onClick={() => {
                       setFilterStatus(opt === 'Tất cả' ? '' : opt);
                       setOpenStatusMenu(false);
+                      setCurrentPage(1);
                     }}
                   >
                     {opt}
@@ -259,6 +320,7 @@ function StaffRequestList() {
                     onClick={() => {
                       setFilterTimeRange(opt === 'Tất cả' ? '' : opt);
                       setOpenTimeMenu(false);
+                      setCurrentPage(1);
                     }}
                   >
                     {opt}
@@ -276,14 +338,17 @@ function StaffRequestList() {
               className="staff-search-input"
               placeholder="Tìm kiếm..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
             />
           </div>
         </div>
 
         <div style={{ height: 10 }} />
 
-        {/* Scrollable Table matching Figma Exact Spec */}
+        {/* Table Viewport */}
         <div className="staff-table-scroll">
           {/* Table Header Row */}
           <div className="staff-th-row">
@@ -299,7 +364,7 @@ function StaffRequestList() {
           <div className="staff-table-divider" />
 
           {/* Table Data Rows */}
-          {filteredRequests.map((req) => (
+          {paginatedRequests.map((req) => (
             <React.Fragment key={req.code}>
               <div
                 className={`staff-tr-row ${req.isOverdueRow ? 'staff-tr-row--overdue' : ''}`}
@@ -328,11 +393,105 @@ function StaffRequestList() {
             </React.Fragment>
           ))}
 
-          {filteredRequests.length === 0 && (
+          {paginatedRequests.length === 0 && (
             <div style={{ padding: '24px 8px', textAlign: 'center', color: '#6B7280', fontSize: 13 }}>
               Không có yêu cầu nào phù hợp với bộ lọc.
             </div>
           )}
+        </div>
+
+        <div style={{ height: 12, width: '100%' }} />
+
+        {/* Pagination Row */}
+        <div className="staff-overview-pagination-row">
+          <div className="staff-overview-pagination-info">
+            Hiển thị <strong>{filteredRequests.length === 0 ? 0 : (currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, filteredRequests.length)}</strong> / <strong>{filteredRequests.length}</strong> yêu cầu
+          </div>
+
+          <div style={{ flex: '1 1 0' }} />
+
+          <button
+            type="button"
+            className="staff-overview-page-arrow"
+            disabled={currentPage <= 1}
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            title="Trang trước"
+            aria-label="Trang trước"
+          >
+            ←
+          </button>
+
+          {getPageItems().map((item, idx) => {
+            if (item === 'left-dots') {
+              return (
+                <button
+                  key={`left-dots-${idx}`}
+                  type="button"
+                  className="staff-overview-page-dots-btn"
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 5))}
+                  title="Lùi 5 trang"
+                >
+                  ...
+                </button>
+              );
+            }
+            if (item === 'right-dots') {
+              return (
+                <button
+                  key={`right-dots-${idx}`}
+                  type="button"
+                  className="staff-overview-page-dots-btn"
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 5))}
+                  title="Tiến 5 trang"
+                >
+                  ...
+                </button>
+              );
+            }
+            return (
+              <button
+                key={`page-${item}`}
+                type="button"
+                className={`staff-overview-page-btn ${currentPage === item ? 'active-page' : ''}`}
+                onClick={() => setCurrentPage(item)}
+              >
+                {item}
+              </button>
+            );
+          })}
+
+          <button
+            type="button"
+            className="staff-overview-page-arrow"
+            disabled={currentPage >= totalPages}
+            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            title="Trang sau"
+            aria-label="Trang sau"
+          >
+            →
+          </button>
+
+          <div className="staff-overview-jump-box">
+            <span className="staff-overview-jump-label">Đến trang</span>
+            <input
+              type="number"
+              min="1"
+              max={totalPages}
+              value={jumpPage}
+              onChange={(e) => setJumpPage(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const p = parseInt(jumpPage, 10);
+                  if (p >= 1 && p <= totalPages) {
+                    setCurrentPage(p);
+                    setJumpPage('');
+                  }
+                }
+              }}
+              placeholder={currentPage}
+              className="staff-overview-jump-input"
+            />
+          </div>
         </div>
       </div>
     </div>

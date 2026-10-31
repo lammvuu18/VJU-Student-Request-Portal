@@ -909,6 +909,150 @@
   font-weight: 600;
 }
 
+/* ===== Dept Head Request List Pagination ===== */
+.depthead-pagination-row {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  box-sizing: border-box;
+  width: 100%;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #F3F4F6;
+}
+
+.depthead-page-btn {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: #1F2937;
+  font-size: 12px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-width: 28px;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.depthead-page-btn:hover {
+  background: #F3F4F6;
+}
+
+.depthead-page-btn.active-page {
+  background: #AA2327;
+  color: #FFFFFF;
+  font-weight: 600;
+}
+
+.depthead-page-arrow {
+  padding: 6px 10px;
+  border-radius: 6px;
+  outline: 1px #E2E5EA solid;
+  outline-offset: -1px;
+  border: none;
+  background: #FFFFFF;
+  color: #1F2937;
+  font-size: 12px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+.depthead-page-arrow:hover:not(:disabled) {
+  background: #F9FAFB;
+}
+
+.depthead-page-arrow:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.depthead-page-dots-btn {
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: #6B7280;
+  font-size: 12px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  min-width: 28px;
+  text-align: center;
+  transition: all 0.15s ease;
+  line-height: 1;
+}
+
+.depthead-page-dots-btn:hover {
+  background: #FCE8E8;
+  color: #AA2327;
+}
+
+.depthead-pagination-info {
+  color: #6B7280;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.depthead-pagination-info strong {
+  color: #1F2937;
+  font-weight: 600;
+}
+
+.depthead-jump-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 12px;
+}
+
+.depthead-jump-label {
+  color: #6B7280;
+  font-size: 12px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.depthead-jump-input {
+  width: 44px;
+  height: 28px;
+  padding: 0 4px;
+  border-radius: 6px;
+  border: 1px solid #E2E5EA;
+  background: #FFFFFF;
+  color: #1F2937;
+  font-size: 12px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  text-align: center;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease;
+}
+
+.depthead-jump-input:focus {
+  border-color: #AA2327;
+  box-shadow: 0 0 0 2px rgba(170, 35, 39, 0.1);
+}
+
+.depthead-jump-input::-webkit-outer-spin-button,
+.depthead-jump-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.depthead-jump-input[type=number] {
+  -moz-appearance: textfield;
+}
 
 /* ===== Dept Head Request Detail (Frame: Chi tiết hồ sơ) ===== */
 .depthead-detail-container {

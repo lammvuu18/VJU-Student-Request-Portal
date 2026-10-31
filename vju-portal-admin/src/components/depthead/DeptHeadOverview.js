@@ -2,109 +2,158 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './DeptHeadPages.css';
 
+// 12 Months data matching Figma heights
+const monthlyData = [
+  { month: 'T1', height: 45, value: 15 },
+  { month: 'T2', height: 60, value: 20 },
+  { month: 'T3', height: 75, value: 25 },
+  { month: 'T4', height: 54, value: 18 },
+  { month: 'T5', height: 66, value: 22 },
+  { month: 'T6', height: 105, value: 35 },
+  { month: 'T7', height: 84, value: 28 },
+  { month: 'T8', height: 120, value: 40 },
+  { month: 'T9', height: 96, value: 32 },
+  { month: 'T10', height: 54, value: 18 },
+  { month: 'T11', height: 90, value: 30 },
+  { month: 'T12', height: 72, value: 24 },
+];
+
+// 8 Overdue records matching Figma spec + expanded list
+const overdueRequests = [
+  {
+    code: 'VJU-2026-0842',
+    procedure: 'Cấp bảng điểm',
+    sla: '3 ngày',
+    student: 'Nguyễn Minh Anh',
+    receivedDate: '21/10/2026',
+    completedDate: '24/10/2026',
+    status: 'Chờ phân công',
+    statusType: 'assign',
+  },
+  {
+    code: 'VJU-2026-0839',
+    procedure: 'Xác nhận SV',
+    sla: '2 ngày',
+    student: 'Trần Văn Bình',
+    receivedDate: '20/10/2026',
+    completedDate: '22/10/2026',
+    status: 'Chờ phê duyệt',
+    statusType: 'approval',
+  },
+  {
+    code: 'VJU-2026-0835',
+    procedure: 'Phúc khảo',
+    sla: '7 ngày',
+    student: 'Lê Thị Cúc',
+    receivedDate: '19/10/2026',
+    completedDate: '26/10/2026',
+    status: 'Chờ phân công',
+    statusType: 'assign',
+  },
+  {
+    code: 'VJU-2026-0830',
+    procedure: 'Cấp bảng điểm',
+    sla: '3 ngày',
+    student: 'Phạm Đức Dũng',
+    receivedDate: '18/10/2026',
+    completedDate: '21/10/2026',
+    status: 'Chờ phê duyệt',
+    statusType: 'approval',
+  },
+  {
+    code: 'VJU-2026-0828',
+    procedure: 'Bảo lưu KQ',
+    sla: '5 ngày',
+    student: 'Ngô Thị Em',
+    receivedDate: '17/10/2026',
+    completedDate: '22/10/2026',
+    status: 'Chờ phân công',
+    statusType: 'assign',
+  },
+  {
+    code: 'VJU-2026-0825',
+    procedure: 'Xác nhận SV',
+    sla: '2 ngày',
+    student: 'Hoàng Văn Phúc',
+    receivedDate: '16/10/2026',
+    completedDate: '18/10/2026',
+    status: 'Chờ phê duyệt',
+    statusType: 'approval',
+  },
+  {
+    code: 'VJU-2026-0820',
+    procedure: 'Cấp bảng điểm',
+    sla: '3 ngày',
+    student: 'Đỗ Thị Giang',
+    receivedDate: '15/10/2026',
+    completedDate: '18/10/2026',
+    status: 'Chờ phân công',
+    statusType: 'assign',
+  },
+  {
+    code: 'VJU-2026-0818',
+    procedure: 'Phúc khảo',
+    sla: '7 ngày',
+    student: 'Vũ Văn Hải',
+    receivedDate: '14/10/2026',
+    completedDate: '21/10/2026',
+    status: 'Chờ phê duyệt',
+    statusType: 'approval',
+  },
+];
+
+const extraProcs = ['Cấp bảng điểm', 'Xác nhận SV', 'Phúc khảo', 'Bảo lưu KQ', 'Miễn giảm HP', 'Cấp lại thẻ SV'];
+const extraStudents = [
+  'Mai T. Hương', 'Bùi Thị Hạnh', 'Đặng Minh Khôi', 'Đinh Thị Lan',
+  'Dương Văn Nam', 'Lý Thị Oanh', 'Mai Văn Phong', 'Phan Thị Quỳnh',
+  'Trịnh Văn Sang', 'Võ Thị Tâm', 'Lương Văn Uyên', 'Cao Thị Vân'
+];
+const extraSLAs = ['3 ngày', '2 ngày', '7 ngày', '5 ngày'];
+
+if (overdueRequests.length < 25) {
+  for (let i = overdueRequests.length; i < 25; i++) {
+    const isAssign = i % 2 === 0;
+    const num = String(815 - (i - 8) * 3).padStart(4, '0');
+    const day = String(Math.max(1, 14 - (i - 8))).padStart(2, '0');
+    const compDay = String(Math.max(1, parseInt(day, 10) + 3)).padStart(2, '0');
+    overdueRequests.push({
+      code: `VJU-2026-${num}`,
+      procedure: extraProcs[i % extraProcs.length],
+      sla: extraSLAs[i % extraSLAs.length],
+      student: extraStudents[i % extraStudents.length],
+      receivedDate: `${day}/10/2026`,
+      completedDate: `${compDay}/10/2026`,
+      status: isAssign ? 'Chờ phân công' : 'Chờ phê duyệt',
+      statusType: isAssign ? 'assign' : 'approval',
+    });
+  }
+}
+
 function DeptHeadOverview() {
   const navigate = useNavigate();
   const [hoveredBar, setHoveredBar] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [jumpPage, setJumpPage] = useState('');
+  const pageSize = 5;
 
-  // 12 Months data matching Figma heights
-  const monthlyData = [
-    { month: 'T1', height: 45, value: 15 },
-    { month: 'T2', height: 60, value: 20 },
-    { month: 'T3', height: 75, value: 25 },
-    { month: 'T4', height: 54, value: 18 },
-    { month: 'T5', height: 66, value: 22 },
-    { month: 'T6', height: 105, value: 35 },
-    { month: 'T7', height: 84, value: 28 },
-    { month: 'T8', height: 120, value: 40 },
-    { month: 'T9', height: 96, value: 32 },
-    { month: 'T10', height: 54, value: 18 },
-    { month: 'T11', height: 90, value: 30 },
-    { month: 'T12', height: 72, value: 24 },
-  ];
+  const totalPages = Math.max(1, Math.ceil(overdueRequests.length / pageSize));
+  const paginatedRequests = overdueRequests.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
-  // 8 Overdue records matching Figma spec
-  const overdueRequests = [
-    {
-      code: 'VJU-2026-0842',
-      procedure: 'Cấp bảng điểm',
-      sla: '3 ngày',
-      student: 'Nguyễn Minh Anh',
-      receivedDate: '21/10/2026',
-      completedDate: '24/10/2026',
-      status: 'Chờ phân công',
-      statusType: 'assign',
-    },
-    {
-      code: 'VJU-2026-0839',
-      procedure: 'Xác nhận SV',
-      sla: '2 ngày',
-      student: 'Trần Văn Bình',
-      receivedDate: '20/10/2026',
-      completedDate: '22/10/2026',
-      status: 'Chờ phê duyệt',
-      statusType: 'approval',
-    },
-    {
-      code: 'VJU-2026-0835',
-      procedure: 'Phúc khảo',
-      sla: '7 ngày',
-      student: 'Lê Thị Cúc',
-      receivedDate: '19/10/2026',
-      completedDate: '26/10/2026',
-      status: 'Chờ phân công',
-      statusType: 'assign',
-    },
-    {
-      code: 'VJU-2026-0830',
-      procedure: 'Cấp bảng điểm',
-      sla: '3 ngày',
-      student: 'Phạm Đức Dũng',
-      receivedDate: '18/10/2026',
-      completedDate: '21/10/2026',
-      status: 'Chờ phê duyệt',
-      statusType: 'approval',
-    },
-    {
-      code: 'VJU-2026-0828',
-      procedure: 'Bảo lưu KQ',
-      sla: '5 ngày',
-      student: 'Ngô Thị Em',
-      receivedDate: '17/10/2026',
-      completedDate: '22/10/2026',
-      status: 'Chờ phân công',
-      statusType: 'assign',
-    },
-    {
-      code: 'VJU-2026-0825',
-      procedure: 'Xác nhận SV',
-      sla: '2 ngày',
-      student: 'Hoàng Văn Phúc',
-      receivedDate: '16/10/2026',
-      completedDate: '18/10/2026',
-      status: 'Chờ phê duyệt',
-      statusType: 'approval',
-    },
-    {
-      code: 'VJU-2026-0820',
-      procedure: 'Cấp bảng điểm',
-      sla: '3 ngày',
-      student: 'Đỗ Thị Giang',
-      receivedDate: '15/10/2026',
-      completedDate: '18/10/2026',
-      status: 'Chờ phân công',
-      statusType: 'assign',
-    },
-    {
-      code: 'VJU-2026-0818',
-      procedure: 'Phúc khảo',
-      sla: '7 ngày',
-      student: 'Vũ Văn Hải',
-      receivedDate: '14/10/2026',
-      completedDate: '21/10/2026',
-      status: 'Chờ phê duyệt',
-      statusType: 'approval',
-    },
-  ];
+  const getPageItems = () => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    if (currentPage <= 4) {
+      return [1, 2, 3, 4, 5, 'right-dots', totalPages];
+    }
+    if (currentPage >= totalPages - 3) {
+      return [1, 'left-dots', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    }
+    return [1, 'left-dots', currentPage - 1, currentPage, currentPage + 1, 'right-dots', totalPages];
+  };
 
   return (
     <div className="depthead-overview-container">
@@ -236,7 +285,7 @@ function DeptHeadOverview() {
           <div className="req-detail-divider" style={{ minWidth: 760 }} />
 
           {/* Table Rows */}
-          {overdueRequests.map((row, index) => (
+          {paginatedRequests.map((row) => (
             <React.Fragment key={row.code}>
               <div
                 className="depthead-table-row"
@@ -264,6 +313,98 @@ function DeptHeadOverview() {
               <div className="req-detail-divider" style={{ minWidth: 760 }} />
             </React.Fragment>
           ))}
+        </div>
+
+        {/* Pagination Row */}
+        <div className="depthead-pagination-row">
+          <div className="depthead-pagination-info">
+            Hiển thị <strong>{(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, overdueRequests.length)}</strong> / <strong>{overdueRequests.length}</strong> hồ sơ
+          </div>
+
+          <div style={{ flex: '1 1 0' }} />
+
+          <button
+            type="button"
+            className="depthead-page-arrow"
+            disabled={currentPage <= 1}
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            title="Trang trước"
+            aria-label="Trang trước"
+          >
+            ←
+          </button>
+
+          {getPageItems().map((item, idx) => {
+            if (item === 'left-dots') {
+              return (
+                <button
+                  key={`left-dots-${idx}`}
+                  type="button"
+                  className="depthead-page-dots-btn"
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 5))}
+                  title="Lùi 5 trang"
+                >
+                  ...
+                </button>
+              );
+            }
+            if (item === 'right-dots') {
+              return (
+                <button
+                  key={`right-dots-${idx}`}
+                  type="button"
+                  className="depthead-page-dots-btn"
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 5))}
+                  title="Tiến 5 trang"
+                >
+                  ...
+                </button>
+              );
+            }
+            return (
+              <button
+                key={`page-${item}`}
+                type="button"
+                className={`depthead-page-btn ${currentPage === item ? 'active-page' : ''}`}
+                onClick={() => setCurrentPage(item)}
+              >
+                {item}
+              </button>
+            );
+          })}
+
+          <button
+            type="button"
+            className="depthead-page-arrow"
+            disabled={currentPage >= totalPages}
+            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            title="Trang sau"
+            aria-label="Trang sau"
+          >
+            →
+          </button>
+
+          <div className="depthead-jump-box">
+            <span className="depthead-jump-label">Đến trang</span>
+            <input
+              type="number"
+              min="1"
+              max={totalPages}
+              value={jumpPage}
+              onChange={(e) => setJumpPage(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const p = parseInt(jumpPage, 10);
+                  if (p >= 1 && p <= totalPages) {
+                    setCurrentPage(p);
+                    setJumpPage('');
+                  }
+                }
+              }}
+              placeholder={currentPage}
+              className="depthead-jump-input"
+            />
+          </div>
         </div>
       </div>
     </div>

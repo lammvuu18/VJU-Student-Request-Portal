@@ -90,10 +90,46 @@ function ProcedureList() {
     },
   ];
 
+  const extraProcNames = [
+    { name: 'Cấp lại thẻ sinh viên', dept: 'Phòng CTSV', levels: '2 cấp', sla: '3 ngày', fee: '50.000 VNĐ' },
+    { name: 'Đăng ký học phần bổ sung', dept: 'Phòng Đào tạo', levels: '2 cấp', sla: '5 ngày', fee: 'Miễn phí' },
+    { name: 'Xác nhận nợ học phí', dept: 'Phòng KHTC', levels: '2 cấp', sla: '3 ngày', fee: 'Miễn phí' },
+    { name: 'Gia hạn thời gian đóng học phí', dept: 'Phòng KHTC', levels: '3 cấp', sla: '7 ngày', fee: 'Miễn phí' },
+    { name: 'Xin rút học phần', dept: 'Phòng Đào tạo', levels: '2 cấp', sla: '5 ngày', fee: 'Miễn phí' },
+    { name: 'Đăng ký làm khóa luận tốt nghiệp', dept: 'Phòng Đào tạo', levels: '3 cấp', sla: '10 ngày', fee: 'Miễn phí' },
+    { name: 'Cấp chứng nhận hoàn thành khóa học', dept: 'Phòng Đào tạo', levels: '3 cấp', sla: '7 ngày', fee: '30.000 VNĐ' },
+    { name: 'Xác nhận thông tin vay vốn ngân hàng', dept: 'Phòng CTSV', levels: '2 cấp', sla: '3 ngày', fee: 'Miễn phí' },
+    { name: 'Đăng ký ở ký túc xá', dept: 'Phòng CTSV', levels: '2 cấp', sla: '5 ngày', fee: 'Miễn phí' },
+    { name: 'Đăng ký bảo hiểm y tế', dept: 'Phòng CTSV', levels: '2 cấp', sla: '3 ngày', fee: 'Miễn phí' },
+    { name: 'Cấp lại mật khẩu cổng thông tin', dept: 'Phòng Đào tạo', levels: '1 cấp', sla: '1 ngày', fee: 'Miễn phí' },
+    { name: 'Chuyển trường / Chuyển ngành ngoài', dept: 'Phòng Đào tạo', levels: '3 cấp', sla: '15 ngày', fee: '100.000 VNĐ' },
+  ];
+
+  if (initialProcedures.length < 40) {
+    for (let i = initialProcedures.length; i < 40; i++) {
+      const p = extraProcNames[(i - 8) % extraProcNames.length];
+      initialProcedures.push({
+        id: i + 1,
+        name: `${p.name} (${i + 1})`,
+        department: p.dept,
+        approvalLevels: p.levels,
+        sla: p.sla,
+        fee: p.fee,
+        status: i % 6 === 0 ? 'paused' : 'active',
+        statusLabel: i % 6 === 0 ? 'Tạm dừng' : 'Hoạt động',
+      });
+    }
+  }
+
   const [proceduresList, setProceduresList] = useState(initialProcedures);
   const [filterDept, setFilterDept] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [jumpPage, setJumpPage] = useState('');
+  const pageSize = 8; // 8 thủ tục mỗi trang theo thiết kế ban đầu
 
   // Dropdown states
   const [openDeptDropdown, setOpenDeptDropdown] = useState(false);
@@ -185,6 +221,25 @@ function ProcedureList() {
     return true;
   });
 
+  const totalPages = Math.max(1, Math.ceil(filteredProcedures.length / pageSize));
+  const paginatedProcedures = filteredProcedures.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
+  const getPageItems = () => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    if (currentPage <= 4) {
+      return [1, 2, 3, 4, 5, 'right-dots', totalPages];
+    }
+    if (currentPage >= totalPages - 3) {
+      return [1, 'left-dots', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    }
+    return [1, 'left-dots', currentPage - 1, currentPage, currentPage + 1, 'right-dots', totalPages];
+  };
+
   return (
     <div className="admin-proc-container" ref={containerRef}>
       {/* Toast Notification (matching Figma spec) */}
@@ -242,6 +297,7 @@ function ProcedureList() {
                     onClick={() => {
                       setFilterDept(opt === 'Tất cả' ? '' : opt);
                       setOpenDeptDropdown(false);
+                      setCurrentPage(1);
                     }}
                   >
                     {opt}
@@ -275,6 +331,7 @@ function ProcedureList() {
                     onClick={() => {
                       setFilterStatus(opt === 'Tất cả' ? '' : opt);
                       setOpenStatusDropdown(false);
+                      setCurrentPage(1);
                     }}
                   >
                     {opt}
@@ -292,7 +349,10 @@ function ProcedureList() {
               className="admin-proc-search-input"
               placeholder="Tìm kiếm thủ tục..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
             />
           </div>
         </div>
@@ -316,7 +376,7 @@ function ProcedureList() {
             <div className="admin-proc-divider" />
 
             {/* Table Data Rows */}
-            {filteredProcedures.map((row) => (
+            {paginatedProcedures.map((row) => (
               <React.Fragment key={row.id}>
                 <div className="admin-proc-tr-row">
                   <div className="admin-proc-td-cell">{row.name}</div>
@@ -357,16 +417,106 @@ function ProcedureList() {
               </React.Fragment>
             ))}
 
-            {filteredProcedures.length === 0 && (
+            {paginatedProcedures.length === 0 && (
               <div style={{ padding: '24px 8px', textAlign: 'center', color: '#6B7280', fontSize: 13 }}>
                 Không tìm thấy thủ tục nào phù hợp với bộ lọc.
               </div>
             )}
           </div>
+        </div>
 
-          {/* Scrollbar Mock from Figma */}
-          <div className="admin-proc-scrollbar-track" />
-          <div className="admin-proc-scrollbar-thumb" />
+        <div style={{ height: 12, width: '100%' }} />
+
+        {/* Pagination Row */}
+        <div className="admin-proc-pagination-row">
+          <div className="admin-proc-pagination-info">
+            Hiển thị <strong>{filteredProcedures.length === 0 ? 0 : (currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, filteredProcedures.length)}</strong> / <strong>{filteredProcedures.length}</strong> thủ tục
+          </div>
+
+          <div style={{ flex: '1 1 0' }} />
+
+          <button
+            type="button"
+            className="admin-proc-page-arrow"
+            disabled={currentPage <= 1}
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            title="Trang trước"
+            aria-label="Trang trước"
+          >
+            ←
+          </button>
+
+          {getPageItems().map((item, idx) => {
+            if (item === 'left-dots') {
+              return (
+                <button
+                  key={`left-dots-${idx}`}
+                  type="button"
+                  className="admin-proc-page-dots-btn"
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 5))}
+                  title="Lùi 5 trang"
+                >
+                  ...
+                </button>
+              );
+            }
+            if (item === 'right-dots') {
+              return (
+                <button
+                  key={`right-dots-${idx}`}
+                  type="button"
+                  className="admin-proc-page-dots-btn"
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 5))}
+                  title="Tiến 5 trang"
+                >
+                  ...
+                </button>
+              );
+            }
+            return (
+              <button
+                key={`page-${item}`}
+                type="button"
+                className={`admin-proc-page-btn ${currentPage === item ? 'active-page' : ''}`}
+                onClick={() => setCurrentPage(item)}
+              >
+                {item}
+              </button>
+            );
+          })}
+
+          <button
+            type="button"
+            className="admin-proc-page-arrow"
+            disabled={currentPage >= totalPages}
+            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            title="Trang sau"
+            aria-label="Trang sau"
+          >
+            →
+          </button>
+
+          <div className="admin-proc-jump-box">
+            <span className="admin-proc-jump-label">Đến trang</span>
+            <input
+              type="number"
+              min="1"
+              max={totalPages}
+              value={jumpPage}
+              onChange={(e) => setJumpPage(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const p = parseInt(jumpPage, 10);
+                  if (p >= 1 && p <= totalPages) {
+                    setCurrentPage(p);
+                    setJumpPage('');
+                  }
+                }
+              }}
+              placeholder={currentPage}
+              className="admin-proc-jump-input"
+            />
+          </div>
         </div>
       </div>
 

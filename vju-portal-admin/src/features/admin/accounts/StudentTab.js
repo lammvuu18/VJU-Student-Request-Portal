@@ -9,6 +9,7 @@ function StudentTab() {
   const [filterKhoa, setFilterKhoa] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [jumpPage, setJumpPage] = useState('');
   const pageSize = 8; // 8 rows per page to match Figma spec
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -91,6 +92,19 @@ function StudentTab() {
     (currentPage - 1) * pageSize,
     currentPage * pageSize
   );
+
+  const getPageItems = () => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    if (currentPage <= 4) {
+      return [1, 2, 3, 4, 5, 'right-dots', totalPages];
+    }
+    if (currentPage >= totalPages - 3) {
+      return [1, 'left-dots', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    }
+    return [1, 'left-dots', currentPage - 1, currentPage, currentPage + 1, 'right-dots', totalPages];
+  };
 
   return (
     <div className="student-tab-wrapper">
@@ -237,6 +251,10 @@ function StudentTab() {
 
         {/* Pagination Row */}
         <div className="student-pagination-row">
+          <div className="student-pagination-info">
+            Hiển thị <strong>{filteredStudents.length === 0 ? 0 : (currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, filteredStudents.length)}</strong> / <strong>{filteredStudents.length}</strong> sinh viên
+          </div>
+
           <div style={{ flex: '1 1 0' }} />
 
           <button
@@ -244,62 +262,83 @@ function StudentTab() {
             className="student-page-arrow"
             disabled={currentPage <= 1}
             onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            title="Trang trước"
+            aria-label="Trang trước"
           >
             ←
           </button>
 
-          <button
-            type="button"
-            className={`student-page-btn ${currentPage === 1 ? 'active-page' : ''}`}
-            onClick={() => setCurrentPage(1)}
-          >
-            1
-          </button>
-
-          {totalPages >= 2 && (
-            <button
-              type="button"
-              className={`student-page-btn ${currentPage === 2 ? 'active-page' : ''}`}
-              onClick={() => setCurrentPage(2)}
-            >
-              2
-            </button>
-          )}
-
-          {totalPages >= 3 && (
-            <button
-              type="button"
-              className={`student-page-btn ${currentPage === 3 ? 'active-page' : ''}`}
-              onClick={() => setCurrentPage(3)}
-            >
-              3
-            </button>
-          )}
-
-          {totalPages > 4 && (
-            <span className="student-page-dots">...</span>
-          )}
-
-          {totalPages >= 4 && (
-            <button
-              type="button"
-              className={`student-page-btn ${currentPage === totalPages ? 'active-page' : ''}`}
-              onClick={() => setCurrentPage(totalPages)}
-            >
-              {totalPages}
-            </button>
-          )}
+          {getPageItems().map((item, idx) => {
+            if (item === 'left-dots') {
+              return (
+                <button
+                  key={`left-dots-${idx}`}
+                  type="button"
+                  className="student-page-dots-btn"
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 5))}
+                  title="Lùi 5 trang"
+                >
+                  ...
+                </button>
+              );
+            }
+            if (item === 'right-dots') {
+              return (
+                <button
+                  key={`right-dots-${idx}`}
+                  type="button"
+                  className="student-page-dots-btn"
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 5))}
+                  title="Tiến 5 trang"
+                >
+                  ...
+                </button>
+              );
+            }
+            return (
+              <button
+                key={`page-${item}`}
+                type="button"
+                className={`student-page-btn ${currentPage === item ? 'active-page' : ''}`}
+                onClick={() => setCurrentPage(item)}
+              >
+                {item}
+              </button>
+            );
+          })}
 
           <button
             type="button"
             className="student-page-arrow"
             disabled={currentPage >= totalPages}
             onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            title="Trang sau"
+            aria-label="Trang sau"
           >
             →
           </button>
 
-          <div style={{ flex: '1 1 0' }} />
+          <div className="student-jump-box">
+            <span className="student-jump-label">Đến trang</span>
+            <input
+              type="number"
+              min="1"
+              max={totalPages}
+              value={jumpPage}
+              onChange={(e) => setJumpPage(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const p = parseInt(jumpPage, 10);
+                  if (p >= 1 && p <= totalPages) {
+                    setCurrentPage(p);
+                    setJumpPage('');
+                  }
+                }
+              }}
+              placeholder={currentPage}
+              className="student-jump-input"
+            />
+          </div>
         </div>
       </div>
 
