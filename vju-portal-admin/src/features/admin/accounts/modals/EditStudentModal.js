@@ -1,28 +1,33 @@
 import React, { useState, useEffect } from 'react';
-import Modal from '../../../../components/common/Modal';
-import Button from '../../../../components/common/Button';
+import './EditStudentModal.css';
 
 function EditStudentModal({ isOpen, onClose, student, onSave }) {
-  const [lop, setLop] = useState('');
-  const [khoa, setKhoa] = useState('');
-  const [status, setStatus] = useState('');
+  const [lop, setLop] = useState('QH-2023-I/CQ-M-CLC');
+  const [khoa, setKhoa] = useState('QH-2023');
+  const [status, setStatus] = useState('studying');
 
   useEffect(() => {
     if (student) {
-      setLop(student.classGroup || 'QH-2022-I/CQ-M');
-      setKhoa(student.classGroup?.split('-')[1] ? `QH-${student.classGroup.split('-')[1]}` : 'QH-2022');
+      setLop(student.classGroup || 'QH-2023-I/CQ-M-CLC');
+      const detectedKhoa = student.cohort
+        ? student.cohort
+        : student.classGroup?.split('-')[1]
+        ? `QH-${student.classGroup.split('-')[1]}`
+        : 'QH-2023';
+      setKhoa(detectedKhoa);
       setStatus(student.status || 'studying');
     }
   }, [student]);
 
-  if (!student) return null;
+  if (!isOpen || !student) return null;
 
   const handleSubmit = (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     if (onSave) {
       onSave({
         ...student,
         classGroup: lop,
+        cohort: khoa,
         status,
       });
     }
@@ -30,75 +35,133 @@ function EditStudentModal({ isOpen, onClose, student, onSave }) {
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Chỉnh sửa thông tin sinh viên"
-      subtitle={`${student.name} — ${student.mssv}`}
-    >
-      <form onSubmit={handleSubmit}>
-        <div className="modal-field">
-          <label>MSSV</label>
-          <div className="input-with-lock">
-            <input type="text" value={student.mssv} readOnly className="readonly" />
-            <span className="lock-icon">
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <rect x="3" y="6" width="8" height="6" rx="1.5" stroke="#9CA3AF" strokeWidth="1.2"/>
-                <path d="M5 6V4a2 2 0 114 0v2" stroke="#9CA3AF" strokeWidth="1.2" strokeLinecap="round"/>
-              </svg>
-            </span>
+    <div className="edit-student-modal-overlay" onClick={onClose}>
+      <div
+        className="edit-student-modal-card"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+      >
+        {/* Header Row */}
+        <div className="esm-header-row">
+          <h2 className="esm-title">Chỉnh sửa thông tin sinh viên</h2>
+          <button
+            type="button"
+            className="esm-close-btn"
+            onClick={onClose}
+            aria-label="Đóng"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Divider 1 */}
+        <div className="esm-divider" />
+
+        {/* Subtitle Row */}
+        <div className="esm-subtitle-row">
+          <div className="esm-sub-name">{student.name || 'Nguyễn Minh Anh'}</div>
+          <div className="esm-sub-mssv">— {student.mssv || '23110150'}</div>
+        </div>
+
+        {/* Field 1: MSSV (Locked) */}
+        <div className="esm-field-group">
+          <label className="esm-field-label">MSSV</label>
+          <div className="esm-locked-box">
+            <span className="esm-locked-text">{student.mssv || '23110150'}</span>
+            <span className="esm-lock-icon">🔒</span>
           </div>
         </div>
 
-        <div className="modal-field">
-          <label>Email VNU</label>
-          <div className="input-with-lock">
-            <input type="text" value={student.email} readOnly className="readonly" />
-            <span className="lock-icon">
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <rect x="3" y="6" width="8" height="6" rx="1.5" stroke="#9CA3AF" strokeWidth="1.2"/>
-                <path d="M5 6V4a2 2 0 114 0v2" stroke="#9CA3AF" strokeWidth="1.2" strokeLinecap="round"/>
-              </svg>
-            </span>
+        {/* Field 2: Email (Locked) */}
+        <div className="esm-field-group">
+          <label className="esm-field-label">Email</label>
+          <div className="esm-locked-box">
+            <span className="esm-locked-text">{student.email || '23110150@vnu.edu.vn'}</span>
+            <span className="esm-lock-icon">🔒</span>
           </div>
         </div>
 
-        <div className="modal-field">
-          <label>Lớp hành chính</label>
-          <select value={lop} onChange={(e) => setLop(e.target.value)}>
-            <option value="QH-2023-I/CQ-M-CLC">QH-2023-I/CQ-M-CLC</option>
-            <option value="QH-2023-I/CQ-M">QH-2023-I/CQ-M</option>
-            <option value="QH-2022-I/CQ-M-CLC">QH-2022-I/CQ-M-CLC</option>
-            <option value="QH-2022-I/CQ-M">QH-2022-I/CQ-M</option>
-            <option value="QH-2021-I/CQ-M">QH-2021-I/CQ-M</option>
-          </select>
+        {/* Field 3: Lớp */}
+        <div className="esm-field-group">
+          <label className="esm-field-label">Lớp</label>
+          <div className="esm-select-box">
+            <select
+              className="esm-select"
+              value={lop}
+              onChange={(e) => setLop(e.target.value)}
+            >
+              <option value="QH-2023-I/CQ-M-CLC">QH-2023-I/CQ-M-CLC</option>
+              <option value="QH-2023-I/CQ-M">QH-2023-I/CQ-M</option>
+              <option value="QH-2022-I/CQ-M-CLC">QH-2022-I/CQ-M-CLC</option>
+              <option value="QH-2022-I/CQ-M">QH-2022-I/CQ-M</option>
+              <option value="QH-2021-I/CQ-M">QH-2021-I/CQ-M</option>
+              <option value="CS2021A">CS2021A</option>
+            </select>
+            <span className="esm-select-arrow">▾</span>
+          </div>
         </div>
 
-        <div className="modal-field">
-          <label>Khóa tuyển sinh</label>
-          <select value={khoa} onChange={(e) => setKhoa(e.target.value)}>
-            <option value="QH-2024">QH-2024</option>
-            <option value="QH-2023">QH-2023</option>
-            <option value="QH-2022">QH-2022</option>
-            <option value="QH-2021">QH-2021</option>
-          </select>
+        {/* Field 4: Khóa */}
+        <div className="esm-field-group">
+          <label className="esm-field-label">Khóa</label>
+          <div className="esm-select-box">
+            <select
+              className="esm-select"
+              value={khoa}
+              onChange={(e) => setKhoa(e.target.value)}
+            >
+              <option value="QH-2024">QH-2024</option>
+              <option value="QH-2023">QH-2023</option>
+              <option value="QH-2022">QH-2022</option>
+              <option value="QH-2021">QH-2021</option>
+              <option value="K2021">K2021</option>
+            </select>
+            <span className="esm-select-arrow">▾</span>
+          </div>
         </div>
 
-        <div className="modal-field">
-          <label>Trạng thái học tập</label>
-          <select value={status} onChange={(e) => setStatus(e.target.value)}>
-            <option value="studying">Đang học</option>
-            <option value="reserved">Bảo lưu</option>
-            <option value="quit">Đã tốt nghiệp</option>
-          </select>
+        {/* Field 5: Trạng thái học tập */}
+        <div className="esm-field-group">
+          <label className="esm-field-label">Trạng thái học tập</label>
+          <div className="esm-select-box">
+            <select
+              className="esm-select"
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+            >
+              <option value="studying">Đang học</option>
+              <option value="reserved">Bảo lưu</option>
+              <option value="graduated">Đã TN</option>
+              <option value="quit">Đã TN</option>
+            </select>
+            <span className="esm-select-arrow">▾</span>
+          </div>
         </div>
 
-        <div className="modal-footer">
-          <Button variant="secondary" type="button" onClick={onClose}>Hủy</Button>
-          <Button variant="primary" type="submit">Lưu thông tin</Button>
+        {/* Divider 2 */}
+        <div className="esm-divider" />
+        <div style={{ height: 4, width: '100%' }} />
+
+        {/* Action Buttons */}
+        <div className="esm-actions-row">
+          <button
+            type="button"
+            className="esm-btn-cancel"
+            onClick={onClose}
+          >
+            Hủy
+          </button>
+          <button
+            type="button"
+            className="esm-btn-save"
+            onClick={handleSubmit}
+          >
+            Lưu
+          </button>
         </div>
-      </form>
-    </Modal>
+      </div>
+    </div>
   );
 }
 

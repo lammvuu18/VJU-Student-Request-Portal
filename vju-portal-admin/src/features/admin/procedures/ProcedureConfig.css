@@ -1,157 +1,413 @@
-.procedure-config {
-  max-width: 900px;
+/* ===== Procedure Config Page Styles (Figma Spec) ===== */
+
+.procedure-config-container {
+  width: 100%;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  box-sizing: border-box;
 }
 
-.procedure-config .config-card {
-  background: var(--color-white);
-  border-radius: var(--card-radius);
-  border: var(--card-border);
-  padding: 32px;
-}
-
-.procedure-config .config-card-header {
+.pc-toast-banner {
+  background-color: #ECFDF5;
+  color: #059669;
+  border: 1px solid #A7F3D0;
+  border-radius: 8px;
+  padding: 10px 16px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  font-weight: 500;
   display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: fadeInToast 0.2s ease-in-out;
+}
+
+.pc-toast-icon {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+/* Card Container */
+.pc-card {
+  align-self: stretch;
+  padding: 24px 28px 28px 28px;
+  background: #FFFFFF;
+  border-radius: 12px;
+  outline: 1px #E2E5EA solid;
+  outline-offset: -1px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+/* Header Row */
+.pc-header-row {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
   justify-content: space-between;
+  gap: 12px;
+}
+
+.pc-title {
+  flex: 1 1 0;
+  color: #1F2937;
+  font-size: 16px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.pc-status-group {
+  display: flex;
   align-items: center;
-  margin-bottom: 28px;
-}
-
-.procedure-config .config-card-title {
-  font-size: var(--font-size-lg);
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-/* Form */
-.procedure-config .config-form {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.procedure-config .form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 48px;
-}
-
-.procedure-config .form-field {
-  display: flex;
-  flex-direction: column;
   gap: 8px;
 }
 
-.procedure-config .form-field--full {
+.pc-status-label {
+  font-size: 12px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+.pc-toggle-pill {
+  width: 36px;
+  height: 20px;
+  padding: 2px;
+  border-radius: 10px;
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.procedure-config .form-field label {
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.procedure-config .form-field input,
-.procedure-config .form-field select,
-.procedure-config .form-field textarea {
-  height: var(--input-height);
-  padding: var(--input-padding);
-  border: var(--input-border);
-  border-radius: var(--input-radius);
-  font-size: var(--font-size-sm);
-  color: var(--color-text);
-  background: var(--color-white);
-  outline: none;
-  transition: border-color var(--transition);
-}
-
-.procedure-config .form-field textarea {
-  height: auto;
-  padding: 10px 12px;
-  resize: vertical;
-}
-
-.procedure-config .form-field input:focus,
-.procedure-config .form-field select:focus,
-.procedure-config .form-field textarea:focus {
-  border-color: var(--vju-red);
-}
-
-.procedure-config .form-field select {
-  appearance: none;
-  padding-right: 32px;
-  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236B7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
+  align-items: center;
   cursor: pointer;
+  transition: background 0.2s ease;
+  box-sizing: border-box;
 }
 
-.procedure-config .form-field .input-readonly {
-  background: var(--color-input-disabled);
-  color: var(--color-text-muted);
+.pc-toggle-pill.pc-toggle-on {
+  background: #168039;
+  justify-content: flex-end;
 }
 
-/* Template field */
-.procedure-config .template-field {
+.pc-toggle-pill.pc-toggle-off {
+  background: #E2E5EA;
+  justify-content: flex-start;
+}
+
+.pc-toggle-knob {
+  width: 16px;
+  height: 16px;
+  background: #FFFFFF;
+  border-radius: 9999px;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s ease;
+}
+
+/* Field Block */
+.pc-field-block {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.pc-label {
+  align-self: stretch;
+  color: #1F2937;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.pc-input-box {
+  align-self: stretch;
+  padding: 9px 12px;
+  background: #FFFFFF;
+  border-radius: 8px;
+  outline: 1px #E2E5EA solid;
+  outline-offset: -1px;
   display: flex;
   align-items: center;
-  height: var(--input-height);
-  padding: var(--input-padding);
-  border: var(--input-border);
-  border-radius: var(--input-radius);
-  background: var(--color-white);
+  box-sizing: border-box;
+  transition: outline-color 0.15s ease;
 }
 
-.procedure-config .template-name {
-  flex: 1;
-  font-size: var(--font-size-sm);
-  color: var(--color-text);
+.pc-input-box:focus-within {
+  outline: 1.5px #AA2327 solid;
 }
 
-.procedure-config .template-change {
+.pc-input {
+  flex: 1 1 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: #1F2937;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  padding: 0;
+  margin: 0;
+}
+
+.pc-input::placeholder {
+  color: #9CA3AF;
+}
+
+.pc-textarea-box {
+  align-self: stretch;
+  height: 80px;
+  padding: 10px 12px;
+  background: #FFFFFF;
+  border-radius: 8px;
+  outline: 1px #E2E5EA solid;
+  outline-offset: -1px;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  transition: outline-color 0.15s ease;
+}
+
+.pc-textarea-box:focus-within {
+  outline: 1.5px #AA2327 solid;
+}
+
+.pc-textarea {
+  width: 100%;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: #1F2937;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  resize: none;
+  padding: 0;
+  margin: 0;
+  line-height: 20px;
+}
+
+.pc-textarea::placeholder {
+  color: #9CA3AF;
+}
+
+/* Two Column Rows */
+.pc-two-col-row {
+  align-self: stretch;
+  padding-right: 60px;
+  display: flex;
+  align-items: flex-start;
+  gap: 48px;
+  box-sizing: border-box;
+}
+
+.pc-col {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+/* Select Box */
+.pc-select-box {
+  align-self: stretch;
+  position: relative;
+  padding: 9px 12px;
+  background: #FFFFFF;
+  border-radius: 8px;
+  outline: 1px #E2E5EA solid;
+  outline-offset: -1px;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: outline-color 0.15s ease;
+}
+
+.pc-select-box:focus-within {
+  outline: 1.5px #AA2327 solid;
+}
+
+.pc-select {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: #1F2937;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  appearance: none;
+  cursor: pointer;
+  padding-right: 20px;
+}
+
+.pc-select-arrow {
+  position: absolute;
+  right: 12px;
+  color: #6B7280;
+  font-size: 13px;
+  pointer-events: none;
+}
+
+/* Template Box */
+.pc-template-box {
+  align-self: stretch;
+  padding: 9px 12px;
+  background: #FFFFFF;
+  border-radius: 8px;
+  outline: 1px #E2E5EA solid;
+  outline-offset: -1px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  box-sizing: border-box;
+}
+
+.pc-template-name {
+  flex: 1 1 0;
+  color: #1F2937;
+  font-size: 12px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pc-template-action {
   background: none;
   border: none;
-  color: var(--vju-red);
-  font-size: var(--font-size-sm);
+  color: #AA2327;
+  font-size: 11px;
+  font-family: 'Inter', sans-serif;
   font-weight: 500;
   cursor: pointer;
-  padding: 0;
+  padding: 2px 4px;
+  white-space: nowrap;
+  transition: opacity 0.15s ease;
 }
 
-.procedure-config .template-change:hover {
+.pc-template-action:hover {
   text-decoration: underline;
+  opacity: 0.9;
 }
 
-/* Radio group */
-.procedure-config .radio-group {
+/* Radio Group */
+.pc-radio-group {
+  align-self: stretch;
+  padding-top: 8px;
   display: flex;
-  gap: 24px;
-  height: var(--input-height);
   align-items: center;
+  gap: 20px;
+  box-sizing: border-box;
 }
 
-.procedure-config .radio-label {
+.pc-radio-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   cursor: pointer;
-  font-size: var(--font-size-sm);
-  color: var(--color-text);
+  user-select: none;
 }
 
-.procedure-config .radio-label input[type="radio"] {
+.pc-custom-radio {
   width: 18px;
   height: 18px;
-  accent-color: var(--vju-red);
-  cursor: pointer;
+  background: #FFFFFF;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  transition: all 0.15s ease;
 }
 
-/* Actions */
-.procedure-config .form-actions {
+.pc-custom-radio--selected {
+  outline: 2px #AA2327 solid;
+  outline-offset: -2px;
+}
+
+.pc-custom-radio--unselected {
+  border: 2px #E2E5EA solid;
+}
+
+.pc-radio-dot {
+  width: 8px;
+  height: 8px;
+  background: #AA2327;
+  border-radius: 9999px;
+}
+
+.pc-radio-text {
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  line-height: 18px;
+}
+
+/* Divider */
+.pc-divider {
+  align-self: stretch;
+  height: 1px;
+  background: #E2E5EA;
+  margin: 0;
+}
+
+/* Actions Row */
+.pc-actions-row {
+  align-self: stretch;
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   gap: 12px;
-  margin-top: 8px;
+}
+
+.pc-btn-cancel {
+  padding: 10px 20px;
+  background: #FFFFFF;
+  border-radius: 8px;
+  outline: 1px #E2E5EA solid;
+  outline-offset: -1px;
+  border: none;
+  color: #6B7280;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pc-btn-cancel:hover {
+  background: #F9FAFB;
+  color: #1F2937;
+}
+
+.pc-btn-save {
+  padding: 10px 20px;
+  background: #AA2327;
+  border-radius: 8px;
+  border: none;
+  color: #FFFFFF;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.pc-btn-save:hover {
+  opacity: 0.92;
+}
+
+@media (max-width: 992px) {
+  .pc-two-col-row {
+    flex-direction: column;
+    padding-right: 0;
+    gap: 20px;
+  }
 }

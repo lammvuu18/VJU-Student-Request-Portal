@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import Badge from '../../../components/common/Badge';
-import Button from '../../../components/common/Button';
-import Modal from '../../../components/common/Modal';
 import EditStaffModal from './modals/EditStaffModal';
-import { staff, staffStatusMap, departmentBadgeColors } from '../../../data/mockData';
+import Modal from '../../../components/common/Modal';
+import Button from '../../../components/common/Button';
+import { staff, staffStatusMap } from '../../../data/mockData';
 import './StaffTab.css';
 
 function StaffTab() {
@@ -11,6 +10,7 @@ function StaffTab() {
   const [search, setSearch] = useState('');
   const [filterDept, setFilterDept] = useState('');
   const [filterLevel, setFilterLevel] = useState('');
+
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -33,7 +33,9 @@ function StaffTab() {
   };
 
   const handleSaveStaff = (updated) => {
-    setStaffList((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+    setStaffList((prev) =>
+      prev.map((s) => (s.id === updated.id ? updated : s))
+    );
     showToast(`Đã cập nhật thông tin cán bộ ${updated.name}!`);
   };
 
@@ -50,226 +52,255 @@ function StaffTab() {
       status: 'active',
     };
 
-    setStaffList([newMember, ...staffList]);
+    setStaffList([...staffList, newMember]);
     setIsAddModalOpen(false);
     setNewName('');
     setNewEmail('');
     showToast(`Đã thêm thành công cán bộ ${newMember.name}!`);
   };
 
-  const handleToggleStatus = (id) => {
-    setStaffList((prev) =>
-      prev.map((s) => {
-        if (s.id === id) {
-          const nextStatus = s.status === 'active' ? 'locked' : 'active';
-          showToast(`Đã ${nextStatus === 'active' ? 'kích hoạt' : 'khóa'} tài khoản ${s.name}`);
-          return { ...s, status: nextStatus };
-        }
-        return s;
-      })
-    );
-  };
-
-  const handleDeleteStaff = (id, name) => {
-    if (window.confirm(`Bạn có chắc chắn muốn xóa tài khoản cán bộ "${name}"?`)) {
-      setStaffList((prev) => prev.filter((s) => s.id !== id));
-      showToast(`Đã xóa tài khoản cán bộ "${name}"`);
-    }
-  };
-
+  // Filter staff members
   const filteredStaff = staffList.filter((s) => {
     if (filterDept && s.department !== filterDept) return false;
     if (filterLevel && s.level !== filterLevel) return false;
-    if (search) {
-      const q = search.toLowerCase();
-      return s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q);
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      return (
+        s.name.toLowerCase().includes(q) ||
+        s.email.toLowerCase().includes(q) ||
+        s.department.toLowerCase().includes(q) ||
+        s.level.toLowerCase().includes(q)
+      );
     }
     return true;
   });
 
   return (
-    <div className="staff-tab">
+    <div className="staff-tab-wrapper">
       {toastMessage && (
-        <div style={{
-          backgroundColor: '#ECFDF5',
-          color: '#059669',
-          border: '1px solid #A7F3D0',
-          borderRadius: 8,
-          padding: '12px 16px',
-          marginBottom: 16,
-          fontWeight: 500,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-        }}>
-          <span>✓</span>
+        <div className="staff-toast-banner">
+          <span className="staff-toast-icon">✓</span>
           <span>{toastMessage}</span>
         </div>
       )}
 
-      <div className="tab-filter-bar">
-        <div className="filter-search" style={{ flex: 1, maxWidth: 360 }}>
-          <svg className="search-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <circle cx="7" cy="7" r="5.5" stroke="#9CA3AF" strokeWidth="1.5"/>
-            <path d="M11 11l3.5 3.5" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round"/>
-          </svg>
-          <input
-            type="text"
-            placeholder="Tìm theo tên, email cán bộ..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <select className="filter-select" value={filterDept} onChange={(e) => setFilterDept(e.target.value)}>
-          <option value="">Tất cả phòng ban</option>
-          <option value="PĐT">Phòng Đào tạo (PĐT)</option>
-          <option value="PCTSV">Phòng CTSV (PCTSV)</option>
-          <option value="PKHTC">Phòng KHTC (PKHTC)</option>
-        </select>
-        <select className="filter-select" value={filterLevel} onChange={(e) => setFilterLevel(e.target.value)}>
-          <option value="">Tất cả các cấp</option>
-          <option value="Chuyên viên">Chuyên viên</option>
-          <option value="Trưởng phòng">Trưởng phòng</option>
-        </select>
-        <Button variant="primary" style={{ marginLeft: 'auto' }} onClick={() => setIsAddModalOpen(true)}>
-          + Thêm cán bộ
-        </Button>
-      </div>
+      {/* Main Staff Card Container */}
+      <div className="staff-card-container">
+        {/* Filter and Action Row */}
+        <div className="staff-filter-row">
+          <div className="staff-search-box">
+            <input
+              type="text"
+              className="staff-search-input"
+              placeholder="⌕ Tìm theo tên, email..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
 
-      <div className="table-wrapper">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Họ và tên</th>
-              <th>Email VJU</th>
-              <th>Phòng ban</th>
-              <th>Chức danh / Cấp</th>
-              <th>Trạng thái</th>
-              <th style={{ textAlign: 'right' }}>Thao tác</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredStaff.length === 0 ? (
-              <tr>
-                <td colSpan={6} style={{ textAlign: 'center', padding: 32, color: '#9CA3AF' }}>
-                  Không tìm thấy cán bộ nào phù hợp với bộ lọc
-                </td>
-              </tr>
-            ) : (
-              filteredStaff.map((s) => {
-                const status = staffStatusMap[s.status] || { label: s.status, color: '#6B7280', bg: '#F3F4F6' };
-                const deptColor = departmentBadgeColors[s.department] || { color: '#6B7280', bg: '#F3F4F6' };
-                return (
-                  <tr key={s.id}>
-                    <td className="col-name">{s.name}</td>
-                    <td className="col-email">{s.email}</td>
-                    <td>
-                      <Badge label={s.department} color={deptColor.color} bg={deptColor.bg} />
-                    </td>
-                    <td>
-                      <span className={`level-text ${s.level === 'Trưởng phòng' ? 'level-head' : ''}`}>
+          <div className="staff-filter-select-box">
+            <select
+              className="staff-filter-select"
+              value={filterDept}
+              onChange={(e) => setFilterDept(e.target.value)}
+            >
+              <option value="">Phòng ban</option>
+              <option value="PĐT">PĐT</option>
+              <option value="PCTSV">PCTSV</option>
+              <option value="PKHTC">PKHTC</option>
+            </select>
+            <span className="staff-filter-arrow">▾</span>
+          </div>
+
+          <div className="staff-filter-select-box">
+            <select
+              className="staff-filter-select"
+              value={filterLevel}
+              onChange={(e) => setFilterLevel(e.target.value)}
+            >
+              <option value="">Cấp</option>
+              <option value="Chuyên viên">Chuyên viên</option>
+              <option value="Trưởng phòng">Trưởng phòng</option>
+            </select>
+            <span className="staff-filter-arrow">▾</span>
+          </div>
+
+          <button
+            type="button"
+            className="staff-add-btn"
+            onClick={() => setIsAddModalOpen(true)}
+          >
+            + Thêm cán bộ
+          </button>
+        </div>
+
+        <div style={{ height: 10, width: '100%' }} />
+
+        {/* Table Container */}
+        <div className="staff-table-container">
+          {/* Header Row */}
+          <div className="staff-th-row">
+            <div className="staff-th-col">Họ tên</div>
+            <div className="staff-th-col">Email</div>
+            <div className="staff-th-col">Phòng ban</div>
+            <div className="staff-th-col">Cấp</div>
+            <div className="staff-th-col">Trạng thái</div>
+            <div className="staff-th-col">Thao tác</div>
+          </div>
+          <div className="staff-divider" />
+
+          {/* Data Rows */}
+          {filteredStaff.length === 0 ? (
+            <div className="staff-empty-state">
+              Không tìm thấy cán bộ nào phù hợp.
+            </div>
+          ) : (
+            filteredStaff.map((s) => {
+              const statusCfg = staffStatusMap[s.status] || {
+                label: 'Hoạt động',
+                color: '#168039',
+                bg: '#DCFCE7',
+              };
+
+              const isManager = s.level === 'Trưởng phòng';
+
+              return (
+                <React.Fragment key={s.id}>
+                  <div className="staff-tr-row">
+                    <div className="staff-td-col" style={{ fontWeight: 400 }}>
+                      {s.name}
+                    </div>
+                    <div className="staff-td-col">{s.email}</div>
+                    <div className="staff-td-col">
+                      <span className="staff-badge-dept">{s.department}</span>
+                    </div>
+                    <div className="staff-td-col">
+                      <span
+                        className={`staff-badge-level ${
+                          isManager ? 'staff-badge-level--manager' : 'staff-badge-level--staff'
+                        }`}
+                      >
                         {s.level}
                       </span>
-                    </td>
-                    <td>
+                    </div>
+                    <div className="staff-td-col">
                       <span
-                        style={{ cursor: 'pointer' }}
-                        title="Nhấp để đổi trạng thái"
-                        onClick={() => handleToggleStatus(s.id)}
+                        className="staff-badge-status"
+                        style={{
+                          backgroundColor: statusCfg.bg,
+                          color: statusCfg.color,
+                        }}
                       >
-                        <Badge label={status.label} color={status.color} bg={status.bg} />
+                        {statusCfg.label}
                       </span>
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
-                        <Button variant="outline-red" size="sm" onClick={() => handleEdit(s)}>
-                          Chỉnh sửa
-                        </Button>
-                        <button
-                          title="Xóa tài khoản"
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            padding: '6px',
-                            color: '#9CA3AF',
-                          }}
-                          onClick={() => handleDeleteStaff(s.id, s.name)}
-                        >
-                          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                            <path d="M3 4h10M6 4V2.5a.5.5 0 01.5-.5h3a.5.5 0 01.5.5V4M4.5 4l.8 9.2a1 1 0 001 .8h3.4a1 1 0 001-.8L11.5 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+                    </div>
+                    <div className="staff-td-col">
+                      <button
+                        type="button"
+                        className="staff-edit-btn"
+                        onClick={() => handleEdit(s)}
+                      >
+                        Sửa
+                      </button>
+                    </div>
+                  </div>
+                  <div className="staff-divider" />
+                </React.Fragment>
+              );
+            })
+          )}
+        </div>
       </div>
 
       {/* Edit Staff Modal */}
-      <EditStaffModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        staff={selectedStaff}
-        onSave={handleSaveStaff}
-      />
+      {modalOpen && (
+        <EditStaffModal
+          isOpen={modalOpen}
+          onClose={() => setModalOpen(false)}
+          staff={selectedStaff}
+          onSave={handleSaveStaff}
+        />
+      )}
 
       {/* Add Staff Modal */}
-      <Modal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        title="Thêm tài khoản cán bộ mới"
-      >
-        <form onSubmit={handleAddStaff}>
-          <div className="modal-field">
-            <label>Họ và tên <span style={{ color: '#DC2626' }}>*</span></label>
-            <input
-              type="text"
-              placeholder="Ví dụ: Hoàng Đình Trọng"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              required
-            />
-          </div>
+      {isAddModalOpen && (
+        <Modal
+          isOpen={isAddModalOpen}
+          onClose={() => setIsAddModalOpen(false)}
+          title="Thêm tài khoản cán bộ mới"
+          subtitle="Cán bộ sẽ được cấp quyền theo phân công nhiệm vụ của phòng ban"
+        >
+          <form onSubmit={handleAddStaff}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div className="modal-field">
+                <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 500, color: '#374151' }}>
+                  Họ và tên <span style={{ color: '#AA2327' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  style={{ width: '100%', padding: '9px 12px', border: '1px solid #E2E5EA', borderRadius: 8, fontSize: 13, boxSizing: 'border-box' }}
+                  placeholder="Nhập họ và tên..."
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                />
+              </div>
 
-          <div className="modal-field">
-            <label>Email VJU <span style={{ color: '#DC2626' }}>*</span></label>
-            <input
-              type="email"
-              placeholder="Ví dụ: trong.hd@vju.ac.vn"
-              value={newEmail}
-              onChange={(e) => setNewEmail(e.target.value)}
-              required
-            />
-          </div>
+              <div className="modal-field">
+                <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 500, color: '#374151' }}>
+                  Email VJU <span style={{ color: '#AA2327' }}>*</span>
+                </label>
+                <input
+                  type="email"
+                  required
+                  style={{ width: '100%', padding: '9px 12px', border: '1px solid #E2E5EA', borderRadius: 8, fontSize: 13, boxSizing: 'border-box' }}
+                  placeholder="name.lh@vju.ac.vn"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                />
+              </div>
 
-          <div className="modal-field">
-            <label>Phòng ban</label>
-            <select value={newDept} onChange={(e) => setNewDept(e.target.value)}>
-              <option value="PĐT">Phòng Đào tạo (PĐT)</option>
-              <option value="PCTSV">Phòng Công tác sinh viên (PCTSV)</option>
-              <option value="PKHTC">Phòng Kế hoạch tài chính (PKHTC)</option>
-            </select>
-          </div>
+              <div className="modal-field">
+                <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 500, color: '#374151' }}>
+                  Phòng ban
+                </label>
+                <select
+                  style={{ width: '100%', padding: '9px 12px', border: '1px solid #E2E5EA', borderRadius: 8, fontSize: 13, boxSizing: 'border-box' }}
+                  value={newDept}
+                  onChange={(e) => setNewDept(e.target.value)}
+                >
+                  <option value="PĐT">Phòng Đào tạo (PĐT)</option>
+                  <option value="PCTSV">Phòng Công tác Sinh viên (PCTSV)</option>
+                  <option value="PKHTC">Phòng Kế hoạch Tài chính (PKHTC)</option>
+                </select>
+              </div>
 
-          <div className="modal-field">
-            <label>Chức vụ / Cấp phê duyệt</label>
-            <select value={newLevel} onChange={(e) => setNewLevel(e.target.value)}>
-              <option value="Chuyên viên">Chuyên viên — Cấp 1</option>
-              <option value="Trưởng phòng">Trưởng phòng — Cấp 2</option>
-            </select>
-          </div>
+              <div className="modal-field">
+                <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 500, color: '#374151' }}>
+                  Cấp phê duyệt
+                </label>
+                <select
+                  style={{ width: '100%', padding: '9px 12px', border: '1px solid #E2E5EA', borderRadius: 8, fontSize: 13, boxSizing: 'border-box' }}
+                  value={newLevel}
+                  onChange={(e) => setNewLevel(e.target.value)}
+                >
+                  <option value="Chuyên viên">Chuyên viên</option>
+                  <option value="Trưởng phòng">Trưởng phòng</option>
+                </select>
+              </div>
+            </div>
 
-          <div className="modal-footer">
-            <Button variant="secondary" type="button" onClick={() => setIsAddModalOpen(false)}>Hủy</Button>
-            <Button variant="primary" type="submit">Thêm cán bộ</Button>
-          </div>
-        </form>
-      </Modal>
+            <div style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+              <Button variant="secondary" type="button" onClick={() => setIsAddModalOpen(false)}>
+                Hủy
+              </Button>
+              <Button variant="primary" type="submit">
+                Thêm cán bộ
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </div>
   );
 }

@@ -572,7 +572,7 @@ export const procedureConfig = {
 
 // 6. Students list (Contract Section 11.2 GET /api/admin/users?role=student)
 export const students = [
-  { id: 1, user_id: 1, name: 'Nguyễn Quốc Anh', full_name: 'Nguyễn Quốc Anh', mssv: '21CS001', email: 'quocanh@st.vju.ac.vn', classGroup: 'CS2021A', class_name: 'CS2021A', cohort: 'K2021', major: 'Khoa học Máy tính', status: 'studying', academic_status: 'active' },
+  { id: 1, user_id: 1, name: 'Nguyễn Minh Anh', full_name: 'Nguyễn Minh Anh', mssv: '23110150', email: '23110150@vnu.edu.vn', classGroup: 'QH-2023-I/CQ-M', class_name: 'QH-2023-I/CQ-M', cohort: 'QH-2023', major: 'Khoa học Máy tính', status: 'studying', academic_status: 'active' },
   { id: 2, user_id: 2, name: 'Trần Văn Bình', full_name: 'Trần Văn Bình', mssv: '23110151', email: '23110151@vnu.edu.vn', classGroup: 'QH-2023-I/CQ-M', class_name: 'QH-2023-I/CQ-M', cohort: 'QH-2023', major: 'Kỹ thuật Xây dựng', status: 'studying', academic_status: 'active' },
   { id: 3, user_id: 3, name: 'Lê Thị Cúc', full_name: 'Lê Thị Cúc', mssv: '22110045', email: '22110045@vnu.edu.vn', classGroup: 'QH-2022-I/CQ-M', class_name: 'QH-2022-I/CQ-M', cohort: 'QH-2022', major: 'Công nghệ Nano', status: 'reserved', academic_status: 'reserved' },
   { id: 4, user_id: 4, name: 'Phạm Đức Dũng', full_name: 'Phạm Đức Dũng', mssv: '23110152', email: '23110152@vnu.edu.vn', classGroup: 'QH-2023-I/CQ-M', class_name: 'QH-2023-I/CQ-M', cohort: 'QH-2023', major: 'Biến đổi khí hậu', status: 'studying', academic_status: 'active' },
@@ -611,13 +611,12 @@ for (let i = students.length; i < 240; i++) {
 
 // 7. Staff list (Contract Section 9.3 & Section 11.2)
 export const staff = [
-  { id: 1, user_id: 10, name: 'Trần Thị B', full_name: 'Trần Thị B', email: 'tranthi.b@vju.ac.vn', department: 'PCTSV', department_id: 1, level: 'Chuyên viên', status: 'active', current_workload: 5 },
-  { id: 2, user_id: 11, name: 'Lê Hoàng Nam', full_name: 'Lê Hoàng Nam', email: 'nam.lh@vju.ac.vn', department: 'PĐT', department_id: 2, level: 'Chuyên viên', status: 'active', current_workload: 4 },
-  { id: 3, user_id: 12, name: 'Trần Thu Hà', full_name: 'Trần Thu Hà', email: 'ha.tt@vju.ac.vn', department: 'PĐT', department_id: 2, level: 'Trưởng phòng', status: 'active', current_workload: 2 },
-  { id: 4, user_id: 13, name: 'Lê Văn C', full_name: 'Lê Văn C', email: 'vanc@vju.ac.vn', department: 'PCTSV', department_id: 1, level: 'Trưởng phòng', status: 'active', current_workload: 1 },
-  { id: 5, user_id: 14, name: 'Nguyễn Văn An', full_name: 'Nguyễn Văn An', email: 'an.nv@vju.ac.vn', department: 'PĐT', department_id: 2, level: 'Chuyên viên', status: 'active', current_workload: 3 },
-  { id: 6, user_id: 15, name: 'Vũ Quốc Toàn', full_name: 'Vũ Quốc Toàn', email: 'toan.vq@vju.ac.vn', department: 'PKHTC', department_id: 3, level: 'Trưởng phòng', status: 'active', current_workload: 1 },
-  { id: 7, user_id: 16, name: 'Lý Thị Ngọc', full_name: 'Lý Thị Ngọc', email: 'ngoc.lt@vju.ac.vn', department: 'PKHTC', department_id: 3, level: 'Chuyên viên', status: 'locked', current_workload: 0 },
+  { id: 1, user_id: 11, name: 'Lê Hoàng Nam', full_name: 'Lê Hoàng Nam', email: 'nam.lh@vju.ac.vn', department: 'PĐT', department_id: 2, level: 'Chuyên viên', status: 'active', current_workload: 4 },
+  { id: 2, user_id: 12, name: 'Trần Thu Hà', full_name: 'Trần Thu Hà', email: 'ha.tt@vju.ac.vn', department: 'PĐT', department_id: 2, level: 'Trưởng phòng', status: 'active', current_workload: 2 },
+  { id: 3, user_id: 14, name: 'Nguyễn Văn A', full_name: 'Nguyễn Văn A', email: 'a.nv@vju.ac.vn', department: 'PĐT', department_id: 2, level: 'Chuyên viên', status: 'active', current_workload: 3 },
+  { id: 4, user_id: 10, name: 'Phạm Thị Lan', full_name: 'Phạm Thị Lan', email: 'lan.pt@vju.ac.vn', department: 'PCTSV', department_id: 1, level: 'Chuyên viên', status: 'active', current_workload: 5 },
+  { id: 5, user_id: 13, name: 'Đặng Văn Minh', full_name: 'Đặng Văn Minh', email: 'minh.dv@vju.ac.vn', department: 'PCTSV', department_id: 1, level: 'Trưởng phòng', status: 'active', current_workload: 1 },
+  { id: 6, user_id: 16, name: 'Lý Thị Ngọc', full_name: 'Lý Thị Ngọc', email: 'ngoc.lt@vju.ac.vn', department: 'PKHTC', department_id: 3, level: 'Chuyên viên', status: 'locked', current_workload: 0 },
 ];
 
 export const staffMembers = staff;
@@ -1216,16 +1215,16 @@ export const resultFormatOptions = [
 ];
 
 export const studentStatusMap = {
-  studying: { label: 'Đang học', color: '#2563EB', bg: '#EFF6FF' },
-  active: { label: 'Đang học', color: '#2563EB', bg: '#EFF6FF' },
-  reserved: { label: 'Bảo lưu', color: '#7C3AED', bg: '#F5F3FF' },
-  quit: { label: 'Đã tốt nghiệp', color: '#059669', bg: '#ECFDF5' },
-  graduated: { label: 'Đã tốt nghiệp', color: '#059669', bg: '#ECFDF5' },
+  studying: { label: 'Đang học', color: '#168039', bg: '#DCFCE7' },
+  active: { label: 'Đang học', color: '#168039', bg: '#DCFCE7' },
+  reserved: { label: 'Bảo lưu', color: '#92400E', bg: '#FEF3C7' },
+  quit: { label: 'Đã TN', color: '#1D4ED8', bg: '#DBEAFE' },
+  graduated: { label: 'Đã TN', color: '#1D4ED8', bg: '#DBEAFE' },
 };
 
 export const staffStatusMap = {
-  active: { label: 'Hoạt động', color: '#059669', bg: '#ECFDF5' },
-  locked: { label: 'Vô hiệu', color: '#6B7280', bg: '#F3F4F6' },
+  active: { label: 'Hoạt động', color: '#168039', bg: '#DCFCE7' },
+  locked: { label: 'Vô hiệu', color: '#6B7280', bg: '#F0F0F0' },
 };
 
 export const procedureStatusMap = {
