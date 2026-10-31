@@ -88,6 +88,8 @@ function App() {
           <Route path="procedure/:id" element={<ProcedureDetail />} />
           <Route path="request/new" element={<RequestForm />} />
           <Route path="request/new/:procedureId" element={<RequestForm />} />
+          <Route path="request/payment" element={<RequestForm initialStep={2} />} />
+          <Route path="request/payment/:procedureId" element={<RequestForm initialStep={2} />} />
           <Route path="request/success" element={<RequestSuccess />} />
           <Route path="request/supplement" element={<SupplementForm />} />
           <Route path="request/supplement/success" element={<SupplementSuccess />} />

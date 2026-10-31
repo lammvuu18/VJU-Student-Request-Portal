@@ -8,9 +8,9 @@
 }
 
 .pagination-btn {
-  min-width: 34px;
-  height: 34px;
-  padding: 0 6px;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 4px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -20,7 +20,7 @@
   font-size: 13px;
   font-weight: 500;
   font-family: 'Inter', sans-serif;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s ease;
   user-select: none;
@@ -35,15 +35,18 @@
 .pagination-btn.active {
   background: #AA2327;
   color: #FFFFFF;
-  font-weight: 600;
-  border-radius: 8px;
+  font-weight: 700;
+  border-radius: 6px;
 }
 
 .pagination-arrow {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
   background: #FFFFFF;
   border: 1px solid #E2E5EA;
   color: #68717D;
-  border-radius: 8px;
+  border-radius: 6px;
 }
 
 .pagination-arrow:hover:not(:disabled) {
@@ -59,8 +62,8 @@
 }
 
 .pagination-dots {
-  min-width: 28px;
-  height: 34px;
+  min-width: 20px;
+  height: 32px;
   display: inline-flex;
   align-items: center;
   justify-content: center;

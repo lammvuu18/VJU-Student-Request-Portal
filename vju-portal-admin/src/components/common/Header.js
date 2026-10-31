@@ -8,43 +8,43 @@ import './Header.css';
 const initialNotifications = [
   {
     id: 1,
-    title: 'Hồ sơ đã được phê duyệt',
-    desc: 'Hồ sơ REQ-20261030-001 (Giấy xác nhận sinh viên) đã được Hiệu trưởng ký số thành công.',
-    time: '10 phút trước',
+    title: 'Thủ tục VJU2026-0842 đang chờ thanh toán',
+    time: '2 tiếng trước',
     unread: true,
-    type: 'success',
-    icon: '✅',
-    target_url: '/student/request/REQ-20261030-001',
+    type: 'payment',
+    target_url: '/student/request/VJU-2026-0842',
   },
   {
     id: 2,
-    title: 'Phân công xử lý hồ sơ mới',
-    desc: 'Hồ sơ REQ-20261030-002 đã được phân công cho bạn xử lý thẩm định.',
-    time: '45 phút trước',
+    title: 'Thủ tục VJU2026-0842 đang chờ bổ sung',
+    time: '2 tiếng trước',
     unread: true,
-    type: 'info',
-    icon: '📋',
-    target_url: '/staff/request/REQ-20261030-002',
+    type: 'supplement',
+    target_url: '/student/request/VJU-2026-0842',
   },
   {
     id: 3,
-    title: 'Yêu cầu cần bổ sung minh chứng',
-    desc: 'Hồ sơ REQ-20261030-003 cần bổ sung giấy tiếp nhận từ đơn vị thực tập có đóng dấu.',
-    time: '2 giờ trước',
-    unread: true,
-    type: 'warning',
-    icon: '⚠️',
-    target_url: '/student/request/REQ-20261030-003',
+    title: 'Thủ tục VJU2026-0842 đang đã hoàn thành',
+    time: '2 tiếng trước',
+    unread: false,
+    type: 'completed',
+    target_url: '/student/request/VJU-2026-0842',
   },
   {
     id: 4,
-    title: 'Cập nhật danh mục thủ tục',
-    desc: 'Thủ tục "Phúc khảo điểm thi" đã được cấu hình biểu mẫu và kích hoạt trực tuyến.',
-    time: 'Hôm qua',
+    title: 'Thủ tục VJU2026-0842 đã được gửi và đang xử lý',
+    time: '2 tiếng trước',
     unread: false,
-    type: 'system',
-    icon: '📢',
-    target_url: '/student/procedures',
+    type: 'processing',
+    target_url: '/student/request/VJU-2026-0842',
+  },
+  {
+    id: 5,
+    title: 'Thủ tục VJU2026-0842 đã bị từ chối',
+    time: '2 tiếng trước',
+    unread: false,
+    type: 'rejected',
+    target_url: '/student/request/VJU-2026-0842',
   },
 ];
 
@@ -53,6 +53,7 @@ function Header({ userName = 'User' }) {
   const [showNotif, setShowNotif] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [notifications, setNotifications] = useState(initialNotifications);
+  const [notifFilter, setNotifFilter] = useState('all');
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
@@ -105,6 +106,61 @@ function Header({ userName = 'User' }) {
       setShowNotif(false);
       navigate(item.target_url);
     }
+  };
+
+  const displayedNotifications = notifFilter === 'unread'
+    ? notifications.filter(n => n.unread)
+    : notifications;
+
+  const renderNotifIcon = (n) => {
+    if (n.type === 'payment') {
+      return (
+        <div className="notif-figma-icon-box" style={{ background: '#FBF3DC', borderRadius: 9 }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9B7627" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="5" width="20" height="14" rx="2" />
+            <line x1="2" y1="10" x2="22" y2="10" />
+          </svg>
+        </div>
+      );
+    }
+    if (n.type === 'supplement') {
+      return (
+        <div className="notif-figma-icon-box" style={{ background: '#FAEDE2', borderRadius: 9 }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B17640" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+        </div>
+      );
+    }
+    if (n.type === 'completed') {
+      return (
+        <div className="notif-figma-icon-box" style={{ background: '#EAF3EC', borderRadius: 9 }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#588268" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        </div>
+      );
+    }
+    if (n.type === 'processing') {
+      return (
+        <div className="notif-figma-icon-box" style={{ background: '#EAF1F5', borderRadius: 9 }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5A7F97" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
+        </div>
+      );
+    }
+    if (n.type === 'rejected') {
+      return (
+        <div className="notif-figma-icon-box" style={{ background: '#FCE8E8', borderRadius: 9999 }}>
+          <span style={{ color: '#AA2327', fontSize: 15, fontWeight: 600, lineHeight: 1 }}>✕</span>
+        </div>
+      );
+    }
+    return null;
   };
 
   const handlePasswordSubmit = (e) => {
@@ -177,48 +233,46 @@ function Header({ userName = 'User' }) {
           {/* Notification Dropdown */}
           {showNotif && (
             <div className="dropdown-menu-wrapper notif-dropdown">
-              <div className="notif-header">
-                <div className="notif-title">
-                  <span>Thông báo</span>
-                  {unreadCount > 0 && <span className="notif-count-badge">{unreadCount} mới</span>}
-                </div>
-                {unreadCount > 0 && (
-                  <button type="button" className="notif-mark-read" onClick={handleMarkAllRead}>
-                    Đánh dấu đã đọc
-                  </button>
-                )}
+              <div className="notif-figma-header">
+                <span className="notif-figma-title">THÔNG BÁO</span>
               </div>
 
-              <div className="notif-list">
-                {notifications.map((n) => (
-                  <div
-                    key={n.id}
-                    className={`notif-item ${n.unread ? 'unread' : ''}`}
-                    onClick={() => handleNotificationClick(n.id)}
-                  >
-                    <div className={`notif-icon-box ${n.type}`}>
-                      {n.icon}
-                    </div>
-                    <div className="notif-content">
-                      <div className="notif-item-title">{n.title}</div>
-                      <div className="notif-item-desc">{n.desc}</div>
-                      <div className="notif-item-time">{n.time}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="notif-footer">
+              <div className="notif-figma-tabs">
                 <button
                   type="button"
-                  className="notif-footer-btn"
-                  onClick={() => {
-                    setShowNotif(false);
-                    showToast('Đang mở trang trung tâm thông báo');
-                  }}
+                  className={`notif-tab-btn ${notifFilter === 'all' ? 'active' : ''}`}
+                  onClick={() => setNotifFilter('all')}
                 >
-                  Xem tất cả thông báo →
+                  Tất cả {notifications.length}
                 </button>
+                <button
+                  type="button"
+                  className={`notif-tab-btn ${notifFilter === 'unread' ? 'active' : ''}`}
+                  onClick={() => setNotifFilter('unread')}
+                >
+                  Chưa đọc {unreadCount}
+                </button>
+              </div>
+
+              <div className="notif-figma-list">
+                {displayedNotifications.length === 0 ? (
+                  <div className="notif-empty-state">Không có thông báo nào</div>
+                ) : (
+                  displayedNotifications.map((n) => (
+                    <div
+                      key={n.id}
+                      className="notif-figma-item"
+                      onClick={() => handleNotificationClick(n.id)}
+                    >
+                      {renderNotifIcon(n)}
+                      <div className="notif-figma-item-content">
+                        <div className="notif-figma-item-title">{n.title}</div>
+                        <div className="notif-figma-item-time">{n.time}</div>
+                      </div>
+                      {n.unread && <div className="notif-figma-dot" />}
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           )}

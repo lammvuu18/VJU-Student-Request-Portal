@@ -9,13 +9,15 @@ function Pagination({ currentPage = 1, totalPages = 12, onPageChange }) {
     if (totalPages <= 7) {
       for (let i = 1; i <= totalPages; i++) pages.push(i);
     } else {
-      pages.push(1, 2, 3);
-      if (currentPage > 4) pages.push('...');
-      if (currentPage > 3 && currentPage < totalPages - 2) pages.push(currentPage);
-      if (currentPage < totalPages - 3) pages.push('...');
-      pages.push(totalPages);
+      if (currentPage <= 3) {
+        pages.push(1, 2, 3, '...', totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1, '...', totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages);
+      }
     }
-    return [...new Set(pages)];
+    return pages;
   };
 
   return (
