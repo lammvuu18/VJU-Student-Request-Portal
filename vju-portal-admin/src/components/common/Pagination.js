@@ -1,7 +1,9 @@
 import React from 'react';
 import './Pagination.css';
 
-function Pagination({ currentPage = 1, totalPages = 5, onPageChange }) {
+function Pagination({ currentPage = 1, totalPages = 12, onPageChange }) {
+  if (totalPages <= 1) return null;
+
   const getPageNumbers = () => {
     const pages = [];
     if (totalPages <= 7) {
@@ -18,20 +20,45 @@ function Pagination({ currentPage = 1, totalPages = 5, onPageChange }) {
 
   return (
     <div className="pagination">
-      <button className="pagination-btn pagination-arrow" disabled={currentPage === 1} onClick={() => onPageChange(currentPage - 1)}>
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 4l-4 4 4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+      <button
+        type="button"
+        className="pagination-btn pagination-arrow"
+        disabled={currentPage === 1}
+        onClick={() => onPageChange(currentPage - 1)}
+        aria-label="Trang trước"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12" />
+          <polyline points="12 19 5 12 12 5" />
+        </svg>
       </button>
+
       {getPageNumbers().map((page, i) => (
         page === '...' ? (
-          <span key={`d${i}`} className="pagination-dots">...</span>
+          <span key={`dots-${i}`} className="pagination-dots">...</span>
         ) : (
-          <button key={page} className={`pagination-btn ${page === currentPage ? 'active' : ''}`} onClick={() => onPageChange(page)}>
+          <button
+            key={`page-${page}`}
+            type="button"
+            className={`pagination-btn ${page === currentPage ? 'active' : ''}`}
+            onClick={() => onPageChange(page)}
+          >
             {page}
           </button>
         )
       ))}
-      <button className="pagination-btn pagination-arrow" disabled={currentPage === totalPages} onClick={() => onPageChange(currentPage + 1)}>
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+
+      <button
+        type="button"
+        className="pagination-btn pagination-arrow"
+        disabled={currentPage === totalPages}
+        onClick={() => onPageChange(currentPage + 1)}
+        aria-label="Trang sau"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12" />
+          <polyline points="12 5 19 12 12 19" />
+        </svg>
       </button>
     </div>
   );

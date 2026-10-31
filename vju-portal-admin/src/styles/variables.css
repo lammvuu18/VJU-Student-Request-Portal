@@ -1,8 +1,8 @@
 /* ===== VJU Portal Design Tokens ===== */
 :root {
   /* Brand */
-  --vju-red: #8B1D24;
-  --vju-red-hover: #73171D;
+  --vju-red: #AA2327;
+  --vju-red-hover: #931E22;
   --vju-red-light: #FDF2F2;
   --vju-red-border: #FECACA;
 
@@ -60,8 +60,8 @@
 
   /* Spacing */
   --sidebar-width: 220px;
-  --header-height: 64px;
-  --page-padding: 32px;
+  --header-height: 88px;
+  --page-padding: 36px;
   --content-padding: 24px;
 
   /* Typography */

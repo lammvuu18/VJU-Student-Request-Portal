@@ -1,66 +1,142 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import SegmentedTabs from '../common/SegmentedTabs';
-import { procedures, procedureCategories } from '../../data/mockData';
+import { procedures } from '../../data/mockData';
 import './StudentPages.css';
+
+const SECTIONS = [
+  {
+    key: 'hocvu',
+    title: 'Học vụ — Phòng Đào tạo',
+  },
+  {
+    key: 'ctsv',
+    title: 'CTSV — Phòng Công tác sinh viên',
+  },
+  {
+    key: 'taichinh',
+    title: 'Tài chính — Phòng Kế hoạch – Tài chính',
+  },
+];
 
 function ProcedureCatalog() {
   const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filtered = procedures.filter(p => {
+  // Count items per category
+  const hocVuCount = procedures.filter(p => p.category === 'hocvu').length;
+  const ctsvCount = procedures.filter(p => p.category === 'ctsv').length;
+  const taiChinhCount = procedures.filter(p => p.category === 'taichinh').length;
+  const totalCount = procedures.length;
+
+  const tabs = [
+    { key: 'all', label: `Tất cả (${totalCount})` },
+    { key: 'hocvu', label: `Học vụ (${hocVuCount})` },
+    { key: 'ctsv', label: `CTSV (${ctsvCount})` },
+    { key: 'taichinh', label: `Tài chính (${taiChinhCount})` },
+  ];
+
+  // Filter procedures by category & search term
+  const filteredProcedures = procedures.filter(p => {
     const matchCategory = activeCategory === 'all' || p.category === activeCategory;
-    const matchSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchSearch = !searchTerm.trim() || p.name.toLowerCase().includes(searchTerm.toLowerCase().trim());
     return matchCategory && matchSearch;
   });
 
-  // Group by department
-  const grouped = {};
-  filtered.forEach(p => {
-    if (!grouped[p.department]) grouped[p.department] = [];
-    grouped[p.department].push(p);
-  });
-
   return (
-    <div className="procedure-catalog">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Danh mục thủ tục</h1>
-          <p className="page-subtitle">Chọn thủ tục bạn muốn thực hiện</p>
-        </div>
-      </div>
-
+    <div className="catalog-container">
+      {/* Top Toolbar */}
       <div className="catalog-toolbar">
-        <SegmentedTabs tabs={procedureCategories} activeTab={activeCategory} onTabChange={setActiveCategory} />
-        <div className="search-input">
-          <span className="search-icon">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5.5" stroke="#9CA3AF" strokeWidth="1.5"/><path d="M11 11l3.5 3.5" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round"/></svg>
+        {/* Category Pills */}
+        <div className="catalog-pills">
+          {tabs.map(tab => {
+            const isActive = activeCategory === tab.key;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                className={`catalog-pill ${isActive ? 'active' : ''}`}
+                onClick={() => setActiveCategory(tab.key)}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Search input (width 260px) */}
+        <div className="catalog-search-wrap">
+          <span className="catalog-search-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#68717D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
           </span>
-          <input type="text" placeholder="Tìm kiếm thủ tục..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+          <input
+            type="text"
+            className="catalog-search-input"
+            placeholder="Tìm tên thủ tục, từ khóa..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
       </div>
 
-      {Object.entries(grouped).map(([dept, procs]) => (
-        <div key={dept} className="catalog-section">
-          <h2 className="catalog-section-title">{dept}</h2>
-          <div className="catalog-grid">
-            {procs.map(p => (
-              <div key={p.id} className="catalog-card" onClick={() => navigate(`/student/procedure/${p.id}`)}>
-                <div className="catalog-card-icon">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="#AA2327" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke="#AA2327" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+      {/* Sections List */}
+      <div className="catalog-sections">
+        {filteredProcedures.length === 0 ? (
+          <div className="catalog-empty-state">
+            <p>Không tìm thấy thủ tục nào phù hợp với từ khóa "{searchTerm}".</p>
+          </div>
+        ) : (
+          SECTIONS.map(section => {
+            const sectionProcs = filteredProcedures.filter(p => p.category === section.key);
+            if (sectionProcs.length === 0) return null;
+
+            return (
+              <div key={section.key} className="catalog-section">
+                <div className="catalog-section-head">
+                  <h2 className="catalog-section-title">{section.title}</h2>
+                  <div className="catalog-section-line" />
                 </div>
-                <h3 className="catalog-card-title">{p.name}</h3>
-                <p className="catalog-card-desc">{p.description}</p>
-                <div className="catalog-card-meta">
-                  <span>⏱ {p.time}</span>
-                  <span>💰 {p.fee}</span>
+
+                <div className="catalog-cards-grid">
+                  {sectionProcs.map(proc => {
+                    const isFree = proc.fee === 'Miễn phí';
+                    return (
+                      <div
+                        key={proc.id}
+                        className="procedure-card"
+                        onClick={() => navigate(`/student/procedure/${proc.id}`)}
+                      >
+                        <div className="procedure-card-title">{proc.name}</div>
+                        <div className="procedure-card-time">
+                          ◷ {proc.time}
+                        </div>
+                        <div className="procedure-card-bottom">
+                          <span className={`procedure-card-fee ${isFree ? 'fee-free' : 'fee-paid'}`}>
+                            {proc.fee}
+                          </span>
+                          <button
+                            type="button"
+                            className="procedure-card-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/student/request/new/${proc.id}`);
+                            }}
+                          >
+                            Nộp ngay
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-      ))}
+            );
+          })
+        )}
+      </div>
     </div>
   );
 }

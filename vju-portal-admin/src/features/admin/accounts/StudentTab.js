@@ -13,7 +13,7 @@ function StudentTab() {
   const [filterKhoa, setFilterKhoa] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(6);
+  const [pageSize] = useState(20);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -165,6 +165,7 @@ function StudentTab() {
         <table className="data-table">
           <thead>
             <tr>
+              <th style={{ width: '60px', textAlign: 'center' }}>STT</th>
               <th>Họ và tên</th>
               <th>MSSV</th>
               <th>Email</th>
@@ -177,16 +178,20 @@ function StudentTab() {
           <tbody>
             {paginatedStudents.length === 0 ? (
               <tr>
-                <td colSpan={7} style={{ textAlign: 'center', padding: 32, color: '#9CA3AF' }}>
+                <td colSpan={8} style={{ textAlign: 'center', padding: 32, color: '#9CA3AF' }}>
                   Không tìm thấy sinh viên nào
                 </td>
               </tr>
             ) : (
-              paginatedStudents.map((s) => {
+              paginatedStudents.map((s, index) => {
+                const stt = (currentPage - 1) * pageSize + index + 1;
                 const status = studentStatusMap[s.status] || { label: s.status, color: '#6B7280', bg: '#F3F4F6' };
                 const khoa = s.classGroup?.split('-')[1] ? `QH-${s.classGroup.split('-')[1]}` : 'QH-2022';
                 return (
                   <tr key={s.id}>
+                    <td style={{ textAlign: 'center', color: '#68717D', fontWeight: 600, fontSize: '13px' }}>
+                      {String(stt).padStart(2, '0')}
+                    </td>
                     <td className="col-name">{s.name}</td>
                     <td>{s.mssv}</td>
                     <td className="col-email">{s.email}</td>
