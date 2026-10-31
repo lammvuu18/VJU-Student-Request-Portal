@@ -1,38 +1,82 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import Button from '../common/Button';
+import { useNavigate, useLocation } from 'react-router-dom';
 import './StudentPages.css';
 
 function RequestSuccess() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const state = location.state || {};
+
+  const orderCode = state.orderCode || 'VJU-2026-0842';
+  const procedureName = state.procedure?.name || 'Cấp bảng điểm';
+  const deptName = state.procedure?.department_name || 'Phòng Đào tạo';
+  const submissionDate = state.submissionDate || '21/10/2026';
 
   return (
-    <div className="success-page">
-      <div className="success-icon">
-        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-          <path d="M8 16l6 6 10-10" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
+    <div className="reqsuccess-container">
+      {/* Success Checkmark Icon */}
+      <div className="reqsuccess-icon-badge">
+        <span>✓</span>
       </div>
-      <h2 className="success-title">Nộp hồ sơ thành công!</h2>
-      <p className="success-desc">Yêu cầu của bạn đã được ghi nhận trên Cổng dịch vụ công VJU.</p>
 
-      <div className="success-summary card" style={{ maxWidth: 480, margin: '20px auto 24px', textAlign: 'left' }}>
-        <div className="card-body">
-          <table className="info-table">
-            <tbody>
-              <tr><th>Mã hồ sơ</th><td><strong style={{ color: '#AA2327' }}>REQ-20261030-010</strong></td></tr>
-              <tr><th>Thủ tục</th><td>Cấp bảng điểm chính quy</td></tr>
-              <tr><th>Ngày nộp</th><td>30/10/2026</td></tr>
-              <tr><th>Trạng thái</th><td style={{ color: '#2563EB', fontWeight: 600 }}>Đã gửi — Đang chờ tiếp nhận</td></tr>
-              <tr><th>Thời hạn cam kết (SLA)</th><td>04/11/2026 (3 ngày làm việc)</td></tr>
-            </tbody>
-          </table>
+      {/* Header Titles */}
+      <div className="reqsuccess-header-group">
+        <h1 className="reqsuccess-title">Thanh toán thành công</h1>
+        <p className="reqsuccess-subtitle">
+          Đơn của bạn đã được gửi và đang được {deptName} xử lý.
+        </p>
+      </div>
+
+      {/* Spacer 24px */}
+      <div className="reqsuccess-spacer" />
+
+      {/* Details Card */}
+      <div className="reqsuccess-card">
+        <div className="reqsuccess-card-head">
+          <h2 className="reqsuccess-card-title">Thủ tục vừa được gửi</h2>
         </div>
-      </div>
+        <div className="reqsuccess-divider" />
 
-      <div className="action-buttons" style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
-        <Button variant="secondary" onClick={() => navigate('/student/dashboard')}>Về danh sách yêu cầu</Button>
-        <Button variant="primary" onClick={() => navigate('/student/request/REQ-20261030-001')}>Xem tiến độ hồ sơ</Button>
+        {/* Row 1: Mã yêu cầu */}
+        <div className="reqsuccess-row">
+          <div className="reqsuccess-label">Mã yêu cầu</div>
+          <div className="reqsuccess-val">{orderCode}</div>
+        </div>
+        <div className="reqsuccess-divider" />
+
+        {/* Row 2: Tên thủ tục */}
+        <div className="reqsuccess-row">
+          <div className="reqsuccess-label">Tên thủ tục</div>
+          <div className="reqsuccess-val">{procedureName}</div>
+        </div>
+        <div className="reqsuccess-divider" />
+
+        {/* Row 3: Ngày gửi */}
+        <div className="reqsuccess-row">
+          <div className="reqsuccess-label">Ngày gửi</div>
+          <div className="reqsuccess-val">{submissionDate}</div>
+        </div>
+        <div className="reqsuccess-divider" />
+
+        {/* Row 4: Trạng thái */}
+        <div className="reqsuccess-row">
+          <div className="reqsuccess-label" style={{ fontSize: 14, color: '#68717D' }}>Trạng thái</div>
+          <div className="reqsuccess-status-badge">
+            Đang xử lý
+          </div>
+        </div>
+        <div className="reqsuccess-divider" />
+
+        {/* Action Button: Xem chi tiết → */}
+        <div className="reqsuccess-footer">
+          <button
+            type="button"
+            className="reqsuccess-btn-detail"
+            onClick={() => navigate('/student/dashboard')}
+          >
+            Xem chi tiết →
+          </button>
+        </div>
       </div>
     </div>
   );

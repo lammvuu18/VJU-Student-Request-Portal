@@ -1,23 +1,70 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Pagination from '../common/Pagination';
+import CustomDropdown from '../common/CustomDropdown';
+import DateRangePicker from '../common/DateRangePicker';
 import { studentOverviewRequests } from '../../data/mockData';
 import './StudentPages.css';
 
+const departmentOptions = [
+  { value: 'all', label: 'Tất cả' },
+  { value: 'Công tác sinh viên', label: 'Công tác sinh viên' },
+  { value: 'Đào tạo', label: 'Đào tạo' },
+  { value: 'Kế hoạch tài chính', label: 'Kế hoạch tài chính' },
+];
+
+const statusOptions = [
+  { value: 'all', label: 'Tất cả' },
+  { value: 'Đang xử lý', label: 'Đang xử lý' },
+  { value: 'Cần bổ sung', label: 'Cần bổ sung' },
+  { value: 'Chờ thanh toán', label: 'Chờ thanh toán' },
+  { value: 'Hoàn thành', label: 'Hoàn thành' },
+  { value: 'Đã hủy', label: 'Đã hủy' },
+];
+
 function StudentDashboard() {
   const navigate = useNavigate();
-  const [filterProcedure, setFilterProcedure] = useState('all');
+  const [filterDepartment, setFilterDepartment] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [filterDate, setFilterDate] = useState('all');
+  const [dateRange, setDateRange] = useState({
+    startDate: '01/10/2026',
+    endDate: '31/10/2026',
+  });
   const [search, setSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 20;
 
+  const parseReqDate = (dStr) => {
+    if (!dStr) return null;
+    const parts = dStr.split('/');
+    if (parts.length !== 3) return null;
+    return new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+  };
+
   const requests = studentOverviewRequests || [];
 
   const filtered = requests.filter((r) => {
-    if (filterProcedure !== 'all' && r.procedure !== filterProcedure) return false;
+    // 1. Department / Unit Filter
+    if (filterDepartment !== 'all') {
+      const deptMatch = r.department && r.department.toLowerCase().includes(filterDepartment.toLowerCase());
+      const procMatch = r.procedure && r.procedure.toLowerCase().includes(filterDepartment.toLowerCase());
+      if (!deptMatch && !procMatch) return false;
+    }
+
+    // 2. Status Filter
     if (filterStatus !== 'all' && r.status !== filterStatus) return false;
+
+    // 3. Date Range Filter
+    if (dateRange && dateRange.startDate && dateRange.endDate) {
+      const reqD = parseReqDate(r.date);
+      const startD = parseReqDate(dateRange.startDate);
+      const endD = parseReqDate(dateRange.endDate);
+      if (reqD && startD && endD) {
+        if (reqD < startD || reqD > endD) return false;
+      }
+    }
+
+    // 4. Search Filter
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       const codeMatch = r.id.toLowerCase().includes(q) || (r.request_code && r.request_code.toLowerCase().includes(q));
@@ -26,6 +73,7 @@ function StudentDashboard() {
       const statusMatch = r.status.toLowerCase().includes(q);
       if (!codeMatch && !procMatch && !dateMatch && !statusMatch) return false;
     }
+
     return true;
   });
 
@@ -119,63 +167,42 @@ function StudentDashboard() {
       <div className="overview-main-card">
         <h2 className="overview-main-card-title">Danh mục của tôi</h2>
 
-        {/* Filter Bar */}
+        {/* Filter Bar with Figma Dropdowns & DateRangePicker */}
         <div className="overview-filter-bar">
-          <div className="overview-select-wrapper">
-            <select
-              className="overview-select"
-              value={filterProcedure}
-              onChange={(e) => {
-                setFilterProcedure(e.target.value);
-                setCurrentPage(1);
-              }}
-            >
-              <option value="all">Lọc theo thủ tục</option>
-              <option value="Cấp bảng điểm">Cấp bảng điểm</option>
-              <option value="Xác nhận sinh viên">Xác nhận sinh viên</option>
-              <option value="Cấp lại thẻ sinh viên">Cấp lại thẻ sinh viên</option>
-              <option value="Xác nhận học phí">Xác nhận học phí</option>
-              <option value="Phúc khảo bài thi">Phúc khảo bài thi</option>
-              <option value="Đổi mã học phần">Đổi mã học phần</option>
-              <option value="Cấp giấy xác nhận">Cấp giấy xác nhận</option>
-              <option value="Thay đổi thông tin">Thay đổi thông tin</option>
-              <option value="Rút hồ sơ">Rút hồ sơ</option>
-            </select>
-          </div>
+          <CustomDropdown
+            value={filterDepartment}
+            options={departmentOptions}
+            placeholder="Lọc theo đơn vị"
+            width={180}
+            onChange={(val) => {
+              setFilterDepartment(val);
+              setCurrentPage(1);
+            }}
+          />
 
-          <div className="overview-select-wrapper">
-            <select
-              className="overview-select"
-              value={filterStatus}
-              onChange={(e) => {
-                setFilterStatus(e.target.value);
-                setCurrentPage(1);
-              }}
-            >
-              <option value="all">Lọc theo trạng thái</option>
-              <option value="Chờ thanh toán">Chờ thanh toán</option>
-              <option value="Đang xử lý">Đang xử lý</option>
-              <option value="Cần bổ sung">Cần bổ sung</option>
-              <option value="Hoàn thành">Hoàn thành</option>
-              <option value="Đã hủy">Đã hủy</option>
-            </select>
-          </div>
+          <CustomDropdown
+            value={filterStatus}
+            options={statusOptions}
+            placeholder="Lọc theo trạng thái"
+            width={180}
+            onChange={(val) => {
+              setFilterStatus(val);
+              setCurrentPage(1);
+            }}
+          />
 
-          <div className="overview-select-wrapper date-filter-wrapper">
-            <select
-              className="overview-select"
-              value={filterDate}
-              onChange={(e) => {
-                setFilterDate(e.target.value);
-                setCurrentPage(1);
-              }}
-            >
-              <option value="all">Lọc theo ngày</option>
-              <option value="today">Hôm nay</option>
-              <option value="week">7 ngày qua</option>
-              <option value="month">30 ngày qua</option>
-            </select>
-          </div>
+          <DateRangePicker
+            startDate={dateRange?.startDate}
+            endDate={dateRange?.endDate}
+            onChange={(newRange) => {
+              setDateRange(newRange);
+              setCurrentPage(1);
+            }}
+            onClear={() => {
+              setDateRange(null);
+              setCurrentPage(1);
+            }}
+          />
 
           <div className="overview-search-box">
             <svg className="overview-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#68717D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -195,7 +222,7 @@ function StudentDashboard() {
           </div>
         </div>
 
-        {/* Table */}
+        {/* Table Container & Layout */}
         <div className="overview-table-container">
           <table className="overview-table">
             <thead>
@@ -212,7 +239,7 @@ function StudentDashboard() {
               {paginated.length === 0 ? (
                 <tr>
                   <td colSpan={6} style={{ textAlign: 'center', padding: '36px', color: '#68717D' }}>
-                    Không có yêu cầu nào phù hợp
+                    Không có yêu cầu nào phù hợp với bộ lọc
                   </td>
                 </tr>
               ) : (
