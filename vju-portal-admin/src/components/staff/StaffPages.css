@@ -754,3 +754,30 @@ textarea.form-input {
 .staff-btn-action-primary:hover {
   background: #931E22;
 }
+
+.staff-btn-action--disabled {
+  background: #F0F0F0 !important;
+  color: #BEC2C8 !important;
+  outline: none !important;
+  border: none !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+}
+
+.staff-btn-action--disabled:hover {
+  background: #F0F0F0 !important;
+  color: #BEC2C8 !important;
+  outline: none !important;
+}
+
+/* ===== Staff Review Form (Thẩm định đơn phúc khảo) ===== */
+.staff-review-score-input:focus {
+  border-color: #AA2327 !important;
+  box-shadow: 0 0 0 2px rgba(170, 35, 39, 0.1) !important;
+}
+
+.staff-review-textarea:focus {
+  border-color: #AA2327 !important;
+  box-shadow: 0 0 0 2px rgba(170, 35, 39, 0.1) !important;
+}
+

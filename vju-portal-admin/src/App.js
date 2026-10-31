@@ -70,7 +70,7 @@ const staffSidebar = [
 ];
 
 const principalSidebar = [
-  { label: 'Quyết định', path: '/principal/decisions' },
+  { label: 'Danh sách quyết định', path: '/principal/decisions' },
 ];
 
 function App() {
@@ -124,15 +124,26 @@ function App() {
         <Route path="/staff" element={<AppLayout userName={users.staff.name} sidebarItems={staffSidebar} />}>
           <Route index element={<StaffOverview />} />
           <Route path="requests" element={<StaffRequestList />} />
+          <Route path="request/transfer" element={<StaffRequestDetail />} />
+          <Route path="request/transferred" element={<StaffRequestDetail defaultStatus="Đã chuyển PB" defaultToast="Đã chuyển yêu cầu sang Phòng KHTC" />} />
+          <Route path="request/review" element={<StaffReviewForm />} />
+          <Route path="request/appeal-review" element={<StaffReviewForm />} />
+          <Route path="review" element={<StaffReviewForm />} />
+          <Route path="request/issue" element={<StaffIssueResult />} />
+          <Route path="request/result" element={<StaffIssueResult />} />
+          <Route path="issue" element={<StaffIssueResult />} />
           <Route path="request/:id" element={<StaffRequestDetail />} />
           <Route path="request/:id/review" element={<StaffReviewForm />} />
+          <Route path="request/:id/appeal-review" element={<StaffReviewForm />} />
           <Route path="request/:id/issue" element={<StaffIssueResult />} />
         </Route>
 
         {/* Principal Routes */}
         <Route path="/principal" element={<AppLayout userName={users.principal.name} sidebarItems={principalSidebar} />}>
-          <Route index element={<Navigate to="/principal/decisions" replace />} />
+          <Route index element={<PrincipalDecisionList />} />
           <Route path="decisions" element={<PrincipalDecisionList />} />
+          <Route path="decision" element={<PrincipalDecisionDetail />} />
+          <Route path="decision/detail" element={<PrincipalDecisionDetail />} />
           <Route path="decision/:id" element={<PrincipalDecisionDetail />} />
         </Route>
 

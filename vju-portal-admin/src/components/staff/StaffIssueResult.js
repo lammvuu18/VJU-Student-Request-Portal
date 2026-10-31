@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import Button from '../common/Button';
 import { allRequests } from '../../data/mockData';
 import { staffApi } from '../../services/api';
 import './StaffPages.css';
@@ -8,182 +7,1362 @@ import './StaffPages.css';
 function StaffIssueResult() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const request = allRequests.find(r => r.id === id || String(r.request_id) === String(id) || r.request_code === id) || allRequests[1];
 
-  const [formData, setFormData] = useState({
-    deliveryMethod: 'both',
-    location: `Bàn tiếp nhận số 1 — ${request.department_name || request.department || 'Phòng Đào tạo'} (P.301 Nhà A)`,
-    pickupStartDate: '2026-11-02',
-    pickupExpiryDate: '2026-11-16',
-    notes: 'Sinh viên vui lòng mang theo Thẻ sinh viên hoặc CCCD gốc để đối chiếu khi nhận bản in.',
-  });
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  // Find request in mock data or fallback to Figma default VJU-2026-0840
+  const foundReq = (allRequests || []).find(
+    (r) => r.id === id || r.request_code === id || String(r.request_id) === String(id)
+  );
 
-  const handleChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const requestCode = id || foundReq?.request_code || foundReq?.id || 'VJU-2026-0840';
+  const procedure = foundReq?.procedure || foundReq?.type_name || 'Cấp bảng điểm';
+  const student = foundReq?.student || 'Nguyễn Minh Anh';
+  const mssv = foundReq?.mssv || '23110150';
+  const quantity = foundReq?.quantity || foundReq?.form_data?.quantity || '01';
+  const language = foundReq?.language || foundReq?.form_data?.language || 'Tiếng Việt';
+
+  // State
+  const [zoom, setZoom] = useState(100);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages] = useState(2);
+  const [location, setLocation] = useState('Văn phòng Một cửa (P.102 Nhà A)');
+  const [pickupDate, setPickupDate] = useState('28/10/2026');
+  const [timeFrom, setTimeFrom] = useState('08:00');
+  const [timeTo, setTimeTo] = useState('11:30');
+  const [contactPerson, setContactPerson] = useState('Lê Hoàng Nam');
+  const [toastMsg, setToastMsg] = useState('');
+  const [isSuccess, setIsSuccess] = useState(false);
+
+  // Dropdown open states
+  const [openLocationDropdown, setOpenLocationDropdown] = useState(false);
+  const [openDateDropdown, setOpenDateDropdown] = useState(false);
+
+  const locationOptions = [
+    'Văn phòng Một cửa (P.102 Nhà A)',
+    'Bàn tiếp nhận số 1 — Phòng Đào tạo (P.301 Nhà A)',
+    'Phòng Công tác Sinh viên (P.205 Nhà B)',
+    'Trung tâm Thông tin Thư viện VJU',
+  ];
+
+  const dateOptions = [
+    '28/10/2026',
+    '29/10/2026',
+    '30/10/2026',
+    '31/10/2026',
+    '02/11/2026',
+  ];
+
+  const handleZoomIn = () => {
+    if (zoom < 150) setZoom(prev => prev + 10);
   };
 
-  const handleSubmit = async () => {
-    setSubmitting(true);
+  const handleZoomOut = () => {
+    if (zoom > 70) setZoom(prev => prev - 10);
+  };
+
+  const showToast = (msg) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(''), 4500);
+  };
+
+  const handleDownloadPDF = () => {
+    showToast(`Đang tải tệp PDF kết quả cho hồ sơ ${requestCode}...`);
+  };
+
+  const handleConfirmIssue = async () => {
     try {
-      await staffApi.assignPickup(request.request_id || request.id, {
-        pickup_location: formData.location,
-        pickup_start_date: formData.pickupStartDate,
-        pickup_expiry_date: formData.pickupExpiryDate,
-        pickup_note: formData.notes,
-        electronic_result_url: `/results/${request.request_code || request.id}_signed.pdf`,
-      });
-      setSubmitted(true);
-    } catch (err) {
-      alert('Lỗi tạo lịch hẹn kết quả: ' + err.message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
+      if (staffApi && staffApi.assignPickup) {
+        await staffApi.assignPickup(requestCode, {
+          location,
+          pickup_date: pickupDate,
+          time_from: timeFrom,
+          time_to: timeTo,
+          contact_person: contactPerson,
+        }).catch(() => {});
+      }
+    } catch {}
 
-  if (submitted) {
-    return (
-      <div className="staff-issue-result">
-        <div className="success-page" style={{ maxWidth: 560, margin: '40px auto', textAlign: 'center' }}>
-          <div className="success-icon" style={{ margin: '0 auto 16px', background: '#ECFDF5', width: 64, height: 64, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width="36" height="36" viewBox="0 0 32 32" fill="none">
-              <path d="M8 16l6 6 10-10" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
-          <h2 style={{ fontSize: 22, color: '#111827', marginBottom: 8 }}>Phát hành kết quả thành công</h2>
-          <p style={{ color: '#4B5563', fontSize: 14, marginBottom: 20 }}>
-            Hệ thống đã tự động gửi email và thông báo cổng cho sinh viên gồm: tệp điện tử PDF ký số và thông tin lịch hẹn nhận bản in tại trường.
-          </p>
-          <table className="info-table" style={{ maxWidth: 440, margin: '0 auto 24px' }}>
-            <tbody>
-              <tr><th>Mã hồ sơ</th><td><strong>{request.request_code || request.id}</strong></td></tr>
-              <tr><th>Sinh viên</th><td>{request.student}</td></tr>
-              <tr><th>Địa điểm nhận</th><td>{formData.location}</td></tr>
-              <tr><th>Hạn nhận</th><td>{formData.pickupStartDate} đến {formData.pickupExpiryDate}</td></tr>
-            </tbody>
-          </table>
-          <div className="action-buttons" style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
-            <Button variant="secondary" onClick={() => navigate('/staff/requests')}>Về danh sách hồ sơ</Button>
-            <Button variant="primary" onClick={() => navigate(`/staff/request/${request.id}`)}>Xem chi tiết hồ sơ</Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+    setIsSuccess(true);
+    showToast(`Đã cấp kết quả thành công cho sinh viên ${student}`);
+  };
 
   return (
-    <div className="staff-issue-result">
-      <a className="back-link" onClick={() => navigate(-1)} style={{ cursor: 'pointer' }}>
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 4L6 8l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-        Quay lại chi tiết
-      </a>
+    <div className="staff-detail-container" style={{ position: 'relative' }}>
+      {/* Toast Notification (Figma spec) */}
+      {toastMsg && (
+        <div className="depthead-toast-card">
+          <div className="depthead-toast-icon-circle">
+            <span className="depthead-toast-icon-check">✓</span>
+          </div>
+          <span className="depthead-toast-text">{toastMsg}</span>
+        </div>
+      )}
 
-      <h1 className="page-title">Cấp kết quả & Thiết lập lịch hẹn</h1>
-      <p className="page-subtitle">Hồ sơ: <strong>{request.request_code || request.id}</strong> — {request.student}</p>
+      {/* Top Header Row */}
+      <div
+        style={{
+          alignSelf: 'stretch',
+          overflow: 'hidden',
+          justifyContent: 'flex-start',
+          alignItems: 'center',
+          gap: 8,
+          display: 'inline-flex',
+        }}
+      >
+        <div
+          style={{
+            flex: '1 1 0',
+            color: '#1F2937',
+            fontSize: 28,
+            fontFamily: 'Inter',
+            fontWeight: '600',
+            wordWrap: 'break-word',
+          }}
+        >
+          Cấp kết quả cho sinh viên
+        </div>
+        <button
+          type="button"
+          onClick={() => navigate(`/staff/request/${requestCode}`)}
+          style={{
+            paddingLeft: 14,
+            paddingRight: 14,
+            paddingTop: 8,
+            paddingBottom: 8,
+            background: 'white',
+            overflow: 'hidden',
+            borderRadius: 8,
+            border: '1px #E2E5EA solid',
+            justifyContent: 'flex-start',
+            alignItems: 'flex-start',
+            display: 'flex',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = '#D1D5DB';
+            e.currentTarget.style.background = '#F9FAFB';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = '#E2E5EA';
+            e.currentTarget.style.background = 'white';
+          }}
+        >
+          <div
+            style={{
+              color: '#6B7280',
+              fontSize: 13,
+              fontFamily: 'Inter',
+              fontWeight: '500',
+              wordWrap: 'break-word',
+            }}
+          >
+            ← Quay lại
+          </div>
+        </button>
+      </div>
 
-      <div className="two-col" style={{ marginTop: 20 }}>
-        <div>
-          <div className="card">
-            <div className="card-body">
-              <h3 className="section-title">Văn bản kết quả điện tử</h3>
-              <div className="pdf-preview" style={{ background: '#F9FAFB', border: '1px dashed #D1D5DB', borderRadius: 8, padding: 24, textAlign: 'center' }}>
-                <svg width="48" height="48" viewBox="0 0 48 48" fill="none"><rect x="8" y="4" width="32" height="40" rx="3" stroke="#2563EB" strokeWidth="2"/><path d="M16 16h16M16 22h16M16 28h10" stroke="#2563EB" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                <p style={{ marginTop: 12, fontWeight: 600 }}>Tệp kết quả đã ký số sẵn sàng</p>
-                <span style={{ fontSize: 13, color: '#6B7280' }}>{request.request_code || request.id}_signed.pdf</span>
-              </div>
+      {/* Main 2-Column Split: gap 20px */}
+      <div
+        style={{
+          alignSelf: 'stretch',
+          overflow: 'visible',
+          justifyContent: 'flex-start',
+          alignItems: 'flex-start',
+          gap: 20,
+          display: 'inline-flex',
+        }}
+      >
+        {/* Left Column: PDF Preview (width: 660px) */}
+        <div
+          style={{
+            width: 660,
+            overflow: 'hidden',
+            flexDirection: 'column',
+            justifyContent: 'flex-start',
+            alignItems: 'center',
+            gap: 12,
+            display: 'inline-flex',
+            flexShrink: 0,
+          }}
+        >
+          {/* PDF Toolbar */}
+          <div
+            style={{
+              alignSelf: 'stretch',
+              paddingLeft: 12,
+              paddingRight: 12,
+              paddingTop: 6,
+              paddingBottom: 6,
+              background: 'white',
+              overflow: 'hidden',
+              borderRadius: 8,
+              border: '1px #E2E5EA solid',
+              justifyContent: 'flex-start',
+              alignItems: 'center',
+              gap: 12,
+              display: 'inline-flex',
+              boxSizing: 'border-box',
+            }}
+          >
+            <button
+              type="button"
+              onClick={handleZoomOut}
+              style={{
+                border: 'none',
+                background: 'transparent',
+                color: '#6B7280',
+                fontSize: 16,
+                fontFamily: 'Inter',
+                fontWeight: '500',
+                cursor: 'pointer',
+                padding: '2px 6px',
+                borderRadius: 4,
+              }}
+              title="Thu nhỏ"
+            >
+              −
+            </button>
+            <div
+              style={{
+                color: '#1F2937',
+                fontSize: 12,
+                fontFamily: 'Inter',
+                fontWeight: '400',
+                wordWrap: 'break-word',
+                minWidth: 36,
+                textAlign: 'center',
+              }}
+            >
+              {zoom}%
+            </div>
+            <button
+              type="button"
+              onClick={handleZoomIn}
+              style={{
+                border: 'none',
+                background: 'transparent',
+                color: '#6B7280',
+                fontSize: 16,
+                fontFamily: 'Inter',
+                fontWeight: '500',
+                cursor: 'pointer',
+                padding: '2px 6px',
+                borderRadius: 4,
+              }}
+              title="Phóng to"
+            >
+              +
+            </button>
+            <div style={{ flex: '1 1 0' }} />
+            <div
+              style={{
+                color: '#6B7280',
+                fontSize: 12,
+                fontFamily: 'Inter',
+                fontWeight: '400',
+                wordWrap: 'break-word',
+              }}
+            >
+              Trang {currentPage} / {totalPages}
             </div>
           </div>
+
+          {/* PDF Document Viewport */}
+          <div
+            style={{
+              alignSelf: 'stretch',
+              padding: 16,
+              position: 'relative',
+              background: 'white',
+              overflow: 'hidden',
+              borderRadius: 8,
+              border: '1px #E2E5EA solid',
+              flexDirection: 'column',
+              justifyContent: 'flex-start',
+              alignItems: 'center',
+              display: 'flex',
+              boxSizing: 'border-box',
+            }}
+          >
+            {/* A4 Document sheet (560 x 792) */}
+            <div
+              style={{
+                width: 560,
+                height: 792,
+                paddingLeft: 36,
+                paddingRight: 36,
+                paddingTop: 28,
+                paddingBottom: 28,
+                background: 'white',
+                overflow: 'hidden',
+                border: '0.50px #E2E5EA solid',
+                flexDirection: 'column',
+                justifyContent: 'flex-start',
+                alignItems: 'center',
+                gap: 8,
+                display: 'flex',
+                boxSizing: 'border-box',
+                transform: `scale(${zoom / 100})`,
+                transformOrigin: 'top center',
+                transition: 'transform 0.15s ease',
+              }}
+            >
+              <div
+                style={{
+                  textAlign: 'center',
+                  color: '#1F2937',
+                  fontSize: 11,
+                  fontFamily: 'Inter',
+                  fontWeight: '600',
+                  lineHeight: '16px',
+                  wordWrap: 'break-word',
+                }}
+              >
+                ĐẠI HỌC QUỐC GIA HÀ NỘI<br />TRƯỜNG ĐẠI HỌC VIỆT NHẬT
+              </div>
+              <div style={{ width: 160, height: 1, background: '#1F2937' }} />
+              <div
+                style={{
+                  textAlign: 'center',
+                  color: '#1F2937',
+                  fontSize: 16,
+                  fontFamily: 'Inter',
+                  fontWeight: '600',
+                  wordWrap: 'break-word',
+                  marginTop: 4,
+                }}
+              >
+                BẢNG ĐIỂM
+              </div>
+              <div
+                style={{
+                  textAlign: 'center',
+                  color: '#6B7280',
+                  fontSize: 10,
+                  fontFamily: 'Inter',
+                  fontWeight: '400',
+                  wordWrap: 'break-word',
+                }}
+              >
+                (Academic Transcript)
+              </div>
+              <div style={{ width: 10, height: 6 }} />
+              <div
+                style={{
+                  alignSelf: 'stretch',
+                  color: '#1F2937',
+                  fontSize: 10,
+                  fontFamily: 'Inter',
+                  fontWeight: '400',
+                  wordWrap: 'break-word',
+                }}
+              >
+                Họ và tên: {student}
+              </div>
+              <div
+                style={{
+                  alignSelf: 'stretch',
+                  color: '#1F2937',
+                  fontSize: 10,
+                  fontFamily: 'Inter',
+                  fontWeight: '400',
+                  wordWrap: 'break-word',
+                }}
+              >
+                MSSV: {mssv}
+              </div>
+              <div
+                style={{
+                  alignSelf: 'stretch',
+                  color: '#1F2937',
+                  fontSize: 10,
+                  fontFamily: 'Inter',
+                  fontWeight: '400',
+                  wordWrap: 'break-word',
+                }}
+              >
+                Ngành: Khoa học máy tính
+              </div>
+              <div style={{ width: 10, height: 4 }} />
+              <div
+                style={{
+                  textAlign: 'center',
+                  color: '#6B7280',
+                  fontSize: 10,
+                  fontFamily: 'Inter',
+                  fontWeight: '400',
+                  wordWrap: 'break-word',
+                }}
+              >
+                · · ·
+              </div>
+              <div style={{ width: 10, flex: '1 1 0' }} />
+              
+              {/* Digital signature stamp area */}
+              <div
+                style={{
+                  alignSelf: 'stretch',
+                  overflow: 'hidden',
+                  justifyContent: 'flex-start',
+                  alignItems: 'flex-start',
+                  display: 'inline-flex',
+                }}
+              >
+                <div style={{ flex: '1 1 0' }} />
+                <div
+                  style={{
+                    overflow: 'hidden',
+                    flexDirection: 'column',
+                    justifyContent: 'flex-start',
+                    alignItems: 'center',
+                    gap: 3,
+                    display: 'inline-flex',
+                  }}
+                >
+                  <div
+                    style={{
+                      color: '#6B7280',
+                      fontSize: 7,
+                      fontFamily: 'Inter',
+                      fontWeight: '400',
+                      wordWrap: 'break-word',
+                    }}
+                  >
+                    Ký số 26/10/2026
+                  </div>
+                  <div
+                    style={{
+                      width: 44,
+                      height: 44,
+                      background: '#F0F0F0',
+                      borderRadius: 3,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: '1px dashed #D1D5DB',
+                    }}
+                    title="Dấu ký số xác thực điện tử VJU"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="#AA2327" strokeWidth="1.5" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Scrollbar Mock */}
+            <div
+              style={{
+                width: 6,
+                height: 794,
+                left: 646,
+                top: 16,
+                position: 'absolute',
+                background: '#F0F0F0',
+                borderRadius: 3,
+              }}
+            />
+            <div
+              style={{
+                width: 6,
+                height: 200,
+                left: 646,
+                top: 16,
+                position: 'absolute',
+                background: '#BEC2C8',
+                borderRadius: 3,
+              }}
+            />
+          </div>
+
+          {/* Tải PDF Button */}
+          <button
+            type="button"
+            onClick={handleDownloadPDF}
+            style={{
+              paddingLeft: 20,
+              paddingRight: 20,
+              paddingTop: 10,
+              paddingBottom: 10,
+              background: '#AA2327',
+              overflow: 'hidden',
+              borderRadius: 8,
+              border: 'none',
+              justifyContent: 'flex-start',
+              alignItems: 'flex-start',
+              display: 'inline-flex',
+              cursor: 'pointer',
+              transition: 'background 0.15s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#931E22';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = '#AA2327';
+            }}
+          >
+            <div
+              style={{
+                color: 'white',
+                fontSize: 13,
+                fontFamily: 'Inter',
+                fontWeight: '600',
+                wordWrap: 'break-word',
+              }}
+            >
+              Tải PDF ↓
+            </div>
+          </button>
         </div>
 
-        <div>
-          <div className="card">
-            <div className="card-body">
-              <h3 className="section-title">Thông tin giao trả kết quả cho sinh viên</h3>
+        {/* Right Column: Info & Pickup Configuration (flex: 1) */}
+        <div
+          style={{
+            flex: '1 1 0',
+            overflow: 'visible',
+            flexDirection: 'column',
+            justifyContent: 'flex-start',
+            alignItems: 'flex-start',
+            gap: 16,
+            display: 'inline-flex',
+          }}
+        >
+          {/* Card 1: Thông tin kết quả */}
+          <div
+            style={{
+              alignSelf: 'stretch',
+              paddingTop: 16,
+              paddingBottom: 12,
+              paddingLeft: 20,
+              paddingRight: 20,
+              background: 'white',
+              overflow: 'hidden',
+              borderRadius: 12,
+              border: '1px #E2E5EA solid',
+              flexDirection: 'column',
+              justifyContent: 'flex-start',
+              alignItems: 'flex-start',
+              display: 'flex',
+              boxSizing: 'border-box',
+            }}
+          >
+            <div
+              style={{
+                alignSelf: 'stretch',
+                color: '#1F2937',
+                fontSize: 15,
+                fontFamily: 'Inter',
+                fontWeight: '600',
+                wordWrap: 'break-word',
+              }}
+            >
+              Thông tin kết quả
+            </div>
 
-              <div className="form-group">
-                <label className="form-label" style={{ fontWeight: 600, display: 'block', marginBottom: 8 }}>
-                  Hình thức trả kết quả
-                </label>
-                <div className="radio-group" style={{ display: 'flex', gap: 12 }}>
-                  <label className={`radio-card ${formData.deliveryMethod === 'both' ? 'radio-card--active' : ''}`} style={{ flex: 1, padding: 10, border: '1px solid #E5E7EB', borderRadius: 8, cursor: 'pointer', display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <input type="radio" name="delivery" value="both" checked={formData.deliveryMethod === 'both'} onChange={() => handleChange('deliveryMethod', 'both')} />
-                    <div>
-                      <strong style={{ fontSize: 13, display: 'block' }}>Điện tử + Bản cứng</strong>
-                      <span style={{ fontSize: 11, color: '#6B7280' }}>Tải PDF và nhận trực tiếp</span>
-                    </div>
-                  </label>
-                  <label className={`radio-card ${formData.deliveryMethod === 'pickup' ? 'radio-card--active' : ''}`} style={{ flex: 1, padding: 10, border: '1px solid #E5E7EB', borderRadius: 8, cursor: 'pointer', display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <input type="radio" name="delivery" value="pickup" checked={formData.deliveryMethod === 'pickup'} onChange={() => handleChange('deliveryMethod', 'pickup')} />
-                    <div>
-                      <strong style={{ fontSize: 13, display: 'block' }}>Chỉ bản cứng</strong>
-                      <span style={{ fontSize: 11, color: '#6B7280' }}>Nhận tại phòng ban</span>
-                    </div>
-                  </label>
+            {/* Mã yêu cầu */}
+            <div
+              style={{
+                alignSelf: 'stretch',
+                paddingTop: 10,
+                paddingBottom: 10,
+                overflow: 'hidden',
+                flexDirection: 'column',
+                justifyContent: 'flex-start',
+                alignItems: 'flex-start',
+                gap: 2,
+                display: 'flex',
+              }}
+            >
+              <div
+                style={{
+                  alignSelf: 'stretch',
+                  color: '#6B7280',
+                  fontSize: 11,
+                  fontFamily: 'Inter',
+                  fontWeight: '400',
+                  wordWrap: 'break-word',
+                }}
+              >
+                Mã yêu cầu
+              </div>
+              <div
+                style={{
+                  alignSelf: 'stretch',
+                  color: '#1F2937',
+                  fontSize: 12,
+                  fontFamily: 'Inter',
+                  fontWeight: '500',
+                  wordWrap: 'break-word',
+                }}
+              >
+                {requestCode}
+              </div>
+            </div>
+            <div style={{ alignSelf: 'stretch', height: 1, background: '#E2E5EA' }} />
+
+            {/* Thủ tục */}
+            <div
+              style={{
+                alignSelf: 'stretch',
+                paddingTop: 10,
+                paddingBottom: 10,
+                overflow: 'hidden',
+                flexDirection: 'column',
+                justifyContent: 'flex-start',
+                alignItems: 'flex-start',
+                gap: 2,
+                display: 'flex',
+              }}
+            >
+              <div
+                style={{
+                  alignSelf: 'stretch',
+                  color: '#6B7280',
+                  fontSize: 11,
+                  fontFamily: 'Inter',
+                  fontWeight: '400',
+                  wordWrap: 'break-word',
+                }}
+              >
+                Thủ tục
+              </div>
+              <div
+                style={{
+                  alignSelf: 'stretch',
+                  color: '#1F2937',
+                  fontSize: 12,
+                  fontFamily: 'Inter',
+                  fontWeight: '500',
+                  wordWrap: 'break-word',
+                }}
+              >
+                {procedure}
+              </div>
+            </div>
+            <div style={{ alignSelf: 'stretch', height: 1, background: '#E2E5EA' }} />
+
+            {/* Sinh viên */}
+            <div
+              style={{
+                alignSelf: 'stretch',
+                paddingTop: 10,
+                paddingBottom: 10,
+                overflow: 'hidden',
+                flexDirection: 'column',
+                justifyContent: 'flex-start',
+                alignItems: 'flex-start',
+                gap: 2,
+                display: 'flex',
+              }}
+            >
+              <div
+                style={{
+                  alignSelf: 'stretch',
+                  color: '#6B7280',
+                  fontSize: 11,
+                  fontFamily: 'Inter',
+                  fontWeight: '400',
+                  wordWrap: 'break-word',
+                }}
+              >
+                Sinh viên
+              </div>
+              <div
+                style={{
+                  alignSelf: 'stretch',
+                  color: '#1F2937',
+                  fontSize: 12,
+                  fontFamily: 'Inter',
+                  fontWeight: '500',
+                  wordWrap: 'break-word',
+                }}
+              >
+                {student}
+              </div>
+            </div>
+            <div style={{ alignSelf: 'stretch', height: 1, background: '#E2E5EA' }} />
+
+            {/* Template */}
+            <div
+              style={{
+                alignSelf: 'stretch',
+                paddingTop: 10,
+                paddingBottom: 10,
+                overflow: 'hidden',
+                flexDirection: 'column',
+                justifyContent: 'flex-start',
+                alignItems: 'flex-start',
+                gap: 2,
+                display: 'flex',
+              }}
+            >
+              <div
+                style={{
+                  alignSelf: 'stretch',
+                  color: '#6B7280',
+                  fontSize: 11,
+                  fontFamily: 'Inter',
+                  fontWeight: '400',
+                  wordWrap: 'break-word',
+                }}
+              >
+                Template
+              </div>
+              <div
+                style={{
+                  alignSelf: 'stretch',
+                  color: '#1F2937',
+                  fontSize: 12,
+                  fontFamily: 'Inter',
+                  fontWeight: '500',
+                  wordWrap: 'break-word',
+                }}
+              >
+                Bảng điểm chính quy v2.1
+              </div>
+            </div>
+            <div style={{ alignSelf: 'stretch', height: 1, background: '#E2E5EA' }} />
+
+            {/* Hình thức nhận */}
+            <div
+              style={{
+                alignSelf: 'stretch',
+                paddingTop: 10,
+                paddingBottom: 10,
+                overflow: 'hidden',
+                flexDirection: 'column',
+                justifyContent: 'flex-start',
+                alignItems: 'flex-start',
+                gap: 2,
+                display: 'flex',
+              }}
+            >
+              <div
+                style={{
+                  alignSelf: 'stretch',
+                  color: '#6B7280',
+                  fontSize: 11,
+                  fontFamily: 'Inter',
+                  fontWeight: '400',
+                  wordWrap: 'break-word',
+                }}
+              >
+                Hình thức nhận
+              </div>
+              <div
+                style={{
+                  overflow: 'hidden',
+                  justifyContent: 'flex-start',
+                  alignItems: 'flex-start',
+                  gap: 6,
+                  display: 'inline-flex',
+                  marginTop: 2,
+                }}
+              >
+                <div
+                  style={{
+                    paddingLeft: 6,
+                    paddingRight: 6,
+                    paddingTop: 2,
+                    paddingBottom: 2,
+                    background: '#DBEAFE',
+                    overflow: 'hidden',
+                    borderRadius: 999,
+                    justifyContent: 'flex-start',
+                    alignItems: 'flex-start',
+                    display: 'flex',
+                  }}
+                >
+                  <div
+                    style={{
+                      color: '#1D4ED8',
+                      fontSize: 10,
+                      fontFamily: 'Inter',
+                      fontWeight: '500',
+                      wordWrap: 'break-word',
+                    }}
+                  >
+                    PDF ký số
+                  </div>
+                </div>
+                <div
+                  style={{
+                    paddingLeft: 6,
+                    paddingRight: 6,
+                    paddingTop: 2,
+                    paddingBottom: 2,
+                    background: '#DCFCE7',
+                    overflow: 'hidden',
+                    borderRadius: 999,
+                    justifyContent: 'flex-start',
+                    alignItems: 'flex-start',
+                    display: 'flex',
+                  }}
+                >
+                  <div
+                    style={{
+                      color: '#168039',
+                      fontSize: 10,
+                      fontFamily: 'Inter',
+                      fontWeight: '500',
+                      wordWrap: 'break-word',
+                    }}
+                  >
+                    Bản cứng
+                  </div>
                 </div>
               </div>
+            </div>
+            <div style={{ alignSelf: 'stretch', height: 1, background: '#E2E5EA' }} />
 
-              <div className="form-group" style={{ marginTop: 16 }}>
-                <label className="form-label" style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>
-                  Địa điểm nhận kết quả
-                </label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={formData.location}
-                  onChange={(e) => handleChange('location', e.target.value)}
-                  style={{ width: '100%', padding: '8px 12px' }}
-                />
+            {/* Số bản */}
+            <div
+              style={{
+                alignSelf: 'stretch',
+                paddingTop: 10,
+                paddingBottom: 10,
+                overflow: 'hidden',
+                flexDirection: 'column',
+                justifyContent: 'flex-start',
+                alignItems: 'flex-start',
+                gap: 2,
+                display: 'flex',
+              }}
+            >
+              <div
+                style={{
+                  alignSelf: 'stretch',
+                  color: '#6B7280',
+                  fontSize: 11,
+                  fontFamily: 'Inter',
+                  fontWeight: '400',
+                  wordWrap: 'break-word',
+                }}
+              >
+                Số bản
               </div>
-
-              <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 16 }}>
-                <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>
-                    Bắt đầu nhận từ ngày
-                  </label>
-                  <input
-                    type="date"
-                    className="form-input"
-                    value={formData.pickupStartDate}
-                    onChange={(e) => handleChange('pickupStartDate', e.target.value)}
-                    style={{ width: '100%', padding: '8px 12px' }}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>
-                    Hạn nhận cuối cùng
-                  </label>
-                  <input
-                    type="date"
-                    className="form-input"
-                    value={formData.pickupExpiryDate}
-                    onChange={(e) => handleChange('pickupExpiryDate', e.target.value)}
-                    style={{ width: '100%', padding: '8px 12px' }}
-                  />
-                </div>
+              <div
+                style={{
+                  alignSelf: 'stretch',
+                  color: '#1F2937',
+                  fontSize: 12,
+                  fontFamily: 'Inter',
+                  fontWeight: '500',
+                  wordWrap: 'break-word',
+                }}
+              >
+                {quantity}
               </div>
+            </div>
+            <div style={{ alignSelf: 'stretch', height: 1, background: '#E2E5EA' }} />
 
-              <div className="form-group" style={{ marginTop: 16 }}>
-                <label className="form-label" style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>
-                  Ghi chú hướng dẫn nhận kết quả
-                </label>
-                <textarea
-                  className="form-input"
-                  rows={3}
-                  value={formData.notes}
-                  onChange={(e) => handleChange('notes', e.target.value)}
-                  style={{ width: '100%' }}
-                />
+            {/* Ngôn ngữ */}
+            <div
+              style={{
+                alignSelf: 'stretch',
+                paddingTop: 10,
+                paddingBottom: 10,
+                overflow: 'hidden',
+                flexDirection: 'column',
+                justifyContent: 'flex-start',
+                alignItems: 'flex-start',
+                gap: 2,
+                display: 'flex',
+              }}
+            >
+              <div
+                style={{
+                  alignSelf: 'stretch',
+                  color: '#6B7280',
+                  fontSize: 11,
+                  fontFamily: 'Inter',
+                  fontWeight: '400',
+                  wordWrap: 'break-word',
+                }}
+              >
+                Ngôn ngữ
               </div>
-
-              <div className="action-buttons" style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-                <Button variant="secondary" onClick={() => navigate(-1)}>Hủy</Button>
-                <Button variant="primary" onClick={handleSubmit} disabled={submitting}>
-                  {submitting ? 'Đang phát hành...' : 'Phát hành kết quả & Gửi hẹn'}
-                </Button>
+              <div
+                style={{
+                  alignSelf: 'stretch',
+                  color: '#1F2937',
+                  fontSize: 12,
+                  fontFamily: 'Inter',
+                  fontWeight: '500',
+                  wordWrap: 'break-word',
+                }}
+              >
+                {language}
               </div>
             </div>
           </div>
+
+          {/* Card 2: Thông tin nhận bản cứng */}
+          <div
+            style={{
+              alignSelf: 'stretch',
+              paddingLeft: 20,
+              paddingRight: 20,
+              paddingTop: 16,
+              paddingBottom: 16,
+              background: 'white',
+              overflow: 'visible',
+              borderRadius: 12,
+              border: '1px #E2E5EA solid',
+              flexDirection: 'column',
+              justifyContent: 'flex-start',
+              alignItems: 'flex-start',
+              gap: 10,
+              display: 'flex',
+              boxSizing: 'border-box',
+            }}
+          >
+            <div
+              style={{
+                alignSelf: 'stretch',
+                color: '#1F2937',
+                fontSize: 15,
+                fontFamily: 'Inter',
+                fontWeight: '600',
+                wordWrap: 'break-word',
+              }}
+            >
+              Thông tin nhận bản cứng
+            </div>
+
+            {/* Địa điểm */}
+            <div
+              style={{
+                alignSelf: 'stretch',
+                position: 'relative',
+                overflow: 'visible',
+                flexDirection: 'column',
+                justifyContent: 'flex-start',
+                alignItems: 'flex-start',
+                gap: 4,
+                display: 'flex',
+              }}
+            >
+              <div
+                style={{
+                  alignSelf: 'stretch',
+                  color: '#4B5563',
+                  fontSize: 12,
+                  fontFamily: 'Inter',
+                  fontWeight: '500',
+                  wordWrap: 'break-word',
+                }}
+              >
+                Địa điểm
+              </div>
+              <div
+                onClick={() => {
+                  setOpenLocationDropdown(!openLocationDropdown);
+                  setOpenDateDropdown(false);
+                }}
+                style={{
+                  alignSelf: 'stretch',
+                  paddingLeft: 10,
+                  paddingRight: 10,
+                  paddingTop: 8,
+                  paddingBottom: 8,
+                  background: 'white',
+                  borderRadius: 6,
+                  border: '1px #E2E5EA solid',
+                  justifyContent: 'flex-start',
+                  alignItems: 'center',
+                  gap: 4,
+                  display: 'inline-flex',
+                  cursor: 'pointer',
+                  boxSizing: 'border-box',
+                }}
+              >
+                <div
+                  style={{
+                    flex: '1 1 0',
+                    color: location ? '#1F2937' : '#9CA3AF',
+                    fontSize: 12,
+                    fontFamily: 'Inter',
+                    fontWeight: '400',
+                    wordWrap: 'break-word',
+                  }}
+                >
+                  {location || 'Chọn địa điểm...'}
+                </div>
+                <div
+                  style={{
+                    color: '#6B7280',
+                    fontSize: 12,
+                    fontFamily: 'Inter',
+                    fontWeight: '400',
+                    wordWrap: 'break-word',
+                  }}
+                >
+                  ▾
+                </div>
+              </div>
+
+              {openLocationDropdown && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    marginTop: 4,
+                    background: 'white',
+                    borderRadius: 8,
+                    border: '1px #E2E5EA solid',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                    zIndex: 50,
+                    overflow: 'hidden',
+                  }}
+                >
+                  {locationOptions.map((opt) => (
+                    <div
+                      key={opt}
+                      onClick={() => {
+                        setLocation(opt);
+                        setOpenLocationDropdown(false);
+                      }}
+                      style={{
+                        padding: '8px 12px',
+                        fontSize: 12,
+                        fontFamily: 'Inter',
+                        color: location === opt ? '#AA2327' : '#1F2937',
+                        fontWeight: location === opt ? '600' : '400',
+                        background: location === opt ? '#FDF2F2' : 'white',
+                        cursor: 'pointer',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (location !== opt) e.currentTarget.style.background = '#F9FAFB';
+                      }}
+                      onMouseLeave={(e) => {
+                        if (location !== opt) e.currentTarget.style.background = 'white';
+                      }}
+                    >
+                      {opt}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Ngày nhận */}
+            <div
+              style={{
+                alignSelf: 'stretch',
+                position: 'relative',
+                overflow: 'visible',
+                flexDirection: 'column',
+                justifyContent: 'flex-start',
+                alignItems: 'flex-start',
+                gap: 4,
+                display: 'flex',
+              }}
+            >
+              <div
+                style={{
+                  alignSelf: 'stretch',
+                  color: '#4B5563',
+                  fontSize: 12,
+                  fontFamily: 'Inter',
+                  fontWeight: '500',
+                  wordWrap: 'break-word',
+                }}
+              >
+                Ngày nhận
+              </div>
+              <div
+                onClick={() => {
+                  setOpenDateDropdown(!openDateDropdown);
+                  setOpenLocationDropdown(false);
+                }}
+                style={{
+                  alignSelf: 'stretch',
+                  paddingLeft: 10,
+                  paddingRight: 10,
+                  paddingTop: 8,
+                  paddingBottom: 8,
+                  background: 'white',
+                  borderRadius: 6,
+                  border: '1px #E2E5EA solid',
+                  justifyContent: 'flex-start',
+                  alignItems: 'center',
+                  gap: 4,
+                  display: 'inline-flex',
+                  cursor: 'pointer',
+                  boxSizing: 'border-box',
+                }}
+              >
+                <div
+                  style={{
+                    flex: '1 1 0',
+                    color: pickupDate ? '#1F2937' : '#9CA3AF',
+                    fontSize: 12,
+                    fontFamily: 'Inter',
+                    fontWeight: '400',
+                    wordWrap: 'break-word',
+                  }}
+                >
+                  {pickupDate || 'Chọn ngày...'}
+                </div>
+                <div
+                  style={{
+                    color: '#6B7280',
+                    fontSize: 12,
+                    fontFamily: 'Inter',
+                    fontWeight: '400',
+                    wordWrap: 'break-word',
+                  }}
+                >
+                  ▾
+                </div>
+              </div>
+
+              {openDateDropdown && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    marginTop: 4,
+                    background: 'white',
+                    borderRadius: 8,
+                    border: '1px #E2E5EA solid',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                    zIndex: 50,
+                    overflow: 'hidden',
+                  }}
+                >
+                  {dateOptions.map((opt) => (
+                    <div
+                      key={opt}
+                      onClick={() => {
+                        setPickupDate(opt);
+                        setOpenDateDropdown(false);
+                      }}
+                      style={{
+                        padding: '8px 12px',
+                        fontSize: 12,
+                        fontFamily: 'Inter',
+                        color: pickupDate === opt ? '#AA2327' : '#1F2937',
+                        fontWeight: pickupDate === opt ? '600' : '400',
+                        background: pickupDate === opt ? '#FDF2F2' : 'white',
+                        cursor: 'pointer',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (pickupDate !== opt) e.currentTarget.style.background = '#F9FAFB';
+                      }}
+                      onMouseLeave={(e) => {
+                        if (pickupDate !== opt) e.currentTarget.style.background = 'white';
+                      }}
+                    >
+                      {opt}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Giờ nhận: Từ - Đến */}
+            <div
+              style={{
+                alignSelf: 'stretch',
+                overflow: 'hidden',
+                justifyContent: 'flex-start',
+                alignItems: 'flex-start',
+                gap: 8,
+                display: 'inline-flex',
+              }}
+            >
+              {/* Từ */}
+              <div
+                style={{
+                  flex: '1 1 0',
+                  overflow: 'hidden',
+                  flexDirection: 'column',
+                  justifyContent: 'flex-start',
+                  alignItems: 'flex-start',
+                  gap: 4,
+                  display: 'inline-flex',
+                }}
+              >
+                <div
+                  style={{
+                    color: '#4B5563',
+                    fontSize: 12,
+                    fontFamily: 'Inter',
+                    fontWeight: '500',
+                    wordWrap: 'break-word',
+                  }}
+                >
+                  Từ
+                </div>
+                <input
+                  type="text"
+                  value={timeFrom}
+                  onChange={(e) => setTimeFrom(e.target.value)}
+                  style={{
+                    alignSelf: 'stretch',
+                    paddingLeft: 10,
+                    paddingRight: 10,
+                    paddingTop: 8,
+                    paddingBottom: 8,
+                    background: 'white',
+                    borderRadius: 6,
+                    border: '1px #E2E5EA solid',
+                    outline: 'none',
+                    color: '#1F2937',
+                    fontSize: 12,
+                    fontFamily: 'Inter',
+                    fontWeight: '400',
+                    boxSizing: 'border-box',
+                    width: '100%',
+                  }}
+                />
+              </div>
+
+              {/* Đến */}
+              <div
+                style={{
+                  flex: '1 1 0',
+                  overflow: 'hidden',
+                  flexDirection: 'column',
+                  justifyContent: 'flex-start',
+                  alignItems: 'flex-start',
+                  gap: 4,
+                  display: 'inline-flex',
+                }}
+              >
+                <div
+                  style={{
+                    color: '#4B5563',
+                    fontSize: 12,
+                    fontFamily: 'Inter',
+                    fontWeight: '500',
+                    wordWrap: 'break-word',
+                  }}
+                >
+                  Đến
+                </div>
+                <input
+                  type="text"
+                  value={timeTo}
+                  onChange={(e) => setTimeTo(e.target.value)}
+                  style={{
+                    alignSelf: 'stretch',
+                    paddingLeft: 10,
+                    paddingRight: 10,
+                    paddingTop: 8,
+                    paddingBottom: 8,
+                    background: 'white',
+                    borderRadius: 6,
+                    border: '1px #E2E5EA solid',
+                    outline: 'none',
+                    color: '#1F2937',
+                    fontSize: 12,
+                    fontFamily: 'Inter',
+                    fontWeight: '400',
+                    boxSizing: 'border-box',
+                    width: '100%',
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Người liên hệ */}
+            <div
+              style={{
+                alignSelf: 'stretch',
+                overflow: 'hidden',
+                flexDirection: 'column',
+                justifyContent: 'flex-start',
+                alignItems: 'flex-start',
+                gap: 4,
+                display: 'flex',
+              }}
+            >
+              <div
+                style={{
+                  alignSelf: 'stretch',
+                  color: '#4B5563',
+                  fontSize: 12,
+                  fontFamily: 'Inter',
+                  fontWeight: '500',
+                  wordWrap: 'break-word',
+                }}
+              >
+                Người liên hệ
+              </div>
+              <input
+                type="text"
+                value={contactPerson}
+                onChange={(e) => setContactPerson(e.target.value)}
+                style={{
+                  alignSelf: 'stretch',
+                  paddingLeft: 10,
+                  paddingRight: 10,
+                  paddingTop: 8,
+                  paddingBottom: 8,
+                  background: 'white',
+                  borderRadius: 6,
+                  border: '1px #E2E5EA solid',
+                  outline: 'none',
+                  color: '#1F2937',
+                  fontSize: 12,
+                  fontFamily: 'Inter',
+                  fontWeight: '400',
+                  boxSizing: 'border-box',
+                  width: '100%',
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Confirm Button */}
+          <button
+            type="button"
+            onClick={handleConfirmIssue}
+            style={{
+              alignSelf: 'stretch',
+              paddingLeft: 16,
+              paddingRight: 16,
+              paddingTop: 10,
+              paddingBottom: 10,
+              background: '#AA2327',
+              overflow: 'hidden',
+              borderRadius: 8,
+              border: 'none',
+              justifyContent: 'center',
+              alignItems: 'center',
+              display: 'inline-flex',
+              cursor: 'pointer',
+              transition: 'background 0.15s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#931E22';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = '#AA2327';
+            }}
+          >
+            <div
+              style={{
+                flex: '1 1 0',
+                textAlign: 'center',
+                color: 'white',
+                fontSize: 13,
+                fontFamily: 'Inter',
+                fontWeight: '600',
+                wordWrap: 'break-word',
+              }}
+            >
+              Xác nhận cấp kết quả →
+            </div>
+          </button>
         </div>
       </div>
     </div>

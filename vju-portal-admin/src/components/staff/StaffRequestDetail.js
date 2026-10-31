@@ -8,11 +8,12 @@ import { allRequests, departments, rejectionReasons } from '../../data/mockData'
 import { staffApi } from '../../services/api';
 import './StaffPages.css';
 
-function StaffRequestDetail() {
+function StaffRequestDetail({ defaultStatus = '', defaultToast = '' }) {
   const navigate = useNavigate();
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const shouldOpenTransfer = searchParams.get('transfer') === 'true' || searchParams.get('modal') === 'transfer' || (typeof window !== 'undefined' && window.location.hash === '#transfer');
+  const isTransferredParam = defaultStatus === 'Đã chuyển PB' || searchParams.get('transferred') === 'true' || searchParams.get('status') === 'transferred';
 
   // Find request in mock data or fallback to Figma default VJU-2026-0840
   const foundReq = (allRequests || []).find(
@@ -28,8 +29,11 @@ function StaffRequestDetail() {
   const quantity = foundReq?.quantity || foundReq?.form_data?.quantity || '01';
   const language = foundReq?.language || foundReq?.form_data?.language || 'Tiếng Việt';
 
-  const [currentStatus, setCurrentStatus] = useState(foundReq?.status || 'Đang thẩm định');
-  const [toastMsg, setToastMsg] = useState('');
+  const initialStatus = defaultStatus || (isTransferredParam ? 'Đã chuyển PB' : (foundReq?.status || 'Đang thẩm định'));
+  const [currentStatus, setCurrentStatus] = useState(initialStatus);
+
+  const initialToast = defaultToast || (isTransferredParam ? 'Đã chuyển yêu cầu sang Phòng KHTC' : '');
+  const [toastMsg, setToastMsg] = useState(initialToast);
 
   // Modals
   const [showDocModal, setShowDocModal] = useState(false);
@@ -51,6 +55,13 @@ function StaffRequestDetail() {
 
   // Status badge config
   const getStatusBadge = (st) => {
+    if (st === 'Đã chuyển PB' || st === 'transferred') {
+      return {
+        label: 'Đã chuyển PB',
+        bg: '#F0F0F0',
+        color: '#6B7280',
+      };
+    }
     if (st === 'Từ chối' || st === 'Đã từ chối') {
       return {
         label: 'Từ chối',
@@ -83,6 +94,10 @@ function StaffRequestDetail() {
 
   // Actions
   const handleApprove = async () => {
+    if (procedure === 'Phúc khảo' || requestCode === 'VJU-2026-0835') {
+      navigate(`/staff/request/${requestCode}/review`);
+      return;
+    }
     try {
       if (staffApi && staffApi.approve) {
         await staffApi.approve(requestCode).catch(() => {});
@@ -126,7 +141,16 @@ function StaffRequestDetail() {
       }
     } catch {}
     setShowTransferModal(false);
-    showToast(`Đã chuyển tiếp hồ sơ ${requestCode} sang ${department}`);
+    setCurrentStatus('Đã chuyển PB');
+    let deptShort = department;
+    if (deptShort.includes('Kế hoạch') || deptShort.includes('Tài chính')) {
+      deptShort = 'Phòng KHTC';
+    } else if (deptShort.includes('Công tác Sinh viên')) {
+      deptShort = 'Phòng CTSV';
+    } else if (deptShort.includes('Đào tạo')) {
+      deptShort = 'Phòng Đào tạo';
+    }
+    showToast(`Đã chuyển yêu cầu sang ${deptShort}`);
   };
 
   return (
@@ -245,8 +269,9 @@ function StaffRequestDetail() {
         {/* Nút: Từ chối */}
         <button
           type="button"
-          className="staff-btn-action-outline"
-          onClick={() => setShowRejectModal(true)}
+          disabled={currentStatus === 'Đã chuyển PB'}
+          className={`staff-btn-action-outline ${currentStatus === 'Đã chuyển PB' ? 'staff-btn-action--disabled' : ''}`}
+          onClick={() => currentStatus !== 'Đã chuyển PB' && setShowRejectModal(true)}
         >
           Từ chối
         </button>
@@ -254,8 +279,9 @@ function StaffRequestDetail() {
         {/* Nút: Yêu cầu bổ sung */}
         <button
           type="button"
-          className="staff-btn-action-outline"
-          onClick={() => setShowSupplementModal(true)}
+          disabled={currentStatus === 'Đã chuyển PB'}
+          className={`staff-btn-action-outline ${currentStatus === 'Đã chuyển PB' ? 'staff-btn-action--disabled' : ''}`}
+          onClick={() => currentStatus !== 'Đã chuyển PB' && setShowSupplementModal(true)}
         >
           Yêu cầu bổ sung
         </button>
@@ -263,20 +289,32 @@ function StaffRequestDetail() {
         {/* Nút: Chuyển phòng ban */}
         <button
           type="button"
-          className="staff-btn-action-outline"
-          onClick={() => setShowTransferModal(true)}
+          disabled={currentStatus === 'Đã chuyển PB'}
+          className={`staff-btn-action-outline ${currentStatus === 'Đã chuyển PB' ? 'staff-btn-action--disabled' : ''}`}
+          onClick={() => currentStatus !== 'Đã chuyển PB' && setShowTransferModal(true)}
         >
           Chuyển phòng ban
         </button>
 
-        {/* Nút: Phê duyệt */}
-        <button
-          type="button"
-          className="staff-btn-action-primary"
-          onClick={handleApprove}
-        >
-          Phê duyệt →
-        </button>
+        {/* Nút: Phê duyệt / Cấp kết quả */}
+        {currentStatus === 'Đã duyệt' ? (
+          <button
+            type="button"
+            className="staff-btn-action-primary"
+            onClick={() => navigate(`/staff/request/${requestCode}/issue`)}
+          >
+            Cấp kết quả →
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled={currentStatus === 'Đã chuyển PB'}
+            className={`staff-btn-action-primary ${currentStatus === 'Đã chuyển PB' ? 'staff-btn-action--disabled' : ''}`}
+            onClick={() => currentStatus !== 'Đã chuyển PB' && handleApprove()}
+          >
+            Phê duyệt →
+          </button>
+        )}
       </div>
 
       {/* Modal 1: Xem tài liệu minh chứng */}
