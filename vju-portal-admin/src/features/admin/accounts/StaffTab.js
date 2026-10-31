@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import EditStaffModal from './modals/EditStaffModal';
 import Modal from '../../../components/common/Modal';
 import Button from '../../../components/common/Button';
+import CustomDropdown from '../../../components/common/CustomDropdown';
 import { staff, staffStatusMap } from '../../../data/mockData';
 import './StaffTab.css';
 
@@ -10,6 +11,19 @@ function StaffTab() {
   const [search, setSearch] = useState('');
   const [filterDept, setFilterDept] = useState('');
   const [filterLevel, setFilterLevel] = useState('');
+
+  const deptOptions = [
+    { value: '', label: 'Tất cả phòng ban' },
+    { value: 'PĐT', label: 'PĐT' },
+    { value: 'PCTSV', label: 'PCTSV' },
+    { value: 'PKHTC', label: 'PKHTC' },
+  ];
+
+  const levelOptions = [
+    { value: '', label: 'Tất cả cấp' },
+    { value: 'Chuyên viên', label: 'Chuyên viên' },
+    { value: 'Trưởng phòng', label: 'Trưởng phòng' },
+  ];
   const [currentPage, setCurrentPage] = useState(1);
   const [jumpPage, setJumpPage] = useState('');
   const pageSize = 20; // Tối đa 1 trang 20 số lượng theo yêu cầu
@@ -123,38 +137,27 @@ function StaffTab() {
             />
           </div>
 
-          <div className="staff-filter-select-box">
-            <select
-              className="staff-filter-select"
-              value={filterDept}
-              onChange={(e) => {
-                setFilterDept(e.target.value);
-                setCurrentPage(1);
-              }}
-            >
-              <option value="">Phòng ban</option>
-              <option value="PĐT">PĐT</option>
-              <option value="PCTSV">PCTSV</option>
-              <option value="PKHTC">PKHTC</option>
-            </select>
-            <span className="staff-filter-arrow">▾</span>
-          </div>
+          <CustomDropdown
+            value={filterDept}
+            options={deptOptions}
+            placeholder="Phòng ban"
+            width={160}
+            onChange={(val) => {
+              setFilterDept(val);
+              setCurrentPage(1);
+            }}
+          />
 
-          <div className="staff-filter-select-box">
-            <select
-              className="staff-filter-select"
-              value={filterLevel}
-              onChange={(e) => {
-                setFilterLevel(e.target.value);
-                setCurrentPage(1);
-              }}
-            >
-              <option value="">Cấp</option>
-              <option value="Chuyên viên">Chuyên viên</option>
-              <option value="Trưởng phòng">Trưởng phòng</option>
-            </select>
-            <span className="staff-filter-arrow">▾</span>
-          </div>
+          <CustomDropdown
+            value={filterLevel}
+            options={levelOptions}
+            placeholder="Cấp"
+            width={160}
+            onChange={(val) => {
+              setFilterLevel(val);
+              setCurrentPage(1);
+            }}
+          />
 
           <button
             type="button"

@@ -433,19 +433,28 @@ textarea.form-input {
   font-family: 'Inter', sans-serif;
   color: #1F2937;
   cursor: pointer;
-  transition: background 0.12s ease;
+  transition: background 0.1s ease, color 0.1s ease;
   white-space: nowrap;
-}
-
-.staff-filter-menu-item:hover {
-  background: #F5F6F8;
-  color: #AA2327;
+  background: #FFFFFF;
 }
 
 .staff-filter-menu-item--active {
   background: #FCE8E8;
   color: #AA2327;
   font-weight: 600;
+}
+
+.staff-filter-dropdown-menu:hover .staff-filter-menu-item--active:not(:hover) {
+  background: #FFFFFF !important;
+  color: #1F2937 !important;
+  font-weight: 400 !important;
+}
+
+.staff-filter-dropdown-menu:hover .staff-filter-menu-item:hover,
+.staff-filter-menu-item:hover {
+  background: #FCE8E8 !important;
+  color: #AA2327 !important;
+  font-weight: 600 !important;
 }
 
 .staff-search-box {

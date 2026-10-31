@@ -86,18 +86,29 @@
   font-size: 13px;
   font-weight: 400;
   cursor: pointer;
-  transition: background 0.12s ease;
+  transition: background 0.1s ease, color 0.1s ease;
   display: flex;
   align-items: center;
-}
-
-.custom-dropdown-item:hover {
-  background: #F5F6F8;
 }
 
 .custom-dropdown-item.selected {
   background: #FCE8E8;
   color: #AA2327;
   font-weight: 600;
+}
+
+/* When dropdown menu is hovered, reset unhovered selected item */
+.custom-dropdown-menu:hover .custom-dropdown-item.selected:not(:hover) {
+  background: #FFFFFF !important;
+  color: #202630 !important;
+  font-weight: 400 !important;
+}
+
+/* Any item that is hovered gets the active beige background & red text */
+.custom-dropdown-menu:hover .custom-dropdown-item:hover,
+.custom-dropdown-item:hover {
+  background: #FCE8E8 !important;
+  color: #AA2327 !important;
+  font-weight: 600 !important;
 }
 

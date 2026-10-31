@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import EditStudentModal from './modals/EditStudentModal';
+import CustomDropdown from '../../../components/common/CustomDropdown';
 import { students, studentStatusMap } from '../../../data/mockData';
 import './StudentTab.css';
 
@@ -8,6 +9,20 @@ function StudentTab() {
   const [search, setSearch] = useState('');
   const [filterKhoa, setFilterKhoa] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+
+  const khoaOptions = [
+    { value: '', label: 'Tất cả khóa' },
+    { value: 'QH-2023', label: 'Khóa QH-2023' },
+    { value: 'QH-2022', label: 'Khóa QH-2022' },
+    { value: 'QH-2021', label: 'Khóa QH-2021' },
+  ];
+
+  const statusOptions = [
+    { value: '', label: 'Tất cả trạng thái' },
+    { value: 'studying', label: 'Đang học' },
+    { value: 'reserved', label: 'Bảo lưu' },
+    { value: 'graduated', label: 'Đã TN' },
+  ];
   const [currentPage, setCurrentPage] = useState(1);
   const [jumpPage, setJumpPage] = useState('');
   const pageSize = 8; // 8 rows per page to match Figma spec
@@ -132,39 +147,27 @@ function StudentTab() {
             />
           </div>
 
-          <div className="student-filter-select-box">
-            <select
-              className="student-filter-select"
-              value={filterKhoa}
-              onChange={(e) => {
-                setFilterKhoa(e.target.value);
-                setCurrentPage(1);
-              }}
-            >
-              <option value="">Khóa</option>
-              <option value="QH-2023">Khóa QH-2023</option>
-              <option value="QH-2022">Khóa QH-2022</option>
-              <option value="QH-2021">Khóa QH-2021</option>
-            </select>
-            <span className="student-filter-arrow">▾</span>
-          </div>
+          <CustomDropdown
+            value={filterKhoa}
+            options={khoaOptions}
+            placeholder="Khóa"
+            width={160}
+            onChange={(val) => {
+              setFilterKhoa(val);
+              setCurrentPage(1);
+            }}
+          />
 
-          <div className="student-filter-select-box">
-            <select
-              className="student-filter-select"
-              value={filterStatus}
-              onChange={(e) => {
-                setFilterStatus(e.target.value);
-                setCurrentPage(1);
-              }}
-            >
-              <option value="">Trạng thái</option>
-              <option value="studying">Đang học</option>
-              <option value="reserved">Bảo lưu</option>
-              <option value="graduated">Đã TN</option>
-            </select>
-            <span className="student-filter-arrow">▾</span>
-          </div>
+          <CustomDropdown
+            value={filterStatus}
+            options={statusOptions}
+            placeholder="Trạng thái"
+            width={160}
+            onChange={(val) => {
+              setFilterStatus(val);
+              setCurrentPage(1);
+            }}
+          />
 
           <button
             type="button"

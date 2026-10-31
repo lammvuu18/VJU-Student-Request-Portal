@@ -154,17 +154,28 @@
   font-size: 13px;
   font-family: 'Inter', sans-serif;
   cursor: pointer;
-  transition: background 0.12s ease;
-}
-
-.admin-proc-dropdown-item:hover {
-  background: #F9FAFB;
+  transition: background-color 0.12s ease, color 0.12s ease;
 }
 
 .admin-proc-dropdown-item--active {
   color: #AA2327;
   font-weight: 600;
-  background: #FDF2F2;
+  background: #FCE8E8;
+}
+
+/* Khi hover vào menu: item active bỏ highlight nếu không được hover trực tiếp */
+.admin-proc-dropdown-menu:hover .admin-proc-dropdown-item--active:not(:hover) {
+  background: #FFFFFF !important;
+  color: #1F2937 !important;
+  font-weight: 400 !important;
+}
+
+/* Item đang được hover chuyển sang nền be chữ đỏ */
+.admin-proc-dropdown-menu:hover .admin-proc-dropdown-item:hover,
+.admin-proc-dropdown-item:hover {
+  background: #FCE8E8 !important;
+  color: #AA2327 !important;
+  font-weight: 600 !important;
 }
 
 /* Search Box */

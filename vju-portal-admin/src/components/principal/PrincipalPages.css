@@ -124,17 +124,27 @@
   font-size: 13px;
   font-family: 'Inter', sans-serif;
   cursor: pointer;
-  transition: background 0.12s ease;
-}
-
-.principal-dropdown-item:hover {
-  background: #F9FAFB;
+  transition: background 0.1s ease, color 0.1s ease;
+  background: #FFFFFF;
 }
 
 .principal-dropdown-item--active {
   color: #AA2327;
   font-weight: 600;
-  background: #FDF2F2;
+  background: #FCE8E8;
+}
+
+.principal-dropdown-menu:hover .principal-dropdown-item--active:not(:hover) {
+  background: #FFFFFF !important;
+  color: #1F2937 !important;
+  font-weight: 400 !important;
+}
+
+.principal-dropdown-menu:hover .principal-dropdown-item:hover,
+.principal-dropdown-item:hover {
+  background: #FCE8E8 !important;
+  color: #AA2327 !important;
+  font-weight: 600 !important;
 }
 
 /* Search Box */

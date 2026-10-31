@@ -9,12 +9,14 @@ function CustomDropdown({
   width = 180,
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [hoveredValue, setHoveredValue] = useState(null);
   const containerRef = useRef(null);
 
   useEffect(() => {
     function handleClickOutside(e) {
       if (containerRef.current && !containerRef.current.contains(e.target)) {
         setIsOpen(false);
+        setHoveredValue(null);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -22,9 +24,14 @@ function CustomDropdown({
   }, []);
 
   const selectedOption = options.find((opt) => opt.value === value);
-  const displayLabel = selectedOption && selectedOption.value !== 'all'
+  const displayLabel = selectedOption && selectedOption.value !== 'all' && selectedOption.value !== ''
     ? selectedOption.label
     : (placeholder || 'Tất cả');
+
+  const handleToggle = () => {
+    setIsOpen(!isOpen);
+    setHoveredValue(null);
+  };
 
   return (
     <div
@@ -35,7 +42,7 @@ function CustomDropdown({
       <button
         type="button"
         className={`custom-dropdown-trigger ${isOpen ? 'open' : ''}`}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleToggle}
       >
         <span className="custom-dropdown-label">{displayLabel}</span>
         <svg
@@ -56,15 +63,22 @@ function CustomDropdown({
       </button>
 
       {isOpen && (
-        <div className="custom-dropdown-menu">
+        <div
+          className="custom-dropdown-menu"
+          onMouseLeave={() => setHoveredValue(null)}
+        >
           {options.map((opt) => {
-            const isSelected = opt.value === value;
+            const isSelected = opt.value === value || (!value && (opt.value === '' || opt.value === 'all'));
+            const isHighlighted = hoveredValue !== null ? hoveredValue === opt.value : isSelected;
+
             return (
               <div
                 key={opt.value}
-                className={`custom-dropdown-item ${isSelected ? 'selected' : ''}`}
+                className={`custom-dropdown-item ${isHighlighted ? 'selected' : ''}`}
+                onMouseEnter={() => setHoveredValue(opt.value)}
                 onClick={() => {
                   onChange(opt.value);
+                  setHoveredValue(null);
                   setIsOpen(false);
                 }}
               >
@@ -79,4 +93,3 @@ function CustomDropdown({
 }
 
 export default CustomDropdown;
-

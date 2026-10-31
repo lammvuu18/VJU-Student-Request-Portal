@@ -224,7 +224,7 @@ function PrincipalDecisionList() {
                 {statusOptions.map((opt) => (
                   <div
                     key={opt}
-                    className={`principal-dropdown-item ${filterStatus === opt ? 'principal-dropdown-item--active' : ''}`}
+                    className={`principal-dropdown-item ${(filterStatus === opt || (!filterStatus && opt === 'Tất cả')) ? 'principal-dropdown-item--active' : ''}`}
                     onClick={() => {
                       setFilterStatus(opt === 'Tất cả' ? '' : opt);
                       setOpenStatusDropdown(false);
@@ -259,7 +259,7 @@ function PrincipalDecisionList() {
                 {deptOptions.map((opt) => (
                   <div
                     key={opt}
-                    className={`principal-dropdown-item ${filterDept === opt ? 'principal-dropdown-item--active' : ''}`}
+                    className={`principal-dropdown-item ${(filterDept === opt || (!filterDept && opt === 'Tất cả')) ? 'principal-dropdown-item--active' : ''}`}
                     onClick={() => {
                       setFilterDept(opt === 'Tất cả' ? '' : opt);
                       setOpenDeptDropdown(false);
@@ -294,7 +294,7 @@ function PrincipalDecisionList() {
                 {deadlineOptions.map((opt) => (
                   <div
                     key={opt}
-                    className={`principal-dropdown-item ${filterDeadline === opt ? 'principal-dropdown-item--active' : ''}`}
+                    className={`principal-dropdown-item ${(filterDeadline === opt || (!filterDeadline && opt === 'Tất cả')) ? 'principal-dropdown-item--active' : ''}`}
                     onClick={() => {
                       setFilterDeadline(opt === 'Tất cả' ? '' : opt);
                       setOpenDeadlineDropdown(false);

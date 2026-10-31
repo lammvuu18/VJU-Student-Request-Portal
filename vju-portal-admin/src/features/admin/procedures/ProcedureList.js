@@ -293,7 +293,7 @@ function ProcedureList() {
                 {deptOptions.map((opt) => (
                   <div
                     key={opt}
-                    className={`admin-proc-dropdown-item ${filterDept === opt ? 'admin-proc-dropdown-item--active' : ''}`}
+                    className={`admin-proc-dropdown-item ${(filterDept === opt || (!filterDept && opt === 'Tất cả')) ? 'admin-proc-dropdown-item--active' : ''}`}
                     onClick={() => {
                       setFilterDept(opt === 'Tất cả' ? '' : opt);
                       setOpenDeptDropdown(false);
@@ -327,7 +327,7 @@ function ProcedureList() {
                 {statusOptions.map((opt) => (
                   <div
                     key={opt}
-                    className={`admin-proc-dropdown-item ${filterStatus === opt ? 'admin-proc-dropdown-item--active' : ''}`}
+                    className={`admin-proc-dropdown-item ${(filterStatus === opt || (!filterStatus && opt === 'Tất cả')) ? 'admin-proc-dropdown-item--active' : ''}`}
                     onClick={() => {
                       setFilterStatus(opt === 'Tất cả' ? '' : opt);
                       setOpenStatusDropdown(false);

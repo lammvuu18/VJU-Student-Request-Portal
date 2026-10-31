@@ -224,31 +224,45 @@
   align-items: center;
   justify-content: center;
   font-size: 13px;
-  font-weight: 600;
-  border-radius: 5px;
+  font-weight: 500;
+  border-radius: 6px;
   cursor: pointer;
   color: #202630;
   transition: all 0.12s ease;
   box-sizing: border-box;
 }
 
-.date-picker-day-cell:hover:not(.day-start):not(.day-end) {
-  background: #F5F6F8;
+.date-picker-day-cell:hover:not(.day-start):not(.day-end):not(.day-outside):not(.day-empty) {
+  background: #FCE8E8;
+  color: #AA2327;
 }
 
 .date-picker-day-cell.day-outside {
-  color: #68717D;
+  color: #C4C8D0;
+  cursor: default;
+  pointer-events: none;
+  font-weight: 400;
+}
+
+.date-picker-day-cell.day-empty {
+  cursor: default;
+  pointer-events: none;
+  visibility: hidden;
 }
 
 .date-picker-day-cell.day-in-range {
-  background: #FBEEEE;
-  color: #202630;
+  background: #FCE8E8;
+  color: #AA2327;
+  font-weight: 600;
+  border-radius: 4px;
 }
 
 .date-picker-day-cell.day-start,
 .date-picker-day-cell.day-end {
-  background: #AA2327;
-  color: #FFFFFF;
+  background: #AA2327 !important;
+  color: #FFFFFF !important;
+  font-weight: 700 !important;
+  border-radius: 6px !important;
 }
 
 /* Footer row */

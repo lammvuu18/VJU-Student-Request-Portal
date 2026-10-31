@@ -651,6 +651,50 @@
   border-color: #CBD5E1;
 }
 
+.depthead-filter-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 100%;
+  min-width: 160px;
+  background: #FFFFFF;
+  border: 1px solid #E2E5EA;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  z-index: 50;
+  overflow: hidden;
+}
+
+.depthead-filter-dropdown-item {
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  background: #FFFFFF;
+  color: #1F2937;
+  font-weight: 400;
+  font-family: 'Inter', sans-serif;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+
+.depthead-filter-dropdown-item.active {
+  background: #FCE8E8;
+  color: #AA2327;
+  font-weight: 600;
+}
+
+.depthead-filter-dropdown-menu:hover .depthead-filter-dropdown-item.active:not(:hover) {
+  background: #FFFFFF !important;
+  color: #1F2937 !important;
+  font-weight: 400 !important;
+}
+
+.depthead-filter-dropdown-menu:hover .depthead-filter-dropdown-item:hover,
+.depthead-filter-dropdown-item:hover {
+  background: #FCE8E8 !important;
+  color: #AA2327 !important;
+  font-weight: 600 !important;
+}
+
 .depthead-search-box {
   width: 240px;
   padding: 10px 12px;
@@ -896,17 +940,27 @@
   display: flex;
   align-items: center;
   box-sizing: border-box;
-  transition: background-color 0.1s ease;
-}
-
-.depthead-assignee-item:hover {
-  background-color: #F9FAFB;
+  background-color: #FFFFFF;
+  transition: background-color 0.1s ease, color 0.1s ease;
 }
 
 .depthead-assignee-item--selected {
   background-color: #FCE8E8;
   color: #AA2327;
   font-weight: 600;
+}
+
+.depthead-floating-assignee-menu:hover .depthead-assignee-item--selected:not(:hover) {
+  background-color: #FFFFFF !important;
+  color: #1F2937 !important;
+  font-weight: 400 !important;
+}
+
+.depthead-floating-assignee-menu:hover .depthead-assignee-item:hover,
+.depthead-assignee-item:hover {
+  background-color: #FCE8E8 !important;
+  color: #AA2327 !important;
+  font-weight: 600 !important;
 }
 
 /* ===== Dept Head Request List Pagination ===== */

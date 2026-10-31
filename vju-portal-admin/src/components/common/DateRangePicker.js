@@ -64,9 +64,20 @@ function DateRangePicker({
   // Helper to parse DD/MM/YYYY to Date object
   const parseDateStr = (str) => {
     if (!str) return null;
+    if (str instanceof Date) return str;
     const parts = str.split('/');
     if (parts.length !== 3) return null;
     return new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+  };
+
+  // Helper to check if two dates are the same calendar day
+  const isSameDay = (d1, d2) => {
+    if (!d1 || !d2) return false;
+    return (
+      d1.getFullYear() === d2.getFullYear() &&
+      d1.getMonth() === d2.getMonth() &&
+      d1.getDate() === d2.getDate()
+    );
   };
 
   const currentStartObj = typeof tempStart === 'string' ? parseDateStr(tempStart) : tempStart;
@@ -76,13 +87,17 @@ function DateRangePicker({
     if (!tempStart || (tempStart && tempEnd)) {
       setTempStart(dateObj);
       setTempEnd(null);
+      setHoverDate(null);
     } else {
-      if (dateObj < currentStartObj) {
+      const startMs = currentStartObj ? currentStartObj.getTime() : 0;
+      const clickMs = dateObj.getTime();
+      if (clickMs < startMs) {
         setTempStart(dateObj);
         setTempEnd(currentStartObj);
       } else {
         setTempEnd(dateObj);
       }
+      setHoverDate(null);
     }
   };
 
@@ -101,6 +116,7 @@ function DateRangePicker({
   const handleClear = () => {
     setTempStart(null);
     setTempEnd(null);
+    setHoverDate(null);
     if (onClear) onClear();
     setIsOpen(false);
   };
@@ -110,6 +126,7 @@ function DateRangePicker({
     const e = new Date(2026, 9, 31);
     setTempStart(s);
     setTempEnd(e);
+    setHoverDate(null);
     onChange({ startDate: '01/10/2026', endDate: '31/10/2026' });
     setIsOpen(false);
   };
@@ -131,20 +148,27 @@ function DateRangePicker({
     for (let i = startDayOfWeek - 1; i >= 0; i--) {
       const pDay = prevMonthLastDay - i;
       const pDate = new Date(year, month - 1, pDay);
-      days.push({ dayNum: pDay, dateObj: pDate, isCurrentMonth: false });
+      days.push({ dayNum: pDay, dateObj: pDate, isCurrentMonth: false, isEmpty: false });
     }
 
     // Current month days
     for (let d = 1; d <= lastDay.getDate(); d++) {
       const cDate = new Date(year, month, d);
-      days.push({ dayNum: d, dateObj: cDate, isCurrentMonth: true });
+      days.push({ dayNum: d, dateObj: cDate, isCurrentMonth: true, isEmpty: false });
     }
 
-    // Next month padding to fill up to 35 or 42 cells (6 rows = 42)
+    // Next month padding ONLY to finish the current week (to Sunday)
+    const endDayOfWeek = (lastDay.getDay() + 6) % 7;
+    const daysToFinishWeek = endDayOfWeek === 6 ? 0 : 6 - endDayOfWeek;
+    for (let n = 1; n <= daysToFinishWeek; n++) {
+      const nDate = new Date(year, month + 1, n);
+      days.push({ dayNum: n, dateObj: nDate, isCurrentMonth: false, isEmpty: false });
+    }
+
+    // Fixed 6-row (42 cells) placeholder to maintain identical height across months
     const remaining = 42 - days.length;
     for (let n = 1; n <= remaining; n++) {
-      const nDate = new Date(year, month + 1, n);
-      days.push({ dayNum: n, dateObj: nDate, isCurrentMonth: false });
+      days.push({ dayNum: null, dateObj: null, isCurrentMonth: false, isEmpty: true });
     }
 
     return days;
@@ -157,8 +181,20 @@ function DateRangePicker({
     ];
     const gridDays = generateMonthGrid(year, month);
 
+    const startD = currentStartObj;
+    const endD = currentEndObj;
+    const hoverD = hoverDate;
+
+    // Effective range target for previewing
+    const effectiveEnd = endD || (hoverD && startD ? hoverD : null);
+    const rangeMin = startD && effectiveEnd ? Math.min(startD.getTime(), effectiveEnd.getTime()) : null;
+    const rangeMax = startD && effectiveEnd ? Math.max(startD.getTime(), effectiveEnd.getTime()) : null;
+
     return (
-      <div className="date-picker-month-panel">
+      <div
+        className="date-picker-month-panel"
+        onMouseLeave={() => setHoverDate(null)}
+      >
         <div className="date-picker-month-header">
           {isLeft ? (
             <button type="button" className="date-picker-nav-btn" onClick={handlePrevMonth} aria-label="Tháng trước">
@@ -189,25 +225,47 @@ function DateRangePicker({
 
         <div className="date-picker-days-grid">
           {gridDays.map((item, idx) => {
-            const time = item.dateObj.getTime();
-            const startTime = currentStartObj ? currentStartObj.getTime() : null;
-            const endTime = currentEndObj ? currentEndObj.getTime() : null;
+            if (item.isEmpty) {
+              return <div key={`empty-${idx}`} className="date-picker-day-cell day-empty" />;
+            }
 
-            const isStart = startTime && time === startTime;
-            const isEnd = endTime && time === endTime;
-            const isInRange = startTime && endTime && time > startTime && time < endTime;
+            const itemTime = item.dateObj ? item.dateObj.getTime() : null;
+            // Only days belonging to the current calendar month can be selected as start or end
+            const isStart = item.isCurrentMonth && startD && isSameDay(item.dateObj, startD);
+            const isEnd = item.isCurrentMonth && endD && isSameDay(item.dateObj, endD);
+            const isInRange = Boolean(
+              item.isCurrentMonth &&
+              rangeMin &&
+              rangeMax &&
+              itemTime > rangeMin &&
+              itemTime < rangeMax
+            );
 
             let cellClass = 'date-picker-day-cell';
-            if (!item.isCurrentMonth) cellClass += ' day-outside';
-            if (isStart) cellClass += ' day-start';
-            else if (isEnd) cellClass += ' day-end';
-            else if (isInRange) cellClass += ' day-in-range';
+            if (!item.isCurrentMonth) {
+              cellClass += ' day-outside';
+            } else if (isStart) {
+              cellClass += ' day-start';
+            } else if (isEnd) {
+              cellClass += ' day-end';
+            } else if (isInRange) {
+              cellClass += ' day-in-range';
+            }
 
             return (
               <div
                 key={idx}
                 className={cellClass}
-                onClick={() => handleDateClick(item.dateObj)}
+                onClick={() => {
+                  if (!item.isCurrentMonth || !item.dateObj) return;
+                  handleDateClick(item.dateObj);
+                }}
+                onMouseEnter={() => {
+                  if (!item.isCurrentMonth || !item.dateObj) return;
+                  if (startD && !endD) {
+                    setHoverDate(item.dateObj);
+                  }
+                }}
               >
                 <span>{item.dayNum}</span>
               </div>

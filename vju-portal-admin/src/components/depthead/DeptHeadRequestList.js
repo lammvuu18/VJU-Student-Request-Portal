@@ -387,33 +387,15 @@ function DeptHeadRequestList() {
               <div>▾</div>
             </div>
             {openStatusDropdown && (
-              <div style={{
-                position: 'absolute',
-                top: 'calc(100% + 4px)',
-                left: 0,
-                width: '100%',
-                background: 'white',
-                border: '1px solid #E2E5EA',
-                borderRadius: 8,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                zIndex: 50,
-                overflow: 'hidden',
-              }}>
+              <div className="depthead-filter-dropdown-menu">
                 {['', 'Chờ phân công', 'Đang xử lý', 'Chờ xét duyệt', 'Hoàn thành'].map((st) => (
                   <div
                     key={st}
+                    className={`depthead-filter-dropdown-item ${filterStatus === st ? 'active' : ''}`}
                     onClick={() => {
                       setFilterStatus(st);
                       setOpenStatusDropdown(false);
                       setCurrentPage(1);
-                    }}
-                    style={{
-                      padding: '8px 12px',
-                      fontSize: 13,
-                      cursor: 'pointer',
-                      background: filterStatus === st ? '#FCE8E8' : 'white',
-                      color: filterStatus === st ? '#AA2327' : '#1F2937',
-                      fontWeight: filterStatus === st ? 600 : 400,
                     }}
                   >
                     {st || 'Tất cả trạng thái'}
@@ -437,33 +419,15 @@ function DeptHeadRequestList() {
               <div>▾</div>
             </div>
             {openProcedureDropdown && (
-              <div style={{
-                position: 'absolute',
-                top: 'calc(100% + 4px)',
-                left: 0,
-                width: '100%',
-                background: 'white',
-                border: '1px solid #E2E5EA',
-                borderRadius: 8,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                zIndex: 50,
-                overflow: 'hidden',
-              }}>
+              <div className="depthead-filter-dropdown-menu">
                 {['', 'Cấp bảng điểm', 'Xác nhận SV', 'Phúc khảo', 'Bảo lưu KQ'].map((proc) => (
                   <div
                     key={proc}
+                    className={`depthead-filter-dropdown-item ${filterProcedure === proc ? 'active' : ''}`}
                     onClick={() => {
                       setFilterProcedure(proc);
                       setOpenProcedureDropdown(false);
                       setCurrentPage(1);
-                    }}
-                    style={{
-                      padding: '8px 12px',
-                      fontSize: 13,
-                      cursor: 'pointer',
-                      background: filterProcedure === proc ? '#FCE8E8' : 'white',
-                      color: filterProcedure === proc ? '#AA2327' : '#1F2937',
-                      fontWeight: filterProcedure === proc ? 600 : 400,
                     }}
                   >
                     {proc || 'Tất cả thủ tục'}
@@ -487,36 +451,18 @@ function DeptHeadRequestList() {
               <div>▾</div>
             </div>
             {openDateDropdown && (
-              <div style={{
-                position: 'absolute',
-                top: 'calc(100% + 4px)',
-                left: 0,
-                width: '100%',
-                background: 'white',
-                border: '1px solid #E2E5EA',
-                borderRadius: 8,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                zIndex: 50,
-                overflow: 'hidden',
-              }}>
+              <div className="depthead-filter-dropdown-menu">
                 {[
                   { label: 'Mới nhất', val: 'newest' },
                   { label: 'Cũ nhất', val: 'oldest' },
                 ].map((item) => (
                   <div
                     key={item.val}
+                    className={`depthead-filter-dropdown-item ${sortDate === item.val ? 'active' : ''}`}
                     onClick={() => {
                       setSortDate(item.val);
                       setOpenDateDropdown(false);
                       setCurrentPage(1);
-                    }}
-                    style={{
-                      padding: '8px 12px',
-                      fontSize: 13,
-                      cursor: 'pointer',
-                      background: sortDate === item.val ? '#FCE8E8' : 'white',
-                      color: sortDate === item.val ? '#AA2327' : '#1F2937',
-                      fontWeight: sortDate === item.val ? 600 : 400,
                     }}
                   >
                     {item.label}
