@@ -1,109 +1,218 @@
-import React from 'react';
-import { departmentStatistics } from '../../data/mockData';
+import React, { useState } from 'react';
 import './DeptHeadPages.css';
 
+// 5 Stat Cards Data (Figma Spec)
+const statCards = [
+  { num: '69', label: 'Tổng yêu cầu' },
+  { num: '47', label: 'Hoàn thành' },
+  { num: '12', label: 'Đang xử lý' },
+  { num: '08', label: 'Chờ xử lý' },
+  { num: '02', label: 'Đã hủy' },
+];
+
+// 12 Months Bar Chart Data (Figma Spec)
+const monthlyBars = [
+  { month: 'T1', height: 36, count: 12 },
+  { month: 'T2', height: 45, count: 15 },
+  { month: 'T3', height: 60, count: 20 },
+  { month: 'T4', height: 54, count: 18 },
+  { month: 'T5', height: 66, count: 22 },
+  { month: 'T6', height: 105, count: 35 },
+  { month: 'T7', height: 84, count: 28 },
+  { month: 'T8', height: 120, count: 40 },
+  { month: 'T9', height: 96, count: 32 },
+  { month: 'T10', height: 54, count: 18 },
+  { month: 'T11', height: 90, count: 30 },
+  { month: 'T12', height: 72, count: 24 },
+];
+
+// Status Distribution Data (Figma Spec)
+const distributionItems = [
+  { label: 'Hoàn thành', percent: 68, color: '#168039' },
+  { label: 'Đang xử lý', percent: 17, color: '#1D4ED8' },
+  { label: 'Chờ xử lý', percent: 12, color: '#F59E0B' },
+  { label: 'Đã hủy', percent: 3, color: '#6B7280' },
+];
+
+// Specialist Performance Data (Figma Spec)
+const specialistsData = [
+  {
+    name: 'Nguyễn Văn A',
+    received: '28',
+    completed: '25',
+    sla: '92%',
+    avgTime: '2.1 ngày',
+    csat: '4.5 ★',
+  },
+  {
+    name: 'Trần Thị B',
+    received: '22',
+    completed: '20',
+    sla: '87%',
+    avgTime: '2.8 ngày',
+    csat: '4.2 ★',
+  },
+  {
+    name: 'Lê Văn C',
+    received: '19',
+    completed: '17',
+    sla: '95%',
+    avgTime: '1.9 ngày',
+    csat: '4.7 ★',
+  },
+];
+
 function DeptHeadStatistics() {
-  const stats = departmentStatistics;
+  const [toastMsg, setToastMsg] = useState('');
+
+  const handleExport = () => {
+    // Generate CSV export content
+    const headers = ['Chuyên viên', 'Hồ sơ nhận', 'Hoàn thành', 'Đúng SLA', 'TB xử lý', 'CSAT'];
+    const rows = specialistsData.map((s) => [
+      s.name,
+      s.received,
+      s.completed,
+      s.sla,
+      s.avgTime,
+      s.csat.replace(' ★', ''),
+    ]);
+    const csvContent =
+      'data:text/csv;charset=utf-8,\uFEFF' +
+      [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', 'VJU_Bao_cao_thong_ke_phong_dao_tao.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setToastMsg('Đã xuất báo cáo thống kê phòng đào tạo thành công!');
+    setTimeout(() => setToastMsg(''), 4000);
+  };
 
   return (
-    <div className="depthead-statistics">
-      <h1 className="page-title">Thống kê phòng</h1>
-      <p className="page-subtitle">Phòng Đào tạo — Thống kê hoạt động</p>
+    <div className="depthead-stats-container">
+      {/* Toast Notification (Figma spec) */}
+      {toastMsg && (
+        <div className="depthead-toast-card">
+          <div className="depthead-toast-icon-circle">
+            <span className="depthead-toast-icon-check">✓</span>
+          </div>
+          <span className="depthead-toast-text">{toastMsg}</span>
+        </div>
+      )}
 
-      <div className="stat-cards" style={{ marginTop: 24 }}>
-        <div className="stat-card stat-card--border-left" style={{ borderLeftColor: '#2563EB' }}>
-          <span className="stat-card-label">Tổng yêu cầu tháng này</span>
-          <span className="stat-card-value">28</span>
-        </div>
-        <div className="stat-card stat-card--border-left" style={{ borderLeftColor: '#059669' }}>
-          <span className="stat-card-label">Đã xử lý</span>
-          <span className="stat-card-value">15</span>
-        </div>
-        <div className="stat-card stat-card--border-left" style={{ borderLeftColor: '#D97706' }}>
-          <span className="stat-card-label">Thời gian TB</span>
-          <span className="stat-card-value">2.7 ngày</span>
-        </div>
-        <div className="stat-card stat-card--border-left" style={{ borderLeftColor: '#7C3AED' }}>
-          <span className="stat-card-label">Tỷ lệ hoàn thành</span>
-          <span className="stat-card-value">89%</span>
-        </div>
+      {/* Top Header Row */}
+      <div className="depthead-stats-header">
+        <h1 className="depthead-stats-title">Thống kê phòng đào tạo</h1>
+        <button
+          type="button"
+          className="depthead-stats-btn-export"
+          onClick={handleExport}
+        >
+          Xuất báo cáo ↓
+        </button>
       </div>
 
-      <div className="two-col">
-        <div className="card">
-          <div className="card-body">
-            <h3 className="section-title">Biểu đồ tiếp nhận & hoàn thành</h3>
-            <div className="chart-bar-double">
-              {stats.monthlyData.map((d, i) => (
-                <div key={i} className="chart-bar-col-double">
-                  <div className="chart-bar-pair">
-                    <div className="chart-bar-received" style={{ height: `${(d.received / 40) * 140}px` }} title={`Tiếp nhận: ${d.received}`}></div>
-                    <div className="chart-bar-completed" style={{ height: `${(d.completed / 40) * 140}px` }} title={`Hoàn thành: ${d.completed}`}></div>
-                  </div>
-                  <span className="chart-bar-label">{d.month}</span>
+      {/* 5 Stat Cards Row */}
+      <div className="depthead-stats-cards-row">
+        {statCards.map((card, idx) => (
+          <div key={idx} className="depthead-stats-card">
+            <div className="depthead-stats-card-num">{card.num}</div>
+            <div className="depthead-stats-card-label">{card.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Two-Column Charts Row */}
+      <div className="depthead-stats-charts-row">
+        {/* Chart 1: Xu hướng tiếp nhận */}
+        <div className="depthead-stats-chart-card">
+          <h2 className="depthead-stats-chart-title">Xu hướng tiếp nhận</h2>
+          <div style={{ height: 14 }} />
+          <div className="depthead-stats-barchart-container">
+            {/* Y-axis ticks */}
+            <div className="depthead-stats-yaxis">
+              <div>40</div>
+              <div>30</div>
+              <div>20</div>
+              <div>10</div>
+              <div>0</div>
+            </div>
+
+            {/* Bars track */}
+            <div className="depthead-stats-bars-track">
+              {monthlyBars.map((bar, idx) => (
+                <div key={idx} className="depthead-stats-bar-col">
+                  <div
+                    className="depthead-stats-bar-fill"
+                    style={{ height: `${bar.height}px` }}
+                    title={`${bar.month}: ${bar.count} yêu cầu`}
+                  />
+                  <div className="depthead-stats-bar-month">{bar.month}</div>
                 </div>
               ))}
             </div>
-            <div className="chart-legend">
-              <span><i style={{ background: '#AA2327' }}></i> Tiếp nhận</span>
-              <span><i style={{ background: '#059669' }}></i> Hoàn thành</span>
-            </div>
           </div>
         </div>
 
-        <div className="card">
-          <div className="card-body">
-            <h3 className="section-title">Phân bổ theo loại</h3>
-            {stats.byType.map((t, i) => (
-              <div key={i} className="type-row">
-                <div className="type-row-header">
-                  <span className="type-name">{t.name}</span>
-                  <span className="type-count">{t.count} ({t.percent}%)</span>
-                </div>
-                <div className="progress-bar">
-                  <div className="progress-bar-fill" style={{ width: `${t.percent}%`, background: ['#AA2327', '#2563EB', '#059669', '#D97706', '#7C3AED'][i] }}></div>
-                </div>
+        {/* Chart 2: Phân bố trạng thái */}
+        <div className="depthead-stats-chart-card">
+          <h2 className="depthead-stats-chart-title">Phân bố trạng thái</h2>
+          <div style={{ height: 14 }} />
+          {distributionItems.map((item, idx) => (
+            <div key={idx} className="depthead-stats-dist-item">
+              <div className="depthead-stats-dist-header">
+                <span className="depthead-stats-dist-label">{item.label}</span>
+                <span className="depthead-stats-dist-percent">{item.percent}%</span>
               </div>
-            ))}
-          </div>
+              <div className="depthead-stats-dist-track">
+                <div
+                  className="depthead-stats-dist-fill"
+                  style={{ width: `${item.percent}%`, background: item.color }}
+                />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
-      <div className="card" style={{ marginTop: 24 }}>
-        <div className="card-body">
-          <h3 className="section-title">Hiệu suất chuyên viên</h3>
-          <div className="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th>Chuyên viên</th>
-                  <th>Được giao</th>
-                  <th>Hoàn thành</th>
-                  <th>TB ngày xử lý</th>
-                  <th>Đánh giá</th>
-                  <th>Tiến độ</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats.staffPerformance.map((sp, i) => (
-                  <tr key={i}>
-                    <td><strong>{sp.name}</strong></td>
-                    <td>{sp.assigned}</td>
-                    <td>{sp.completed}</td>
-                    <td>{sp.avgDays} ngày</td>
-                    <td>
-                      <span style={{ color: '#FBBF24' }}>★</span> {sp.rating}
-                    </td>
-                    <td style={{ width: 150 }}>
-                      <div className="progress-bar" style={{ margin: 0 }}>
-                        <div className="progress-bar-fill" style={{ width: `${(sp.completed / sp.assigned) * 100}%`, background: '#059669' }}></div>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {/* Full-width Table Card: Hiệu suất chuyên viên */}
+      <div className="depthead-stats-table-card">
+        <h2 className="depthead-stats-chart-title">Hiệu suất chuyên viên</h2>
+        <div style={{ height: 14 }} />
+
+        <div className="depthead-stats-table-wrapper">
+          {/* Header Row */}
+          <div className="depthead-stats-th-row">
+            <div className="depthead-stats-th-cell">Chuyên viên</div>
+            <div className="depthead-stats-th-cell">Hồ sơ nhận</div>
+            <div className="depthead-stats-th-cell">Hoàn thành</div>
+            <div className="depthead-stats-th-cell">Đúng SLA</div>
+            <div className="depthead-stats-th-cell">TB xử lý</div>
+            <div className="depthead-stats-th-cell">CSAT</div>
           </div>
+
+          <div className="depthead-stats-table-divider" />
+
+          {/* Data Rows */}
+          {specialistsData.map((spec, idx) => (
+            <React.Fragment key={idx}>
+              <div className="depthead-stats-tr-row">
+                <div className="depthead-stats-td-cell">{spec.name}</div>
+                <div className="depthead-stats-td-cell">{spec.received}</div>
+                <div className="depthead-stats-td-cell">{spec.completed}</div>
+                <div className="depthead-stats-td-cell">{spec.sla}</div>
+                <div className="depthead-stats-td-cell">{spec.avgTime}</div>
+                <div className="depthead-stats-td-cell" style={{ color: '#D97706', fontWeight: 500 }}>
+                  {spec.csat}
+                </div>
+              </div>
+              <div className="depthead-stats-table-divider" />
+            </React.Fragment>
+          ))}
         </div>
       </div>
     </div>
