@@ -45,8 +45,9 @@
 
 .reject-modal-title {
   flex: 1 1 0;
+  width: 100%;
   color: #1F2937;
-  fontSize: 18px;
+  font-size: 18px;
   font-family: 'Inter', sans-serif;
   font-weight: 600;
   word-wrap: break-word;

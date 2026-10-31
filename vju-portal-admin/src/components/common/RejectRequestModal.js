@@ -75,7 +75,19 @@ function RejectRequestModal({
       >
         {/* Header */}
         <div className="reject-modal-header">
-          <div className="reject-modal-title">Từ chối yêu cầu</div>
+          <div
+            className="reject-modal-title"
+            style={{
+              width: '100%',
+              color: '#1F2937',
+              fontSize: 18,
+              fontFamily: 'Inter',
+              fontWeight: '600',
+              wordWrap: 'break-word',
+            }}
+          >
+            Từ chối yêu cầu
+          </div>
           <button
             type="button"
             className="reject-modal-close"
