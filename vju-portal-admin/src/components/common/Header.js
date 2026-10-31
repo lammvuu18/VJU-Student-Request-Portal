@@ -128,8 +128,8 @@ function Header({ userName = 'User' }) {
             <img
               src="/vju-logo.png"
               alt="VJU Logo"
-              width="36"
-              height="36"
+              width="52"
+              height="52"
               style={{ objectFit: 'contain', flexShrink: 0 }}
             />
             <span className="header-title">VJU PORTAL</span>
@@ -146,11 +146,11 @@ function Header({ userName = 'User' }) {
               setShowUserMenu(false);
             }}
           >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8B1D24" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#AA2327" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
               <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
             </svg>
-            {unreadCount > 0 && <span className="notif-dot" style={{ backgroundColor: '#8B1D24' }}></span>}
+            {unreadCount > 0 && <span className="notif-dot"></span>}
           </button>
 
           {/* User Profile Button */}
@@ -162,7 +162,7 @@ function Header({ userName = 'User' }) {
             }}
           >
             <div className="header-avatar-circle user-avatar-outline">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8B1D24" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#AA2327" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10" />
                 <path d="M18 19a6 6 0 0 0-12 0" />
                 <circle cx="12" cy="10" r="3" />
@@ -170,7 +170,7 @@ function Header({ userName = 'User' }) {
             </div>
             <span className="header-user-name">{profile.name}</span>
             <svg width="10" height="6" viewBox="0 0 10 6" fill="none">
-              <path d="M1 1L5 5L9 1" stroke="#6B7280" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M1 1L5 5L9 1" stroke="#202630" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
 

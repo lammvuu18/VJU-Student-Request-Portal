@@ -12,8 +12,9 @@ function Sidebar({ items }) {
             to={item.path}
             className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
           >
+            <span className="sidebar-active-indicator" />
             {item.icon && <span className="sidebar-icon">{item.icon}</span>}
-            {item.label}
+            <span className="sidebar-link-text">{item.label}</span>
           </NavLink>
         ))}
       </nav>

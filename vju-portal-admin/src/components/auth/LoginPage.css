@@ -1,17 +1,19 @@
 /* ==========================================================================
    VJU Portal - Login Page
-   Exact Design Match to Jira Reference UI
+   Exact Match to Figma Design (Frame: A1 · Đăng nhập)
    ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 .login-page {
   min-height: 100vh;
   width: 100%;
-  background-color: #F8F6F4;
+  background-color: #F8F9FA;
   display: flex;
   flex-direction: column;
   position: relative;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  color: #1F2937;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #202630;
   overflow-x: hidden;
 }
 
@@ -32,6 +34,7 @@
   width: 44px;
   height: 44px;
   flex-shrink: 0;
+  object-fit: contain;
 }
 
 .login-header-text {
@@ -42,22 +45,27 @@
 .login-header-title {
   font-size: 16px;
   font-weight: 700;
-  color: #1E293B;
+  color: #202630;
   letter-spacing: -0.2px;
   line-height: 1.2;
+  font-family: 'Inter', sans-serif;
 }
 
 .login-header-subtitle {
   font-size: 12px;
-  color: #64748B;
+  color: #68717D;
   font-weight: 400;
   line-height: 1.2;
   margin-top: 2px;
+  font-family: 'Inter', sans-serif;
 }
 
 /* Main Container centered */
 .login-container {
   flex: 1;
+  width: 100%;
+  height: 100%;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -65,72 +73,90 @@
   padding: 40px 20px;
 }
 
-/* Card */
+/* Card - Exact Figma: width 420, padding 40, border-radius 16, gap 20 */
 .login-card {
+  width: 100%;
+  max-width: 420px;
   background: #FFFFFF;
   border-radius: 16px;
-  width: 100%;
-  max-width: 400px;
-  padding: 40px 32px 36px;
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.02);
+  padding: 40px;
+  box-shadow: 0px 8px 32px rgba(0, 0, 0, 0.10);
   display: flex;
   flex-direction: column;
-  position: relative;
+  align-items: center;
+  gap: 20px;
+  box-sizing: border-box;
 }
 
-/* Top Circular Badge Icon */
+/* Top Entrance Icon Badge - Exact Figma: 56x56, bg #F3F4F6, border-radius 28 */
 .login-icon-badge {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background-color: #FDF2F2;
+  width: 56px;
+  height: 56px;
+  background-color: #F3F4F6;
+  border-radius: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 20px;
-  color: #8B1D24;
+  color: #AA2327;
+  flex-shrink: 0;
 }
 
-/* Title */
-.login-title {
-  text-align: center;
-  font-size: 21px;
-  font-weight: 700;
-  color: #111827;
-  margin: 0 0 24px 0;
-  letter-spacing: -0.3px;
-}
-
-/* Enclosed Input Boxes */
-.login-form {
+/* Heading - Exact Figma: font-size 22, color #202630, font-weight 700 */
+.login-title-box {
+  width: 100%;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  gap: 8px;
 }
 
+.login-title {
+  width: 100%;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 700;
+  color: #202630;
+  font-family: 'Inter', sans-serif;
+  margin: 0;
+  word-wrap: break-word;
+}
+
+/* Form Container */
+.login-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Input Boxes - Exact Figma: bg #F9FAFB, outline 1px #E2E5EA solid, radius 8, padding 12px 14px */
 .input-box {
-  background-color: #F8FAFC;
-  border: 1px solid #E2E8F0;
+  width: 100%;
+  background-color: #F9FAFB;
+  border: 1px solid #E2E5EA;
   border-radius: 8px;
-  padding: 10px 14px;
-  margin-bottom: 12px;
+  padding: 12px 14px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   transition: all 0.2s ease;
-  position: relative;
 }
 
 .input-box:focus-within {
-  border-color: #8B1D24;
+  border-color: #AA2327;
   background-color: #FFFFFF;
-  box-shadow: 0 0 0 1px #8B1D24;
+  box-shadow: 0 0 0 1px #AA2327;
 }
 
 .input-label {
   display: block;
   font-size: 11px;
-  font-weight: 700;
-  color: #64748B;
+  font-weight: 600;
+  color: #68717D;
+  font-family: 'Inter', sans-serif;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 2px;
+  letter-spacing: 0.3px;
   user-select: none;
 }
 
@@ -140,19 +166,24 @@
   outline: none;
   background: transparent;
   font-size: 14px;
-  color: #1E293B;
+  font-weight: 400;
+  font-family: 'Inter', sans-serif;
+  color: #202630;
   padding: 0;
-  font-family: inherit;
+  line-height: 1.4;
 }
 
 .input-control::placeholder {
-  color: #94A3B8;
-  font-size: 13.5px;
+  color: #9CA3AF;
+  font-size: 14px;
+  font-weight: 400;
+  font-family: 'Inter', sans-serif;
 }
 
 .password-input-wrapper {
   display: flex;
   align-items: center;
+  width: 100%;
 }
 
 .password-input-wrapper .input-control {
@@ -164,106 +195,112 @@
   border: none;
   cursor: pointer;
   padding: 0;
-  color: #94A3B8;
+  color: #9CA3AF;
   display: flex;
   align-items: center;
+  justify-content: center;
   margin-left: 8px;
-}
-
-.password-toggle-btn:hover {
-  color: #64748B;
-}
-
-/* Forgot Password */
-.forgot-password-row {
-  text-align: right;
-  margin-top: 4px;
-  margin-bottom: 20px;
-}
-
-.forgot-password-link {
-  color: #8B1D24;
-  font-size: 13px;
-  font-weight: 600;
-  text-decoration: none;
   transition: color 0.15s ease;
 }
 
+.password-toggle-btn:hover {
+  color: #68717D;
+}
+
+/* Forgot Password - Exact Figma: text-align right, color #AA2327, font-size 13, font-weight 600 */
+.forgot-password-row {
+  width: 100%;
+  text-align: right;
+  margin-top: -4px;
+}
+
+.forgot-password-link {
+  color: #AA2327;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  text-decoration: none;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
 .forgot-password-link:hover {
-  color: #6D141A;
+  opacity: 0.85;
   text-decoration: underline;
 }
 
-/* Submit Button */
+/* Login Submit Button - Exact Figma: bg #AA2327, padding 12px 20px, font-size 14, font-weight 600 */
 .login-submit-btn {
   width: 100%;
-  height: 44px;
-  background-color: #8B1D24;
+  padding: 12px 20px;
+  background-color: #AA2327;
   color: #FFFFFF;
   border: none;
   border-radius: 8px;
   font-size: 14px;
   font-weight: 600;
+  font-family: 'Inter', sans-serif;
   cursor: pointer;
   transition: background-color 0.2s ease, transform 0.1s ease;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
 }
 
 .login-submit-btn:hover {
-  background-color: #75171D;
+  background-color: #931E22;
 }
 
 .login-submit-btn:active {
   transform: scale(0.99);
 }
 
-/* Divider: or sign in with */
+/* Divider - Exact Figma: lines #E2E5EA, text #9CA3AF, font-size 12, gap 12 */
 .login-divider {
+  width: 100%;
   display: flex;
   align-items: center;
-  margin: 20px 0;
-  color: #94A3B8;
-  font-size: 12px;
+  gap: 12px;
 }
 
-.login-divider::before,
-.login-divider::after {
-  content: '';
-  flex: 1;
+.login-divider-line {
+  flex: 1 1 0;
   height: 1px;
-  background-color: #E2E8F0;
+  background-color: #E2E5EA;
 }
 
-.login-divider span {
-  padding: 0 14px;
-  color: #94A3B8;
+.login-divider-text {
+  color: #9CA3AF;
   font-size: 12px;
+  font-weight: 400;
+  font-family: 'Inter', sans-serif;
+  white-space: nowrap;
 }
 
-/* Google Button */
+/* Google Sign In Button - Exact Figma: bg white, outline 1px #E2E5EA solid, radius 8, padding 12px 20px */
 .google-sign-in-btn {
   width: 100%;
-  height: 44px;
+  padding: 12px 20px;
   background-color: #FFFFFF;
-  border: 1px solid #E2E8F0;
+  border: 1px solid #E2E5EA;
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 10px;
   cursor: pointer;
   transition: all 0.2s ease;
-  padding: 0;
+  box-sizing: border-box;
 }
 
 .google-sign-in-btn:hover {
-  background-color: #F8FAFC;
-  border-color: #CBD5E1;
+  background-color: #F9FAFB;
+  border-color: #D1D5DB;
 }
 
 .google-sign-in-btn:active {
-  background-color: #F1F5F9;
+  background-color: #F3F4F6;
 }
 
 /* Responsive adjustment */
@@ -274,11 +311,13 @@
     justify-content: center;
   }
 
-  .login-page {
-    padding: 20px 16px;
+  .login-container {
+    min-height: auto;
+    padding: 24px 16px;
   }
 
   .login-card {
     padding: 32px 20px;
+    gap: 16px;
   }
 }

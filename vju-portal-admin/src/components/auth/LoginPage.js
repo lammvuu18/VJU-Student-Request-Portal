@@ -44,7 +44,7 @@ function LoginPage() {
         <div className="login-card">
           {/* Top Entrance Icon Badge */}
           <div className="login-icon-badge">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8B1D24" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#AA2327" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
               <polyline points="10 17 15 12 10 7" />
               <line x1="15" y1="12" x2="3" y2="12" />
@@ -52,7 +52,9 @@ function LoginPage() {
           </div>
 
           {/* Heading */}
-          <h1 className="login-title">Chào mừng bạn trở lại</h1>
+          <div className="login-title-box">
+            <h1 className="login-title">Chào mừng bạn trở lại</h1>
+          </div>
 
           {/* Form */}
           <form className="login-form" onSubmit={handleLogin}>
@@ -121,7 +123,9 @@ function LoginPage() {
 
           {/* Divider */}
           <div className="login-divider">
-            <span>or sign in with</span>
+            <div className="login-divider-line" />
+            <span className="login-divider-text">or sign in with</span>
+            <div className="login-divider-line" />
           </div>
 
           {/* Google Button */}
@@ -131,7 +135,7 @@ function LoginPage() {
             onClick={() => selectRoleAndGo('student', '/student')}
             aria-label="Đăng nhập bằng Google"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24">
+            <svg width="24" height="24" viewBox="0 0 24 24">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
               <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
               <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18A10.96 10.96 0 001 12c0 1.77.42 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>

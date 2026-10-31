@@ -2,15 +2,16 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: var(--header-height);
-  padding: 0 24px;
-  background: var(--color-white);
-  border-bottom: 1px solid var(--color-border);
+  height: 88px;
+  padding: 0 28px;
+  background: #FFFFFF;
+  border-bottom: 1px solid #E2E5EA;
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   z-index: 100;
+  box-sizing: border-box;
 }
 
 .header-left {
@@ -21,21 +22,22 @@
 .header-logo {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 16px;
   cursor: pointer;
 }
 
 .header-title {
-  font-size: var(--font-size-md);
-  font-weight: 700;
-  color: var(--color-dark);
-  letter-spacing: 0.5px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #202630;
+  font-family: 'Inter', sans-serif;
+  letter-spacing: normal;
 }
 
 .header-right {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 20px;
   position: relative;
 }
 
@@ -45,34 +47,35 @@
   height: 40px;
   border: none;
   background: none;
-  border-radius: 50%;
+  border-radius: 20px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: background var(--transition);
+  padding: 0;
 }
 
 .header-icon-btn:hover,
 .header-icon-btn.active {
-  background: var(--color-bg);
+  background: #F5F6F8;
 }
 
 .notif-dot {
   position: absolute;
   top: 8px;
-  right: 10px;
-  width: 8px;
-  height: 8px;
-  background: var(--vju-red);
+  right: 8px;
+  width: 6px;
+  height: 6px;
+  background: #AA2327;
   border-radius: 50%;
-  border: 2px solid var(--color-white);
+  outline: 2px solid #FFFFFF;
 }
 
 .header-user {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   cursor: pointer;
   padding: 6px 10px;
   border-radius: 8px;
@@ -82,7 +85,7 @@
 
 .header-user:hover,
 .header-user.active {
-  background: var(--color-bg);
+  background: #F5F6F8;
 }
 
 .header-avatar {
@@ -94,30 +97,19 @@
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: #EFF6FF;
-  color: #2563EB;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  font-size: 13px;
-  border: 1.5px solid #DBEAFE;
-}
-
-.header-avatar-circle.user-avatar-outline {
-  width: 28px;
-  height: 28px;
   background: transparent;
-  border: none;
+  color: #AA2327;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .header-user-name {
-  font-size: var(--font-size-base);
-  font-weight: 500;
-  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 600;
+  color: #202630;
+  font-family: 'Inter', sans-serif;
 }
 
 /* ===== Dropdowns ===== */
