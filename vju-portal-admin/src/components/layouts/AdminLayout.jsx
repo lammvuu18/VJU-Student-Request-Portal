@@ -13,13 +13,23 @@ function AdminLayout({ children }) {
             to="/admin/procedures"
             className={({ isActive }) => `admin-sidebar-link ${isActive ? 'active' : ''}`}
           >
-            Quản lý thủ tục
+            {({ isActive }) => (
+              <>
+                {isActive && <div className="admin-sidebar-indicator" />}
+                <span style={{ flex: '1 1 0' }}>Quản lý thủ tục</span>
+              </>
+            )}
           </NavLink>
           <NavLink
             to="/admin/accounts"
             className={({ isActive }) => `admin-sidebar-link ${isActive ? 'active' : ''}`}
           >
-            Tài khoản & phân quyền
+            {({ isActive }) => (
+              <>
+                {isActive && <div className="admin-sidebar-indicator" />}
+                <span style={{ flex: '1 1 0' }}>Tài khoản &amp; phân quyền</span>
+              </>
+            )}
           </NavLink>
         </nav>
       </aside>
