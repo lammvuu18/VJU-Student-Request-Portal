@@ -54,7 +54,7 @@ function ProcedureCatalog() {
                 <p className="catalog-card-desc">{p.description}</p>
                 <div className="catalog-card-meta">
                   <span>⏱ {p.time}</span>
-                  <span>💰 {p.fee}</span>
+                  <span> {p.fee}</span>
                 </div>
               </div>
             ))}

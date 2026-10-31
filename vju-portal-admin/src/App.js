@@ -58,18 +58,18 @@ const studentSidebar = [
 ];
 
 const deptHeadSidebar = [
-  { label: 'Tổng quan', path: '/dept-head', icon: '📊' },
-  { label: 'Tất cả yêu cầu', path: '/dept-head/requests', icon: '📋' },
-  { label: 'Thống kê', path: '/dept-head/statistics', icon: '📈' },
+  { label: 'Tổng quan', path: '/dept-head', icon: null },
+  { label: 'Tất cả yêu cầu', path: '/dept-head/requests', icon: null },
+  { label: 'Thống kê', path: '/dept-head/statistics', icon: null },
 ];
 
 const staffSidebar = [
-  { label: 'Tổng quan', path: '/staff', icon: '📊' },
-  { label: 'Yêu cầu được giao', path: '/staff/requests', icon: '📋' },
+  { label: 'Tổng quan', path: '/staff', icon: null },
+  { label: 'Yêu cầu được giao', path: '/staff/requests', icon: null },
 ];
 
 const principalSidebar = [
-  { label: 'Quyết định', path: '/principal/decisions', icon: '📝' },
+  { label: 'Quyết định', path: '/principal/decisions', icon: null },
 ];
 
 function App() {

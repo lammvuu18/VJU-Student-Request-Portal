@@ -164,12 +164,12 @@ function RequestDetail() {
           <div className="action-buttons" style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
             {canSupplement && (
               <Button variant="primary" onClick={() => navigate('/student/request/supplement')}>
-                ⚠️ Bổ sung hồ sơ theo yêu cầu
+                 Bổ sung hồ sơ theo yêu cầu
               </Button>
             )}
             {canReceive && (
               <Button variant="primary" onClick={() => navigate('/student/request/result')}>
-                📥 Nhận kết quả & Tải tệp ký số
+                 Nhận kết quả & Tải tệp ký số
               </Button>
             )}
             {canFeedback && (

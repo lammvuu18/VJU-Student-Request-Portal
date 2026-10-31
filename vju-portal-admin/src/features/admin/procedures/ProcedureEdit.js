@@ -44,7 +44,7 @@ function ProcedureEdit() {
               style={{ fontWeight: 600, color: '#2563EB' }}
               onClick={() => setIsPreviewOpen(true)}
             >
-              👁 Xem trước biểu mẫu
+               Xem trước biểu mẫu
             </button>
           )}
           <button className="link-btn" onClick={() => navigate('/admin/procedures')}>

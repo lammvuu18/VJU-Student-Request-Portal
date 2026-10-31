@@ -8,10 +8,10 @@ function StaffOverview() {
   const navigate = useNavigate();
 
   const statCards = [
-    { label: 'Được giao', value: staffStats.assigned, color: '#2563EB', icon: '📋' },
+    { label: 'Được giao', value: staffStats.assigned, color: '#2563EB', icon: null },
     { label: 'Đang xử lý', value: staffStats.processing, color: '#D97706', icon: '⏳' },
-    { label: 'Hoàn thành', value: staffStats.completed, color: '#059669', icon: '✅' },
-    { label: 'Quá hạn', value: staffStats.overdue, color: '#DC2626', icon: '⚠️' },
+    { label: 'Hoàn thành', value: staffStats.completed, color: '#059669', icon: null },
+    { label: 'Quá hạn', value: staffStats.overdue, color: '#DC2626', icon: null },
   ];
 
   return (

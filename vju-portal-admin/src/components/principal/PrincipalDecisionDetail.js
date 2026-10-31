@@ -76,9 +76,9 @@ function PrincipalDecisionDetail() {
               <h3 className="section-title">Xem trước văn bản trình ký</h3>
               <div className="pdf-preview pdf-preview--large">
                 <div className="pdf-header-bar" style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: '#F3F4F6', borderRadius: '6px 6px 0 0' }}>
-                  <span style={{ fontWeight: 500, fontSize: 13 }}>📄 {decision.request_code || decision.id}_quyet_dinh.pdf</span>
+                  <span style={{ fontWeight: 500, fontSize: 13 }}> {decision.request_code || decision.id}_quyet_dinh.pdf</span>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <button className="btn btn--ghost btn--sm">🔍 Phóng to</button>
+                    <button className="btn btn--ghost btn--sm"> Phóng to</button>
                     <button className="btn btn--ghost btn--sm">⬇ Tải bản thảo</button>
                   </div>
                 </div>
