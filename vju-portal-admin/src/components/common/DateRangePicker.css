@@ -67,7 +67,7 @@
   box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.08);
   border-radius: 12px;
   border: 1px solid #E2E5EA;
-  z-index: 1100;
+  z-index: 60;
   box-sizing: border-box;
   animation: popoverFadeIn 0.15s ease-out;
 }

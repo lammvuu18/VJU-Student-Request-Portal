@@ -234,6 +234,17 @@ function Header({ userName = 'User' }) {
             </svg>
           </div>
 
+          {/* Dropdown Overlay (click outside to close) */}
+          {(showNotif || showUserMenu) && (
+            <div
+              className="dropdown-overlay"
+              onClick={() => {
+                setShowNotif(false);
+                setShowUserMenu(false);
+              }}
+            />
+          )}
+
           {/* Notification Dropdown */}
           {showNotif && (
             <div className="dropdown-menu-wrapper notif-dropdown">
