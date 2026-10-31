@@ -5,7 +5,7 @@ import PrincipalTab from './PrincipalTab';
 import './AccountManagement.css';
 
 function AccountManagement() {
-  const [activeTab, setActiveTab] = useState('staff'); // Active "Cán bộ" per user request
+  const [activeTab, setActiveTab] = useState('principal'); // Active "Hiệu trưởng" per user request
 
   return (
     <div className="account-page-container">

@@ -65,7 +65,7 @@ export const users = {
   },
   principal: {
     user_id: 20,
-    email: 'vanbinh@vju.ac.vn',
+    email: 'binh.nv@vju.ac.vn',
     full_name: 'PGS.TS Nguyễn Văn Bình',
     name: 'PGS.TS Nguyễn Văn Bình',
     role: 'principal',
