@@ -67,18 +67,16 @@ function EditStudentModal({ isOpen, onClose, student, onSave }) {
         {/* Field 1: MSSV (Locked) */}
         <div className="esm-field-group">
           <label className="esm-field-label">MSSV</label>
-          <div className="esm-locked-box">
+          <div className="esm-locked-box" title="Trường này không được sửa">
             <span className="esm-locked-text">{student.mssv || '23110150'}</span>
-            <span className="esm-lock-icon">🔒</span>
           </div>
         </div>
 
         {/* Field 2: Email (Locked) */}
         <div className="esm-field-group">
           <label className="esm-field-label">Email</label>
-          <div className="esm-locked-box">
+          <div className="esm-locked-box" title="Trường này không được sửa">
             <span className="esm-locked-text">{student.email || '23110150@vnu.edu.vn'}</span>
-            <span className="esm-lock-icon">🔒</span>
           </div>
         </div>
 

@@ -147,7 +147,7 @@
   line-height: 18px;
 }
 
-/* Locked Box */
+/* Locked Box (Uneditable Field with 🚫 not-allowed cursor) */
 .esm-locked-box {
   align-self: stretch;
   padding-left: 12px;
@@ -163,6 +163,12 @@
   align-items: center;
   gap: 4px;
   box-sizing: border-box;
+  cursor: not-allowed !important;
+  user-select: none;
+}
+
+.esm-locked-box * {
+  cursor: not-allowed !important;
 }
 
 .esm-locked-text {
@@ -173,15 +179,7 @@
   font-weight: 400;
   word-wrap: break-word;
   line-height: 18px;
-}
-
-.esm-lock-icon {
-  color: #6B7280;
-  font-size: 10px;
-  font-family: 'Inter', sans-serif;
-  font-weight: 400;
-  word-wrap: break-word;
-  line-height: 1;
+  cursor: not-allowed !important;
 }
 
 /* Select Box */
