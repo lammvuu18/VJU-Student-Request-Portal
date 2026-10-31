@@ -7,7 +7,7 @@
 
 import * as mock from '../data/mockData';
 
-const BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080/api';
+const BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api';
 
 // Helper to store & read JWT
 export const getAuthToken = () => localStorage.getItem('vju_token') || '';
@@ -21,6 +21,23 @@ export const setAuthToken = (token) => {
 
 export const getSavedRole = () => localStorage.getItem('vju_role') || 'student';
 export const setSavedRole = (role) => localStorage.setItem('vju_role', role);
+
+export const getSavedUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem('vju_user')) || null;
+  } catch (e) {
+    return null;
+  }
+};
+export const setSavedUser = (user) => {
+  if (user) {
+    localStorage.setItem('vju_user', JSON.stringify(user));
+    if (user.role) setSavedRole(user.role);
+  } else {
+    localStorage.removeItem('vju_user');
+  }
+};
+
 
 /**
  * Core fetch wrapper with timeout, Authorization header, and fallback to mock data
@@ -61,6 +78,10 @@ async function apiFetch(endpoint, options = {}, mockFallbackFn = null) {
     }
     return json;
   } catch (err) {
+    // If backend returned HTTP error (401, 403, 400...), raise it to let UI handle real business rules
+    if (err.status) {
+      throw err;
+    }
     // If backend is offline or network error, use contract mock fallback
     if (mockFallbackFn) {
       console.info(`[API Service Fallback] Backend at ${BASE_URL} not responding. Using mock data for "${endpoint}".`);
@@ -74,35 +95,100 @@ async function apiFetch(endpoint, options = {}, mockFallbackFn = null) {
 // 1. AUTH API (Contract Section 1)
 // =============================================================================
 export const authApi = {
-  loginGoogle: async (idToken) => {
-    return apiFetch('/auth/google', {
+  login: async (email, password) => {
+    const res = await apiFetch('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ id_token: idToken }),
-    }, () => ({
-      success: true,
-      data: {
-        token: 'mock-jwt-token-' + Date.now(),
-        refresh_token: 'mock-refresh-token-' + Date.now(),
-        expires_in: 86400,
-        user: mock.users.student,
-      },
-      message: 'Đăng nhập thành công',
-    }));
+      body: JSON.stringify({ email, password }),
+    }, () => {
+      let mockRole = 'staff';
+      let redirectUrl = '/staff';
+      if (email.includes('admin')) { mockRole = 'admin'; redirectUrl = '/admin'; }
+      else if (email.includes('truongphong') || email.includes('thuha')) { mockRole = 'dept_head'; redirectUrl = '/dept-head'; }
+      else if (email.includes('hieutruong') || email.includes('vanbinh')) { mockRole = 'principal'; redirectUrl = '/principal'; }
+      else if (email.includes('st.vju.ac.vn')) {
+        const err = new Error("Sinh viên chỉ có thể đăng nhập bằng tài khoản Google VJU (@st.vju.ac.vn), không được dùng mật khẩu.");
+        err.status = 403;
+        throw err;
+      }
+      return {
+        success: true,
+        data: {
+          access_token: 'mock-jwt-token-' + mockRole + '-' + Date.now(),
+          expires_in: 86400,
+          user: {
+            ...mock.users[mockRole === 'dept_head' ? 'deptHead' : mockRole],
+            role: mockRole,
+            redirect_url: redirectUrl,
+          }
+        },
+        message: 'Đăng nhập thành công',
+      };
+    });
+    if (res && res.data) {
+      setAuthToken(res.data.access_token);
+      setSavedUser(res.data.user);
+    }
+    return res;
+  },
+
+  loginGoogle: async (googleToken, email = null) => {
+    const res = await apiFetch('/auth/google', {
+      method: 'POST',
+      body: JSON.stringify({
+        google_token: googleToken,
+        id_token: googleToken,
+        email: email
+      }),
+    }, () => {
+      const userEmail = email || (typeof googleToken === 'string' && googleToken.includes('@') ? googleToken : 'minhanh@st.vju.ac.vn');
+      let mockRole = 'student';
+      let redirectUrl = '/student';
+
+      if (userEmail.includes('admin')) { mockRole = 'admin'; redirectUrl = '/admin'; }
+      else if (userEmail.includes('truongphong') || userEmail.includes('thuha')) { mockRole = 'dept_head'; redirectUrl = '/dept-head'; }
+      else if (userEmail.includes('chuyenvien') || userEmail.includes('hoangnam')) { mockRole = 'staff'; redirectUrl = '/staff'; }
+      else if (userEmail.includes('hieutruong') || userEmail.includes('vanbinh')) { mockRole = 'principal'; redirectUrl = '/principal'; }
+
+      return {
+        success: true,
+        data: {
+          access_token: 'mock-jwt-google-' + mockRole + '-' + Date.now(),
+          expires_in: 86400,
+          user: {
+            ...mock.users[mockRole === 'dept_head' ? 'deptHead' : mockRole],
+            email: userEmail,
+            role: mockRole,
+            redirect_url: redirectUrl,
+          }
+        },
+        message: 'Đăng nhập Google thành công',
+      };
+    });
+    if (res && res.data) {
+      setAuthToken(res.data.access_token);
+      setSavedUser(res.data.user);
+    }
+    return res;
   },
 
   getMe: async () => {
     const currentRole = getSavedRole();
-    return apiFetch('/auth/me', { method: 'GET' }, () => {
-      const user = mock.users[currentRole] || mock.users.student;
+    const res = await apiFetch('/auth/me', { method: 'GET' }, () => {
+      const user = getSavedUser() || mock.users[currentRole] || mock.users.student;
       return {
         success: true,
         data: user,
       };
     });
+    if (res && res.data) {
+      setSavedUser(res.data);
+    }
+    return res;
   },
 
   logout: async () => {
     setAuthToken(null);
+    setSavedUser(null);
     return apiFetch('/auth/logout', { method: 'POST' }, () => ({
       success: true,
       message: 'Đăng xuất thành công',

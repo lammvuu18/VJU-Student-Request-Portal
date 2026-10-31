@@ -153,6 +153,68 @@ Vô hiệu hóa access token hiện tại.
 }
 ```
 
+### 1.4 Đăng nhập bằng Email và Mật khẩu
+
+```
+POST /api/auth/login
+```
+
+Dành cho Giảng viên, Cán bộ (Chuyên viên, Trưởng phòng), Hiệu trưởng và Quản trị viên (Admin).
+*Lưu ý theo quy định nghiệp vụ Jira*: Sinh viên chỉ có thể đăng nhập bằng mail VJU (@st.vju.ac.vn), không được dùng mật khẩu.
+
+**Request:**
+```json
+{
+  "email": "thuha@vju.ac.vn",
+  "password": "head123"
+}
+```
+
+**Response 200:**
+```json
+{
+  "success": true,
+  "data": {
+    "access_token": "eyJhbGciOiJIUzI1NiIs...",
+    "expires_in": 86400,
+    "user": {
+      "user_id": 5,
+      "email": "thuha@vju.ac.vn",
+      "full_name": "Trần Thu Hà",
+      "role": "dept_head",
+      "authority_level": 2,
+      "department_id": 2,
+      "department_name": "Phòng Đào tạo",
+      "redirect_url": "/dept-head"
+    }
+  },
+  "message": "Đăng nhập thành công."
+}
+```
+
+**Response 403 (Sinh viên cố đăng nhập mật khẩu):**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "STUDENT_PASSWORD_LOGIN_DENIED",
+    "message": "Sinh viên chỉ có thể đăng nhập bằng tài khoản Google VJU (@st.vju.ac.vn), không được dùng mật khẩu."
+  }
+}
+```
+
+**Response 401 (Sai email hoặc mật khẩu):**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "INVALID_CREDENTIALS",
+    "message": "Email hoặc mật khẩu không chính xác."
+  }
+}
+```
+
+
 ---
 
 ## 2. PROCEDURES — Danh mục thủ tục (Public)

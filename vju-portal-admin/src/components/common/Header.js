@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Modal from './Modal';
 import Button from './Button';
 import { users } from '../../data/mockData';
+import { getSavedUser, authApi } from '../../services/api';
 import './Header.css';
 
 const initialNotifications = [
@@ -62,9 +63,26 @@ function Header({ userName = 'User' }) {
   const [newPass, setNewPass] = useState('');
   const [confirmPass, setConfirmPass] = useState('');
 
-  // Determine active profile info
+  // Determine active profile info from logged-in session or fallback
+  const savedUser = getSavedUser();
   let profile = users.admin;
-  if (userName.includes('Minh Anh') || userName.toLowerCase().includes('sinh viên')) {
+
+  if (savedUser) {
+    const roleMap = {
+      student: 'Sinh viên',
+      dept_head: `Trưởng phòng ${savedUser.department_name || ''}`,
+      staff: `Chuyên viên ${savedUser.department_name || ''}`,
+      principal: 'Hiệu trưởng',
+      admin: 'Quản trị viên Hệ thống',
+    };
+    profile = {
+      name: savedUser.full_name || savedUser.name || userName,
+      email: savedUser.email,
+      role: roleMap[savedUser.role] || 'Người dùng',
+      department: savedUser.department_name || '',
+      phone: savedUser.phone || '',
+    };
+  } else if (userName.includes('Minh Anh') || userName.toLowerCase().includes('sinh viên')) {
     profile = { ...users.student, role: 'Sinh viên' };
   } else if (userName.includes('Thu Hà') || userName.toLowerCase().includes('trưởng phòng')) {
     profile = { ...users.deptHead, role: 'Trưởng phòng Đào tạo' };
@@ -331,8 +349,11 @@ function Header({ userName = 'User' }) {
                 <button
                   type="button"
                   className="user-menu-item danger"
-                  onClick={() => {
+                  onClick={async () => {
                     setShowUserMenu(false);
+                    try {
+                      await authApi.logout();
+                    } catch (e) {}
                     navigate('/login');
                   }}
                 >
