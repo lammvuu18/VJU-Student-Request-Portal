@@ -34,7 +34,7 @@ const distributionItems = [
   { label: 'Đã hủy', percent: 3, color: '#6B7280' },
 ];
 
-// Specialist Performance Data (Figma Spec)
+// Specialist Performance Data (Figma Spec + expanded list)
 const specialistsData = [
   {
     name: 'Nguyễn Văn A',
@@ -60,10 +60,128 @@ const specialistsData = [
     avgTime: '1.9 ngày',
     csat: '4.7 ★',
   },
+  {
+    name: 'Phạm Quốc Dũng',
+    received: '24',
+    completed: '22',
+    sla: '91%',
+    avgTime: '2.3 ngày',
+    csat: '4.4 ★',
+  },
+  {
+    name: 'Hoàng Thị Mai',
+    received: '20',
+    completed: '18',
+    sla: '90%',
+    avgTime: '2.5 ngày',
+    csat: '4.3 ★',
+  },
+  {
+    name: 'Đỗ Văn Hùng',
+    received: '26',
+    completed: '24',
+    sla: '93%',
+    avgTime: '2.0 ngày',
+    csat: '4.6 ★',
+  },
+  {
+    name: 'Vũ Thị Lan',
+    received: '18',
+    completed: '16',
+    sla: '89%',
+    avgTime: '2.7 ngày',
+    csat: '4.1 ★',
+  },
+  {
+    name: 'Ngô Văn Nam',
+    received: '23',
+    completed: '21',
+    sla: '92%',
+    avgTime: '2.2 ngày',
+    csat: '4.5 ★',
+  },
+  {
+    name: 'Bùi Thị Ngọc',
+    received: '21',
+    completed: '19',
+    sla: '88%',
+    avgTime: '2.6 ngày',
+    csat: '4.2 ★',
+  },
+  {
+    name: 'Đặng Văn Phong',
+    received: '25',
+    completed: '23',
+    sla: '94%',
+    avgTime: '2.1 ngày',
+    csat: '4.6 ★',
+  },
+  {
+    name: 'Lý Thị Quỳnh',
+    received: '17',
+    completed: '15',
+    sla: '86%',
+    avgTime: '2.9 ngày',
+    csat: '4.0 ★',
+  },
+  {
+    name: 'Trịnh Văn Sang',
+    received: '22',
+    completed: '20',
+    sla: '91%',
+    avgTime: '2.4 ngày',
+    csat: '4.3 ★',
+  },
+  {
+    name: 'Mai Thị Thảo',
+    received: '19',
+    completed: '18',
+    sla: '95%',
+    avgTime: '1.8 ngày',
+    csat: '4.7 ★',
+  },
+  {
+    name: 'Phan Văn Tuấn',
+    received: '24',
+    completed: '22',
+    sla: '93%',
+    avgTime: '2.2 ngày',
+    csat: '4.5 ★',
+  },
+  {
+    name: 'Võ Thị Uyên',
+    received: '20',
+    completed: '19',
+    sla: '94%',
+    avgTime: '2.0 ngày',
+    csat: '4.6 ★',
+  },
 ];
 
 function DeptHeadStatistics() {
   const [toastMsg, setToastMsg] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [jumpPage, setJumpPage] = useState('');
+  const pageSize = 3;
+
+  const totalPages = Math.max(1, Math.ceil(specialistsData.length / pageSize));
+  const paginatedSpecialists = specialistsData.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
+  const getPageItems = () => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    if (currentPage <= 4) {
+      return [1, 2, 3, 4, 5, 'right-dots', totalPages];
+    }
+    if (currentPage >= totalPages - 3) {
+      return [1, 'left-dots', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    }
+    return [1, 'left-dots', currentPage - 1, currentPage, currentPage + 1, 'right-dots', totalPages];
+  };
 
   const handleExport = () => {
     // Generate CSV export content
@@ -198,7 +316,7 @@ function DeptHeadStatistics() {
           <div className="depthead-stats-table-divider" />
 
           {/* Data Rows */}
-          {specialistsData.map((spec, idx) => (
+          {paginatedSpecialists.map((spec, idx) => (
             <React.Fragment key={idx}>
               <div className="depthead-stats-tr-row">
                 <div className="depthead-stats-td-cell">{spec.name}</div>
@@ -213,6 +331,98 @@ function DeptHeadStatistics() {
               <div className="depthead-stats-table-divider" />
             </React.Fragment>
           ))}
+        </div>
+
+        {/* Pagination Row */}
+        <div className="depthead-pagination-row">
+          <div className="depthead-pagination-info">
+            Hiển thị <strong>{(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, specialistsData.length)}</strong> / <strong>{specialistsData.length}</strong> chuyên viên
+          </div>
+
+          <div style={{ flex: '1 1 0' }} />
+
+          <button
+            type="button"
+            className="depthead-page-arrow"
+            disabled={currentPage <= 1}
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            title="Trang trước"
+            aria-label="Trang trước"
+          >
+            ←
+          </button>
+
+          {getPageItems().map((item, idx) => {
+            if (item === 'left-dots') {
+              return (
+                <button
+                  key={`left-dots-${idx}`}
+                  type="button"
+                  className="depthead-page-dots-btn"
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 5))}
+                  title="Lùi 5 trang"
+                >
+                  ...
+                </button>
+              );
+            }
+            if (item === 'right-dots') {
+              return (
+                <button
+                  key={`right-dots-${idx}`}
+                  type="button"
+                  className="depthead-page-dots-btn"
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 5))}
+                  title="Tiến 5 trang"
+                >
+                  ...
+                </button>
+              );
+            }
+            return (
+              <button
+                key={`page-${item}`}
+                type="button"
+                className={`depthead-page-btn ${currentPage === item ? 'active-page' : ''}`}
+                onClick={() => setCurrentPage(item)}
+              >
+                {item}
+              </button>
+            );
+          })}
+
+          <button
+            type="button"
+            className="depthead-page-arrow"
+            disabled={currentPage >= totalPages}
+            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            title="Trang sau"
+            aria-label="Trang sau"
+          >
+            →
+          </button>
+
+          <div className="depthead-jump-box">
+            <span className="depthead-jump-label">Đến trang</span>
+            <input
+              type="number"
+              min="1"
+              max={totalPages}
+              value={jumpPage}
+              onChange={(e) => setJumpPage(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const p = parseInt(jumpPage, 10);
+                  if (p >= 1 && p <= totalPages) {
+                    setCurrentPage(p);
+                    setJumpPage('');
+                  }
+                }
+              }}
+              placeholder={currentPage}
+              className="depthead-jump-input"
+            />
+          </div>
         </div>
       </div>
     </div>

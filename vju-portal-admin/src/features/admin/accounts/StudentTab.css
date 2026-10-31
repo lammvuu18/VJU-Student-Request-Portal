@@ -337,3 +337,83 @@
   font-weight: 400;
   user-select: none;
 }
+
+.student-page-dots-btn {
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: #6B7280;
+  font-size: 12px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  min-width: 28px;
+  text-align: center;
+  transition: all 0.15s ease;
+  line-height: 1;
+}
+
+.student-page-dots-btn:hover {
+  background: #FCE8E8;
+  color: #AA2327;
+}
+
+.student-pagination-info {
+  color: #6B7280;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.student-pagination-info strong {
+  color: #1F2937;
+  font-weight: 600;
+}
+
+.student-jump-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 12px;
+}
+
+.student-jump-label {
+  color: #6B7280;
+  font-size: 12px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.student-jump-input {
+  width: 44px;
+  height: 28px;
+  padding: 0 4px;
+  border-radius: 6px;
+  border: 1px solid #E2E5EA;
+  background: #FFFFFF;
+  color: #1F2937;
+  font-size: 12px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  text-align: center;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease;
+}
+
+.student-jump-input:focus {
+  border-color: #AA2327;
+  box-shadow: 0 0 0 2px rgba(170, 35, 39, 0.1);
+}
+
+.student-jump-input::-webkit-outer-spin-button,
+.student-jump-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.student-jump-input[type=number] {
+  -moz-appearance: textfield;
+}

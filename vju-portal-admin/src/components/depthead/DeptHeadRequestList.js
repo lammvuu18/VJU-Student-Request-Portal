@@ -2,111 +2,163 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './DeptHeadPages.css';
 
+// 9 Requests matching Figma exact spec
+const initialRequests = [
+  {
+    code: 'VJU-2026-0842',
+    procedure: 'Cấp bảng điểm',
+    student: 'Nguyễn M. Anh',
+    receivedDate: '21/10/2026',
+    sla: '3 ngày',
+    status: 'Chờ phân công',
+    statusTheme: 'yellow',
+    assignee: 'Nguyễn Văn A',
+    isUrgent: true,
+  },
+  {
+    code: 'VJU-2026-0839',
+    procedure: 'Xác nhận SV',
+    student: 'Trần V. Bình',
+    receivedDate: '20/10/2026',
+    sla: '2 ngày',
+    status: 'Đang xử lý',
+    statusTheme: 'blue',
+    assignee: 'Nguyễn Văn A',
+    isUrgent: false,
+  },
+  {
+    code: 'VJU-2026-0835',
+    procedure: 'Phúc khảo',
+    student: 'Lê Thị Cúc',
+    receivedDate: '19/10/2026',
+    sla: '7 ngày',
+    status: 'Chờ xét duyệt',
+    statusTheme: 'yellow',
+    assignee: 'Nguyễn Văn A',
+    isUrgent: true,
+  },
+  {
+    code: 'VJU-2026-0830',
+    procedure: 'Cấp bảng điểm',
+    student: 'Phạm Đ. Dũng',
+    receivedDate: '18/10/2026',
+    sla: '3 ngày',
+    status: 'Đang xử lý',
+    statusTheme: 'blue',
+    assignee: 'Trần Thị B',
+    isUrgent: false,
+  },
+  {
+    code: 'VJU-2026-0828',
+    procedure: 'Bảo lưu KQ',
+    student: 'Ngô Thị Em',
+    receivedDate: '17/10/2026',
+    sla: '5 ngày',
+    status: 'Chờ phân công',
+    statusTheme: 'yellow',
+    assignee: '',
+    isUrgent: true,
+  },
+  {
+    code: 'VJU-2026-0825',
+    procedure: 'Xác nhận SV',
+    student: 'Hoàng V. Phúc',
+    receivedDate: '16/10/2026',
+    sla: '2 ngày',
+    status: 'Đang xử lý',
+    statusTheme: 'blue',
+    assignee: 'Lê Văn C',
+    isUrgent: false,
+  },
+  {
+    code: 'VJU-2026-0820',
+    procedure: 'Cấp bảng điểm',
+    student: 'Đỗ T. Giang',
+    receivedDate: '15/10/2026',
+    sla: '3 ngày',
+    status: 'Hoàn thành',
+    statusTheme: 'green',
+    assignee: 'Nguyễn Văn A',
+    isUrgent: false,
+  },
+  {
+    code: 'VJU-2026-0818',
+    procedure: 'Phúc khảo',
+    student: 'Vũ Văn Hải',
+    receivedDate: '14/10/2026',
+    sla: '7 ngày',
+    status: 'Chờ xét duyệt',
+    statusTheme: 'yellow',
+    assignee: 'Trần Thị B',
+    isUrgent: true,
+  },
+  {
+    code: 'VJU-2026-0815',
+    procedure: 'Xác nhận SV',
+    student: 'Mai T. Hương',
+    receivedDate: '13/10/2026',
+    sla: '2 ngày',
+    status: 'Đang xử lý',
+    statusTheme: 'blue',
+    assignee: 'Lê Văn C',
+    isUrgent: false,
+  },
+];
+
+const extraProcedures = ['Cấp bảng điểm', 'Xác nhận SV', 'Phúc khảo', 'Bảo lưu KQ', 'Miễn giảm HP', 'Cấp lại thẻ SV'];
+const extraStudents = [
+  'Bùi Thị Hạnh', 'Đặng Minh Khôi', 'Đinh Thị Lan', 'Dương Văn Nam',
+  'Lý Thị Oanh', 'Mai Văn Phong', 'Phan Thị Quỳnh', 'Trịnh Văn Sang',
+  'Võ Thị Tâm', 'Lương Văn Uyên', 'Cao Thị Vân', 'Hồ Văn Xuân',
+  'Tạ Quang Huy', 'Dương Thúy Nga', 'Trần Bảo Ngọc', 'Phan Văn Phú'
+];
+const extraSpecialists = ['Nguyễn Văn A', 'Trần Thị B', 'Lê Văn C', '', 'Nguyễn Văn A', 'Trần Thị B', ''];
+const extraSLAs = ['2 ngày', '3 ngày', '5 ngày', '7 ngày'];
+
+if (initialRequests.length < 50) {
+  for (let i = initialRequests.length; i < 50; i++) {
+    const proc = extraProcedures[i % extraProcedures.length];
+    const student = extraStudents[i % extraStudents.length];
+    const assignee = extraSpecialists[i % extraSpecialists.length];
+    const sla = extraSLAs[i % extraSLAs.length];
+    const day = String((i % 28) + 1).padStart(2, '0');
+    const receivedDate = `${day}/10/2026`;
+    const num = String(810 - (i - 9) * 3).padStart(4, '0');
+
+    let status = 'Đang xử lý';
+    let statusTheme = 'blue';
+    let isUrgent = false;
+
+    if (!assignee) {
+      status = 'Chờ phân công';
+      statusTheme = 'yellow';
+      isUrgent = true;
+    } else if (i % 5 === 0) {
+      status = 'Hoàn thành';
+      statusTheme = 'green';
+      isUrgent = false;
+    } else if (i % 4 === 0) {
+      status = 'Chờ xét duyệt';
+      statusTheme = 'yellow';
+      isUrgent = true;
+    }
+
+    initialRequests.push({
+      code: `VJU-2026-${num}`,
+      procedure: proc,
+      student,
+      receivedDate,
+      sla,
+      status,
+      statusTheme,
+      assignee,
+      isUrgent,
+    });
+  }
+}
+
 function DeptHeadRequestList() {
   const navigate = useNavigate();
-
-  // 9 Requests matching Figma exact spec
-  const initialRequests = [
-    {
-      code: 'VJU-2026-0842',
-      procedure: 'Cấp bảng điểm',
-      student: 'Nguyễn M. Anh',
-      receivedDate: '21/10/2026',
-      sla: '3 ngày',
-      status: 'Chờ phân công',
-      statusTheme: 'yellow',
-      assignee: 'Nguyễn Văn A',
-      isUrgent: true,
-    },
-    {
-      code: 'VJU-2026-0839',
-      procedure: 'Xác nhận SV',
-      student: 'Trần V. Bình',
-      receivedDate: '20/10/2026',
-      sla: '2 ngày',
-      status: 'Đang xử lý',
-      statusTheme: 'blue',
-      assignee: 'Nguyễn Văn A',
-      isUrgent: false,
-    },
-    {
-      code: 'VJU-2026-0835',
-      procedure: 'Phúc khảo',
-      student: 'Lê Thị Cúc',
-      receivedDate: '19/10/2026',
-      sla: '7 ngày',
-      status: 'Chờ xét duyệt',
-      statusTheme: 'yellow',
-      assignee: 'Nguyễn Văn A',
-      isUrgent: true,
-    },
-    {
-      code: 'VJU-2026-0830',
-      procedure: 'Cấp bảng điểm',
-      student: 'Phạm Đ. Dũng',
-      receivedDate: '18/10/2026',
-      sla: '3 ngày',
-      status: 'Đang xử lý',
-      statusTheme: 'blue',
-      assignee: 'Trần Thị B',
-      isUrgent: false,
-    },
-    {
-      code: 'VJU-2026-0828',
-      procedure: 'Bảo lưu KQ',
-      student: 'Ngô Thị Em',
-      receivedDate: '17/10/2026',
-      sla: '5 ngày',
-      status: 'Chờ phân công',
-      statusTheme: 'yellow',
-      assignee: '',
-      isUrgent: true,
-    },
-    {
-      code: 'VJU-2026-0825',
-      procedure: 'Xác nhận SV',
-      student: 'Hoàng V. Phúc',
-      receivedDate: '16/10/2026',
-      sla: '2 ngày',
-      status: 'Đang xử lý',
-      statusTheme: 'blue',
-      assignee: 'Lê Văn C',
-      isUrgent: false,
-    },
-    {
-      code: 'VJU-2026-0820',
-      procedure: 'Cấp bảng điểm',
-      student: 'Đỗ T. Giang',
-      receivedDate: '15/10/2026',
-      sla: '3 ngày',
-      status: 'Hoàn thành',
-      statusTheme: 'green',
-      assignee: 'Nguyễn Văn A',
-      isUrgent: false,
-    },
-    {
-      code: 'VJU-2026-0818',
-      procedure: 'Phúc khảo',
-      student: 'Vũ Văn Hải',
-      receivedDate: '14/10/2026',
-      sla: '7 ngày',
-      status: 'Chờ xét duyệt',
-      statusTheme: 'yellow',
-      assignee: 'Trần Thị B',
-      isUrgent: true,
-    },
-    {
-      code: 'VJU-2026-0815',
-      procedure: 'Xác nhận SV',
-      student: 'Mai T. Hương',
-      receivedDate: '13/10/2026',
-      sla: '2 ngày',
-      status: 'Đang xử lý',
-      statusTheme: 'blue',
-      assignee: 'Lê Văn C',
-      isUrgent: false,
-    },
-  ];
 
   const [requests, setRequests] = useState(initialRequests);
   const [selectedSpecialist, setSelectedSpecialist] = useState('');
@@ -115,6 +167,11 @@ function DeptHeadRequestList() {
   const [sortDate, setSortDate] = useState('newest');
   const [searchTerm, setSearchTerm] = useState('');
   const [toastMsg, setToastMsg] = useState('');
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [jumpPage, setJumpPage] = useState('');
+  const pageSize = 10;
 
   // Dropdown states
   const [openStatusDropdown, setOpenStatusDropdown] = useState(false);
@@ -195,7 +252,12 @@ function DeptHeadRequestList() {
     setTimeout(() => setToastMsg(''), 3500);
   };
 
-  // Filter requests
+  const handleSelectSpecialist = (spec) => {
+    setSelectedSpecialist(prev => prev === spec ? '' : spec);
+    setCurrentPage(1);
+  };
+
+  // Filter & sort requests
   const filteredRequests = requests.filter(r => {
     if (selectedSpecialist) {
       if (selectedSpecialist === 'Chưa phân công' && r.assignee) return false;
@@ -214,6 +276,32 @@ function DeptHeadRequestList() {
     }
     return true;
   });
+
+  const sortedRequests = [...filteredRequests].sort((a, b) => {
+    if (sortDate === 'oldest') {
+      return a.code.localeCompare(b.code);
+    }
+    return b.code.localeCompare(a.code);
+  });
+
+  const totalPages = Math.max(1, Math.ceil(sortedRequests.length / pageSize));
+  const paginatedRequests = sortedRequests.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
+  const getPageItems = () => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    if (currentPage <= 4) {
+      return [1, 2, 3, 4, 5, 'right-dots', totalPages];
+    }
+    if (currentPage >= totalPages - 3) {
+      return [1, 'left-dots', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    }
+    return [1, 'left-dots', currentPage - 1, currentPage, currentPage + 1, 'right-dots', totalPages];
+  };
 
   return (
     <div className="depthead-requests-container" ref={containerRef}>
@@ -239,7 +327,7 @@ function DeptHeadRequestList() {
           {/* Nguyễn Văn A */}
           <div
             className={`depthead-spec-card ${selectedSpecialist === 'Nguyễn Văn A' ? 'depthead-spec-card--active' : ''}`}
-            onClick={() => setSelectedSpecialist(selectedSpecialist === 'Nguyễn Văn A' ? '' : 'Nguyễn Văn A')}
+            onClick={() => handleSelectSpecialist('Nguyễn Văn A')}
             title="Bấm để lọc danh sách theo chuyên viên này"
           >
             <div className="depthead-spec-num">{String(countA).padStart(2, '0')}</div>
@@ -249,7 +337,7 @@ function DeptHeadRequestList() {
           {/* Trần Thị B */}
           <div
             className={`depthead-spec-card ${selectedSpecialist === 'Trần Thị B' ? 'depthead-spec-card--active' : ''}`}
-            onClick={() => setSelectedSpecialist(selectedSpecialist === 'Trần Thị B' ? '' : 'Trần Thị B')}
+            onClick={() => handleSelectSpecialist('Trần Thị B')}
             title="Bấm để lọc danh sách theo chuyên viên này"
           >
             <div className="depthead-spec-num">{String(countB).padStart(2, '0')}</div>
@@ -259,7 +347,7 @@ function DeptHeadRequestList() {
           {/* Lê Văn C */}
           <div
             className={`depthead-spec-card ${selectedSpecialist === 'Lê Văn C' ? 'depthead-spec-card--active' : ''}`}
-            onClick={() => setSelectedSpecialist(selectedSpecialist === 'Lê Văn C' ? '' : 'Lê Văn C')}
+            onClick={() => handleSelectSpecialist('Lê Văn C')}
             title="Bấm để lọc danh sách theo chuyên viên này"
           >
             <div className="depthead-spec-num">{String(countC).padStart(2, '0')}</div>
@@ -269,7 +357,7 @@ function DeptHeadRequestList() {
           {/* Chưa phân công */}
           <div
             className={`depthead-spec-card ${selectedSpecialist === 'Chưa phân công' ? 'depthead-spec-card--active' : ''}`}
-            onClick={() => setSelectedSpecialist(selectedSpecialist === 'Chưa phân công' ? '' : 'Chưa phân công')}
+            onClick={() => handleSelectSpecialist('Chưa phân công')}
             title="Bấm để lọc hồ sơ chưa phân công"
           >
             <div className="depthead-spec-num">{String(countUnassigned).padStart(2, '0')}</div>
@@ -317,6 +405,7 @@ function DeptHeadRequestList() {
                     onClick={() => {
                       setFilterStatus(st);
                       setOpenStatusDropdown(false);
+                      setCurrentPage(1);
                     }}
                     style={{
                       padding: '8px 12px',
@@ -366,6 +455,7 @@ function DeptHeadRequestList() {
                     onClick={() => {
                       setFilterProcedure(proc);
                       setOpenProcedureDropdown(false);
+                      setCurrentPage(1);
                     }}
                     style={{
                       padding: '8px 12px',
@@ -418,6 +508,7 @@ function DeptHeadRequestList() {
                     onClick={() => {
                       setSortDate(item.val);
                       setOpenDateDropdown(false);
+                      setCurrentPage(1);
                     }}
                     style={{
                       padding: '8px 12px',
@@ -443,7 +534,10 @@ function DeptHeadRequestList() {
               className="depthead-search-input"
               placeholder="Tìm kiếm..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
             />
           </div>
         </div>
@@ -466,8 +560,15 @@ function DeptHeadRequestList() {
 
           <div className="req-detail-divider" style={{ minWidth: 820 }} />
 
+          {/* Empty State */}
+          {paginatedRequests.length === 0 && (
+            <div style={{ padding: '36px 0', textAlign: 'center', width: '100%', color: '#6B7280', fontSize: 13 }}>
+              Không tìm thấy yêu cầu nào phù hợp
+            </div>
+          )}
+
           {/* Data Rows */}
-          {filteredRequests.map((row) => (
+          {paginatedRequests.map((row) => (
             <React.Fragment key={row.code}>
               <div className={`depthead-tr-row ${row.isUrgent ? 'depthead-tr-row--urgent' : ''}`}>
                 <div className="depthead-td-cell" style={{ fontWeight: 500 }}>{row.code}</div>
@@ -510,6 +611,98 @@ function DeptHeadRequestList() {
               <div className="req-detail-divider" style={{ minWidth: 820 }} />
             </React.Fragment>
           ))}
+        </div>
+
+        {/* Pagination Row */}
+        <div className="depthead-pagination-row">
+          <div className="depthead-pagination-info">
+            Hiển thị <strong>{filteredRequests.length === 0 ? 0 : (currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, filteredRequests.length)}</strong> / <strong>{filteredRequests.length}</strong> yêu cầu
+          </div>
+
+          <div style={{ flex: '1 1 0' }} />
+
+          <button
+            type="button"
+            className="depthead-page-arrow"
+            disabled={currentPage <= 1}
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            title="Trang trước"
+            aria-label="Trang trước"
+          >
+            ←
+          </button>
+
+          {getPageItems().map((item, idx) => {
+            if (item === 'left-dots') {
+              return (
+                <button
+                  key={`left-dots-${idx}`}
+                  type="button"
+                  className="depthead-page-dots-btn"
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 5))}
+                  title="Lùi 5 trang"
+                >
+                  ...
+                </button>
+              );
+            }
+            if (item === 'right-dots') {
+              return (
+                <button
+                  key={`right-dots-${idx}`}
+                  type="button"
+                  className="depthead-page-dots-btn"
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 5))}
+                  title="Tiến 5 trang"
+                >
+                  ...
+                </button>
+              );
+            }
+            return (
+              <button
+                key={`page-${item}`}
+                type="button"
+                className={`depthead-page-btn ${currentPage === item ? 'active-page' : ''}`}
+                onClick={() => setCurrentPage(item)}
+              >
+                {item}
+              </button>
+            );
+          })}
+
+          <button
+            type="button"
+            className="depthead-page-arrow"
+            disabled={currentPage >= totalPages}
+            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            title="Trang sau"
+            aria-label="Trang sau"
+          >
+            →
+          </button>
+
+          <div className="depthead-jump-box">
+            <span className="depthead-jump-label">Đến trang</span>
+            <input
+              type="number"
+              min="1"
+              max={totalPages}
+              value={jumpPage}
+              onChange={(e) => setJumpPage(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const p = parseInt(jumpPage, 10);
+                  if (p >= 1 && p <= totalPages) {
+                    setCurrentPage(p);
+                    setJumpPage('');
+                  }
+                }
+              }}
+              placeholder={currentPage}
+              className="depthead-jump-input"
+            />
+          </div>
         </div>
 
         {/* Floating Assignee Dropdown Popup (matching Figma spec) */}

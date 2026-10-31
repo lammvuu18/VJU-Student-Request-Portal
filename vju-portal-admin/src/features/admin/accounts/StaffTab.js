@@ -10,6 +10,9 @@ function StaffTab() {
   const [search, setSearch] = useState('');
   const [filterDept, setFilterDept] = useState('');
   const [filterLevel, setFilterLevel] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [jumpPage, setJumpPage] = useState('');
+  const pageSize = 20; // Tối đa 1 trang 20 số lượng theo yêu cầu
 
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState(null);
@@ -75,6 +78,25 @@ function StaffTab() {
     return true;
   });
 
+  const totalPages = Math.max(1, Math.ceil(filteredStaff.length / pageSize));
+  const paginatedStaff = filteredStaff.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
+  const getPageItems = () => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    if (currentPage <= 4) {
+      return [1, 2, 3, 4, 5, 'right-dots', totalPages];
+    }
+    if (currentPage >= totalPages - 3) {
+      return [1, 'left-dots', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    }
+    return [1, 'left-dots', currentPage - 1, currentPage, currentPage + 1, 'right-dots', totalPages];
+  };
+
   return (
     <div className="staff-tab-wrapper">
       {toastMessage && (
@@ -94,7 +116,10 @@ function StaffTab() {
               className="staff-search-input"
               placeholder="⌕ Tìm theo tên, email..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
             />
           </div>
 
@@ -102,7 +127,10 @@ function StaffTab() {
             <select
               className="staff-filter-select"
               value={filterDept}
-              onChange={(e) => setFilterDept(e.target.value)}
+              onChange={(e) => {
+                setFilterDept(e.target.value);
+                setCurrentPage(1);
+              }}
             >
               <option value="">Phòng ban</option>
               <option value="PĐT">PĐT</option>
@@ -116,7 +144,10 @@ function StaffTab() {
             <select
               className="staff-filter-select"
               value={filterLevel}
-              onChange={(e) => setFilterLevel(e.target.value)}
+              onChange={(e) => {
+                setFilterLevel(e.target.value);
+                setCurrentPage(1);
+              }}
             >
               <option value="">Cấp</option>
               <option value="Chuyên viên">Chuyên viên</option>
@@ -150,12 +181,12 @@ function StaffTab() {
           <div className="staff-divider" />
 
           {/* Data Rows */}
-          {filteredStaff.length === 0 ? (
+          {paginatedStaff.length === 0 ? (
             <div className="staff-empty-state">
               Không tìm thấy cán bộ nào phù hợp.
             </div>
           ) : (
-            filteredStaff.map((s) => {
+            paginatedStaff.map((s) => {
               const statusCfg = staffStatusMap[s.status] || {
                 label: 'Hoạt động',
                 color: '#168039',
@@ -209,6 +240,100 @@ function StaffTab() {
               );
             })
           )}
+        </div>
+
+        <div style={{ height: 12, width: '100%' }} />
+
+        {/* Pagination Row */}
+        <div className="staff-pagination-row">
+          <div className="staff-pagination-info">
+            Hiển thị <strong>{filteredStaff.length === 0 ? 0 : (currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, filteredStaff.length)}</strong> / <strong>{filteredStaff.length}</strong> cán bộ
+          </div>
+
+          <div style={{ flex: '1 1 0' }} />
+
+          <button
+            type="button"
+            className="staff-page-arrow"
+            disabled={currentPage <= 1}
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            title="Trang trước"
+            aria-label="Trang trước"
+          >
+            ←
+          </button>
+
+          {getPageItems().map((item, idx) => {
+            if (item === 'left-dots') {
+              return (
+                <button
+                  key={`left-dots-${idx}`}
+                  type="button"
+                  className="staff-page-dots-btn"
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 5))}
+                  title="Lùi 5 trang"
+                >
+                  ...
+                </button>
+              );
+            }
+            if (item === 'right-dots') {
+              return (
+                <button
+                  key={`right-dots-${idx}`}
+                  type="button"
+                  className="staff-page-dots-btn"
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 5))}
+                  title="Tiến 5 trang"
+                >
+                  ...
+                </button>
+              );
+            }
+            return (
+              <button
+                key={`page-${item}`}
+                type="button"
+                className={`staff-page-btn ${currentPage === item ? 'active-page' : ''}`}
+                onClick={() => setCurrentPage(item)}
+              >
+                {item}
+              </button>
+            );
+          })}
+
+          <button
+            type="button"
+            className="staff-page-arrow"
+            disabled={currentPage >= totalPages}
+            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            title="Trang sau"
+            aria-label="Trang sau"
+          >
+            →
+          </button>
+
+          <div className="staff-jump-box">
+            <span className="staff-jump-label">Đến trang</span>
+            <input
+              type="number"
+              min="1"
+              max={totalPages}
+              value={jumpPage}
+              onChange={(e) => setJumpPage(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const p = parseInt(jumpPage, 10);
+                  if (p >= 1 && p <= totalPages) {
+                    setCurrentPage(p);
+                    setJumpPage('');
+                  }
+                }
+              }}
+              placeholder={currentPage}
+              className="staff-jump-input"
+            />
+          </div>
         </div>
       </div>
 

@@ -619,6 +619,41 @@ export const staff = [
   { id: 6, user_id: 16, name: 'Lý Thị Ngọc', full_name: 'Lý Thị Ngọc', email: 'ngoc.lt@vju.ac.vn', department: 'PKHTC', department_id: 3, level: 'Chuyên viên', status: 'locked', current_workload: 0 },
 ];
 
+// Expand to 45 staff accounts for pagination testing (max 20 per page)
+const extraStaffNames = [
+  { name: 'Vũ Quốc Bảo', email: 'bao.vq@vju.ac.vn', department: 'PĐT', level: 'Chuyên viên' },
+  { name: 'Hoàng Thị Chi', email: 'chi.ht@vju.ac.vn', department: 'PCTSV', level: 'Chuyên viên' },
+  { name: 'Đoàn Văn Dũng', email: 'dung.dv@vju.ac.vn', department: 'PKHTC', level: 'Trưởng phòng' },
+  { name: 'Bùi Thanh Giang', email: 'giang.bt@vju.ac.vn', department: 'PĐT', level: 'Chuyên viên' },
+  { name: 'Ngô Văn Hùng', email: 'hung.nv@vju.ac.vn', department: 'PCTSV', level: 'Chuyên viên' },
+  { name: 'Dương Thị Kiều', email: 'kieu.dt@vju.ac.vn', department: 'PĐT', level: 'Chuyên viên' },
+  { name: 'Mai Văn Long', email: 'long.mv@vju.ac.vn', department: 'PKHTC', level: 'Chuyên viên' },
+  { name: 'Trịnh Thị Mai', email: 'mai.tt@vju.ac.vn', department: 'PCTSV', level: 'Chuyên viên' },
+  { name: 'Phan Văn Nghĩa', email: 'nghia.pv@vju.ac.vn', department: 'PĐT', level: 'Chuyên viên' },
+  { name: 'Lê Thu Oanh', email: 'oanh.lt@vju.ac.vn', department: 'PKHTC', level: 'Chuyên viên' },
+  { name: 'Hồ Văn Phúc', email: 'phuc.hv@vju.ac.vn', department: 'PCTSV', level: 'Chuyên viên' },
+  { name: 'Đinh Thị Quỳnh', email: 'quynh.dt@vju.ac.vn', department: 'PĐT', level: 'Chuyên viên' },
+  { name: 'Võ Văn Sơn', email: 'son.vv@vju.ac.vn', department: 'PĐT', level: 'Trưởng phòng' },
+  { name: 'Cao Thị Thảo', email: 'thao.ct@vju.ac.vn', department: 'PCTSV', level: 'Chuyên viên' },
+  { name: 'Lương Văn Uy', email: 'uy.lv@vju.ac.vn', department: 'PKHTC', level: 'Chuyên viên' },
+];
+
+for (let i = staff.length; i < 45; i++) {
+  const item = extraStaffNames[(i - 6) % extraStaffNames.length];
+  staff.push({
+    id: i + 1,
+    user_id: 100 + i,
+    name: `${item.name} (${i + 1})`,
+    full_name: `${item.name} (${i + 1})`,
+    email: item.email.replace('@', `${i + 1}@`),
+    department: item.department,
+    department_id: item.department === 'PCTSV' ? 1 : (item.department === 'PĐT' ? 2 : 3),
+    level: item.level,
+    status: i % 7 === 0 ? 'locked' : 'active',
+    current_workload: (i % 5) + 1,
+  });
+}
+
 export const staffMembers = staff;
 
 // 8. Principal Profile (Contract Section 10)
