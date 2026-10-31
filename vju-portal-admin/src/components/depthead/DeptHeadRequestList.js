@@ -12,7 +12,7 @@ const initialRequests = [
     sla: '3 ngày',
     status: 'Chờ phân công',
     statusTheme: 'yellow',
-    assignee: 'Nguyễn Văn A',
+    assignee: '',
     isUrgent: true,
   },
   {
@@ -213,10 +213,10 @@ function DeptHeadRequestList() {
   const specialists = ['Nguyễn Văn A', 'Trần Thị B', 'Lê Văn C'];
 
   // Calculate specialist counts
-  const countA = requests.filter(r => r.assignee === 'Nguyễn Văn A').length;
-  const countB = requests.filter(r => r.assignee === 'Trần Thị B').length;
-  const countC = requests.filter(r => r.assignee === 'Lê Văn C').length;
-  const countUnassigned = requests.filter(r => !r.assignee).length;
+  const countA = requests.filter(r => r.assignee === 'Nguyễn Văn A' && r.status !== 'Chờ phân công').length;
+  const countB = requests.filter(r => r.assignee === 'Trần Thị B' && r.status !== 'Chờ phân công').length;
+  const countC = requests.filter(r => r.assignee === 'Lê Văn C' && r.status !== 'Chờ phân công').length;
+  const countUnassigned = requests.filter(r => !r.assignee || r.status === 'Chờ phân công').length;
 
   const handleOpenAssigneeMenu = (e, rowCode) => {
     e.stopPropagation();
@@ -260,8 +260,8 @@ function DeptHeadRequestList() {
   // Filter & sort requests
   const filteredRequests = requests.filter(r => {
     if (selectedSpecialist) {
-      if (selectedSpecialist === 'Chưa phân công' && r.assignee) return false;
-      if (selectedSpecialist !== 'Chưa phân công' && r.assignee !== selectedSpecialist) return false;
+      if (selectedSpecialist === 'Chưa phân công' && (r.assignee && r.status !== 'Chờ phân công')) return false;
+      if (selectedSpecialist !== 'Chưa phân công' && (r.status === 'Chờ phân công' || r.assignee !== selectedSpecialist)) return false;
     }
     if (filterStatus && r.status !== filterStatus) return false;
     if (filterProcedure && r.procedure !== filterProcedure) return false;
@@ -533,11 +533,11 @@ function DeptHeadRequestList() {
                 {/* Assignee Selector Button */}
                 <div className="depthead-td-cell">
                   <div
-                    className={`depthead-assignee-select-btn ${!row.assignee ? 'depthead-assignee-select-btn--empty' : ''}`}
+                    className={`depthead-assignee-select-btn ${!row.assignee || row.status === 'Chờ phân công' ? 'depthead-assignee-select-btn--empty' : ''}`}
                     onClick={(e) => handleOpenAssigneeMenu(e, row.code)}
                     title="Bấm để phân công hoặc đổi chuyên viên phụ trách"
                   >
-                    <span>{row.assignee || 'Chưa có ai'}</span>
+                    <span>{row.status === 'Chờ phân công' || !row.assignee ? 'Chưa có ai' : row.assignee}</span>
                     <span>▾</span>
                   </div>
                 </div>
@@ -662,7 +662,7 @@ function DeptHeadRequestList() {
           >
             {specialists.map((spec) => {
               const currentReq = requests.find(r => r.code === activeAssigneeRow);
-              const isSelected = currentReq?.assignee === spec;
+              const isSelected = currentReq?.assignee === spec && currentReq?.status !== 'Chờ phân công';
               return (
                 <div
                   key={spec}
@@ -674,7 +674,7 @@ function DeptHeadRequestList() {
               );
             })}
             <div
-              className="depthead-assignee-item"
+              className={`depthead-assignee-item ${(!requests.find(r => r.code === activeAssigneeRow)?.assignee || requests.find(r => r.code === activeAssigneeRow)?.status === 'Chờ phân công') ? 'depthead-assignee-item--selected' : ''}`}
               style={{ color: '#9CA3AF' }}
               onClick={() => handleSelectAssignee(activeAssigneeRow, '')}
             >

@@ -21,16 +21,19 @@ function DeptHeadRequestDetail({ defaultOpenSupplement = false, defaultOpenRejec
 
   const requestCode = id || foundReq?.request_code || foundReq?.id || 'VJU-2026-0840';
   const procedure = foundReq?.procedure || foundReq?.type_name || 'Cấp bảng điểm';
-  const student = foundReq?.student ? `${foundReq.student} — ${foundReq.mssv || '23110150'}` : 'Nguyễn Minh Anh — 23110150';
+  const student = foundReq?.student ? `${foundReq.student} — ${foundReq.mssv || '21CS001'}` : 'Nguyễn Minh Anh — 21CS001';
   const purpose = foundReq?.purpose || foundReq?.form_data?.purpose || 'Xin việc';
   const quantity = foundReq?.quantity || foundReq?.form_data?.quantity || '01';
   const language = foundReq?.language || foundReq?.form_data?.language || 'Tiếng Việt';
-  const assignee = foundReq?.assignee || foundReq?.staff_name || 'Nguyễn Văn A';
 
   const isRejected = defaultStatus === 'Từ chối' || searchParams.get('rejected') === 'true' || searchParams.get('status') === 'rejected' || searchParams.get('action') === 'reject';
   const isSent = searchParams.get('sent') === 'true' || searchParams.get('status') === 'supplement_sent';
-  const initialStatus = defaultStatus || (isRejected ? 'Từ chối' : isSent ? 'Cần bổ sung' : (foundReq?.status || 'Đang xử lý'));
+  const initialStatus = defaultStatus || (isRejected ? 'Từ chối' : isSent ? 'Cần bổ sung' : (foundReq?.status || (requestCode === 'VJU-2026-0842' ? 'Chờ phân công' : 'Đang xử lý')));
   const [currentStatus, setCurrentStatus] = useState(initialStatus);
+
+  const assignee = (currentStatus === 'Chờ phân công' || foundReq?.status === 'Chờ phân công')
+    ? (foundReq?.assignee && foundReq?.status !== 'Chờ phân công' ? foundReq.assignee : 'Chưa có ai')
+    : (foundReq?.assignee || foundReq?.staff_name || 'Nguyễn Văn A');
 
   const initialToast = defaultToast || (isRejected ? `Đã từ chối yêu cầu ${requestCode}` : isSent ? 'Đã gửi yêu cầu bổ sung cho SV' : '');
   const [toastMsg, setToastMsg] = useState(initialToast);
