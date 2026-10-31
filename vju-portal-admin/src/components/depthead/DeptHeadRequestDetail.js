@@ -311,7 +311,6 @@ function DeptHeadRequestDetail({ defaultOpenSupplement = false, defaultOpenRejec
           <button
             type="button"
             className="btn-depthead-action-white"
-            style={{ color: '#AA2327', borderColor: '#FCA5A5' }}
             onClick={() => setShowRejectModal(true)}
           >
             Từ chối
