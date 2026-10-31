@@ -351,7 +351,7 @@ function RequestDetail() {
                     border: 'none',
                     fontSize: 26,
                     cursor: 'pointer',
-                    color: star <= rating ? '#F59E0B' : '#D1D5DB',
+                    color: star <= rating ? '#AA2327' : '#D1D5DB',
                     transition: 'color 0.15s',
                     padding: 0,
                   }}

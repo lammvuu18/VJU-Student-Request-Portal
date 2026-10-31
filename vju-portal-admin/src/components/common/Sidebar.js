@@ -25,7 +25,21 @@ function Sidebar({ items }) {
             // "Yêu cầu được giao" active trên /staff/requests và /staff/request/*
             isActive = currentPath.startsWith('/staff/request');
           } else if (item.path === '/student/dashboard') {
-            isActive = currentPath === '/student/dashboard' || currentPath === '/student' || currentPath === '/student/';
+            // "Yêu cầu của tôi" active trên dashboard và toàn bộ chi tiết request/*, feedback/*
+            isActive = (
+              currentPath === '/student/dashboard' ||
+              currentPath === '/student' ||
+              currentPath === '/student/' ||
+              currentPath.startsWith('/student/request') ||
+              currentPath.startsWith('/student/feedback')
+            );
+          } else if (item.path === '/student/procedures') {
+            // "Danh mục thủ tục"
+            isActive = (
+              currentPath === '/student/procedures' ||
+              currentPath === '/student/catalog' ||
+              currentPath.startsWith('/student/procedure')
+            );
           } else {
             isActive = currentPath === item.path || currentPath.startsWith(item.path + '/');
           }

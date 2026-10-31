@@ -154,8 +154,8 @@ function FeedbackForm() {
                       width="22"
                       height="22"
                       viewBox="0 0 20 20"
-                      fill={isFilled ? '#F59E0B' : 'none'}
-                      stroke={isFilled ? '#F59E0B' : '#D1D5DB'}
+                      fill={isFilled ? '#AA2327' : '#D1D5DB'}
+                      stroke={isFilled ? '#AA2327' : '#D1D5DB'}
                       strokeWidth="1.5"
                       strokeLinecap="round"
                       strokeLinejoin="round"
