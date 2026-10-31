@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import Modal from '../common/Modal';
 import Button from '../common/Button';
 import { studentOverviewRequests, allRequests } from '../../data/mockData';
@@ -8,8 +8,10 @@ import './StudentPages.css';
 function RequestDetail() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const location = useLocation();
+  const navState = location.state || {};
 
-  // Find request in mock data or fallback to Figma default VJU-2026-0840
+  // Find request in mock data or fallback to Figma default VJU-2026-0842
   const foundReq = (studentOverviewRequests || []).find(
     (r) => r.id === id || r.request_code === id || String(r.request_id) === String(id)
   ) || (allRequests || []).find(
@@ -17,10 +19,10 @@ function RequestDetail() {
   );
 
   const request = foundReq || {
-    id: id || 'VJU-2026-0840',
-    request_code: id || 'VJU-2026-0840',
+    id: id || navState.orderCode || 'VJU-2026-0842',
+    request_code: id || navState.orderCode || 'VJU-2026-0842',
     student: 'Nguyễn Minh Anh',
-    mssv: '23110150',
+    mssv: '21CS001',
     procedure: 'Cấp bảng điểm',
     procedure_id: 1,
     purpose: 'Xin việc / Ứng tuyển',
@@ -58,16 +60,16 @@ function RequestDetail() {
     return 'processing';
   };
 
-  const requestCode = request.id || request.request_code || 'VJU-2026-0840';
-  const studentName = request.student || 'Nguyễn Minh Anh';
-  const studentMssv = request.mssv || '23110150';
-  const procedureName = request.procedure || request.type_name || 'Cấp bảng điểm';
-  const purpose = request.purpose || request.form_data?.purpose || 'Xin việc / Ứng tuyển';
-  const quantity = request.quantity || request.form_data?.quantity || 1;
-  const language = request.language || request.form_data?.language || 'Tiếng Việt';
-  const deliveryMethod = request.delivery_method || request.form_data?.delivery_method || 'PDF ký số';
-  const submissionDate = request.date || '21/10/2026';
-  const status = request.status || 'Đang xử lý';
+  const requestCode = request.id || request.request_code || navState.orderCode || 'VJU-2026-0842';
+  const studentName = request.student || navState.formData?.student_name || 'Nguyễn Minh Anh';
+  const studentMssv = request.mssv || '21CS001';
+  const procedureName = navState.procedure?.name || request.procedure || request.type_name || 'Cấp bảng điểm';
+  const purpose = navState.formData?.purpose || request.purpose || request.form_data?.purpose || 'Xin việc / Ứng tuyển';
+  const quantity = navState.formData?.quantity || request.quantity || request.form_data?.quantity || 1;
+  const language = navState.formData?.language || request.language || request.form_data?.language || 'Tiếng Việt';
+  const deliveryMethod = navState.formData?.delivery_method || request.delivery_method || request.form_data?.delivery_method || 'PDF ký số';
+  const submissionDate = navState.submissionDate || request.date || '21/10/2026';
+  const status = navState.status || request.status || 'Đang xử lý';
   const assignee = request.assigned_to || request.staff_name || 'Chưa phân công';
 
   return (

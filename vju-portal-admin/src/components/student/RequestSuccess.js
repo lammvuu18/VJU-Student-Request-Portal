@@ -72,7 +72,13 @@ function RequestSuccess() {
           <button
             type="button"
             className="reqsuccess-btn-detail"
-            onClick={() => navigate('/student/dashboard')}
+            onClick={() => navigate(`/student/request/${orderCode}`, {
+              state: {
+                ...state,
+                orderCode,
+                status: 'Đang xử lý',
+              },
+            })}
           >
             Xem chi tiết →
           </button>

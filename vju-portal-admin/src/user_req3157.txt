@@ -1,0 +1,165 @@
+<USER_REQUEST>
+thêm màn Chi tiết một thủ tục <div style={{width: '100%', height: '100%', position: 'relative', background: 'white', flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'flex-end', display: 'inline-flex'}}>
+    <div style={{alignSelf: 'stretch', height: 88, paddingLeft: 28, paddingRight: 28, background: 'white', overflow: 'hidden', borderBottom: '1px #E2E5EA solid', justifyContent: 'flex-start', alignItems: 'center', gap: 20, display: 'inline-flex'}}>
+        <img style={{width: 52, height: 52}} src="https://placehold.co/52x52" />
+        <div style={{flex: '1 1 0', color: '#202630', fontSize: 18, fontFamily: 'Inter', fontWeight: '600', wordWrap: 'break-word'}}>VJU PORTAL</div>
+        <div style={{width: 40, height: 40, position: 'relative', borderRadius: 20, flexDirection: 'column', justifyContent: 'center', alignItems: 'center', display: 'inline-flex'}}>
+            <div style={{width: 30, height: 30, position: 'relative', overflow: 'hidden'}}>
+                <div style={{width: 22.50, height: 25, left: 3.75, top: 2.50, position: 'absolute', outline: '1.70px #AA2327 solid', outlineOffset: '-0.85px'}} />
+            </div>
+            <div style={{width: 6, height: 6, left: 30, top: 31, position: 'absolute', background: '#AA2327', borderRadius: 9999, outline: '2px white solid'}} />
+        </div>
+        <div style={{width: 34, height: 34, position: 'relative', overflow: 'hidden'}}>
+            <div style={{width: 28.34, height: 28.34, left: 2.83, top: 2.83, position: 'absolute', outline: '1.70px #AA2327 solid', outlineOffset: '-0.85px'}} />
+        </div>
+        <div style={{width: 172, color: '#202630', fontSize: 13, fontFamily: 'Inter', fontWeight: '600', wordWrap: 'break-word'}}>Nguyễn Minh Anh　⌄</div>
+    </div>
+    <div style={{width: 184, left: 24, top: 120, position: 'absolute', flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'flex-start', gap: 8, display: 'flex'}}>
+        <div style={{alignSelf: 'stretch', padding: 12, borderRadius: 10, justifyContent: 'flex-start', alignItems: 'center', gap: 12, display: 'inline-flex'}}>
+            <div style={{flex: '1 1 0', color: '#68717D', fontSize: 13, fontFamily: 'Inter', fontWeight: '700', wordWrap: 'break-word'}}>Yêu cầu của tôi</div>
+        </div>
+        <div style={{alignSelf: 'stretch', padding: 12, background: '#FCE8E8', borderRadius: 10, justifyContent: 'flex-start', alignItems: 'center', gap: 12, display: 'inline-flex'}}>
+            <div style={{width: 4, height: 24, background: '#AA2327'}} />
+            <div style={{flex: '1 1 0', color: '#AA2327', fontSize: 13, fontFamily: 'Inter', fontWeight: '400', wordWrap: 'break-word'}}>Danh mục thủ tục</div>
+        </div>
+        <div style={{alignSelf: 'stretch', padding: 12, borderRadius: 10, justifyContent: 'flex-start', alignItems: 'center', gap: 12, display: 'inline-flex'}}>
+            <div style={{flex: '1 1 0', color: '#68717D', fontSize: 13, fontFamily: 'Inter', fontWeight: '400', wordWrap: 'break-word'}}>Hồ sơ cá nhân</div>
+        </div>
+    </div>
+    <div style={{width: 1208, minHeight: 912, paddingTop: 28, paddingBottom: 40, paddingLeft: 36, paddingRight: 36, background: '#F5F6F8', flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'flex-start', gap: 32, display: 'flex'}}>
+        <div style={{alignSelf: 'stretch', overflow: 'hidden', justifyContent: 'flex-start', alignItems: 'center', gap: 8, display: 'inline-flex'}}>
+            <div style={{flex: '1 1 0', color: '#181C23', fontSize: 24, fontFamily: 'Inter', fontWeight: '600', wordWrap: 'break-word'}}>Cấp bảng điểm</div>
+            <div style={{paddingLeft: 14, paddingRight: 14, paddingTop: 8, paddingBottom: 8, background: 'white', overflow: 'hidden', borderRadius: 8, outline: '1px #E2E5EA solid', outlineOffset: '-1px', justifyContent: 'flex-start', alignItems: 'flex-start', display: 'flex'}}>
+                <div style={{color: '#68717D', fontSize: 13, fontFamily: 'Inter', fontWeight: '500', wordWrap: 'break-word'}}>← Danh mục thủ tục</div>
+            </div>
+            <div style={{paddingLeft: 16, paddingRight: 16, paddingTop: 8, paddingBottom: 8, background: '#AA2327', overflow: 'hidden', borderRadius: 8, justifyContent: 'flex-start', alignItems: 'flex-start', display: 'flex'}}>
+                <div style={{color: 'white', fontSize: 13, fontFamily: 'Inter', fontWeight: '600', wordWrap: 'break-word'}}>Nộp giấy tờ →</div>
+            </div>
+        </div>
+        <div style={{alignSelf: 'stretch', paddingTop: 20, paddingBottom: 4, paddingLeft: 24, paddingRight: 24, background: 'white', overflow: 'hidden', borderRadius: 10, outline: '1px #E2E5EA solid', outlineOffset: '-1px', flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'flex-start', display: 'flex'}}>
+            <div style={{alignSelf: 'stretch', color: '#181C23', fontSize: 18, fontFamily: 'Inter', fontWeight: '600', wordWrap: 'break-word'}}>Thông tin chung</div>
+            <div style={{width: 10, height: 14}} />
+            <div style={{alignSelf: 'stretch', height: 1, background: '#E2E5EA'}} />
+            <div style={{alignSelf: 'stretch', paddingTop: 14, paddingBottom: 14, overflow: 'hidden', justifyContent: 'flex-start', alignItems: 'flex-start', gap: 16, display: 'inline-flex'}}>
+                <div style={{width: 180, color: '#68717D', fontSize: 14, fontFamily: 'Inter', fontWeight: '400', wordWrap: 'break-word'}}>Mục đích</div>
+                <div style={{flex: '1 1 0', color: '#181C23', fontSize: 14, fontFamily: 'Inter', fontWeight: '500', wordWrap: 'break-word'}}>Thể hiện các học phần, số tín chỉ và kết quả học tập đã được cập nhật trong hệ thống đào tạo. Bản điện tử được ký số và có mã QR để xác minh.</div>
+            </div>
+            <div style={{alignSelf: 'stretch', height: 1, background: '#E2E5EA'}} />
+            <div style={{alignSelf: 'stretch', paddingTop: 14, paddingBottom: 14, overflow: 'hidden', justifyContent: 'flex-start', alignItems: 'flex-start', gap: 16, display: 'inline-flex'}}>
+                <div style={{width: 180, color: '#68717D', fontSize: 14, fontFamily: 'Inter', fontWeight: '400', wordWrap: 'break-word'}}>Đối tượng</div>
+                <div style={{flex: '1 1 0', color: '#181C23', fontSize: 14, fontFamily: 'Inter', fontWeight: '500', wordWrap: 'break-word'}}>Sinh viên đang học tại trường</div>
+            </div>
+            <div style={{alignSelf: 'stretch', height: 1, background: '#E2E5EA'}} />
+            <div style={{alignSelf: 'stretch', paddingTop: 14, paddingBottom: 14, overflow: 'hidden', justifyContent: 'flex-start', alignItems: 'flex-start', gap: 16, display: 'inline-flex'}}>
+                <div style={{width: 180, color: '#68717D', fontSize: 14, fontFamily: 'Inter', fontWeight: '400', wordWrap: 'break-word'}}>Đơn vị xử lý</div>
+                <div style={{flex: '1 1 0', color: '#181C23', fontSize: 14, fontFamily: 'Inter', fontWeight: '500', wordWrap: 'break-word'}}>Phòng Đào tạo (PĐT)</div>
+            </div>
+            <div style={{alignSelf: 'stretch', height: 1, background: '#E2E5EA'}} />
+            <div style={{alignSelf: 'stretch', paddingTop: 14, paddingBottom: 14, overflow: 'hidden', justifyContent: 'flex-start', alignItems: 'flex-start', gap: 16, display: 'inline-flex'}}>
+                <div style={{width: 180, color: '#68717D', fontSize: 14, fontFamily: 'Inter', fontWeight: '400', wordWrap: 'break-word'}}>Thời gian xử lý</div>
+                <div style={{flex: '1 1 0', color: '#181C23', fontSize: 14, fontFamily: 'Inter', fontWeight: '500', wordWrap: 'break-word'}}>3 ngày làm việc</div>
+            </div>
+            <div style={{alignSelf: 'stretch', height: 1, background: '#E2E5EA'}} />
+            <div style={{alignSelf: 'stretch', paddingTop: 14, paddingBottom: 14, overflow: 'hidden', justifyContent: 'flex-start', alignItems: 'flex-start', gap: 16, display: 'inline-flex'}}>
+                <div style={{width: 180, color: '#68717D', fontSize: 14, fontFamily: 'Inter', fontWeight: '400', wordWrap: 'break-word'}}>Hình thức trả kết quả</div>
+                <div style={{flex: '1 1 0', color: '#181C23', fontSize: 14, fontFamily: 'Inter', fontWeight: '500', wordWrap: 'break-word'}}>PDF ký số / Bản giấy tại phòng</div>
+            </div>
+            <div style={{alignSelf: 'stretch', height: 1, background: '#E2E5EA'}} />
+            <div style={{alignSelf: 'stretch', paddingTop: 14, paddingBottom: 14, overflow: 'hidden', justifyContent: 'flex-start', alignItems: 'flex-start', gap: 16, display: 'inline-flex'}}>
+                <div style={{width: 180, color: '#68717D', fontSize: 14, fontFamily: 'Inter', fontWeight: '400', wordWrap: 'break-word'}}>Lệ phí thủ tục</div>
+                <div style={{flex: '1 1 0', color: '#181C23', fontSize: 14, fontFamily: 'Inter', fontWeight: '500', wordWrap: 'break-word'}}>30.000 VNĐ</div>
+            </div>
+            <div style={{alignSelf: 'stretch', height: 1, background: '#E2E5EA'}} />
+        </div>
+        <div style={{alignSelf: 'stretch', paddingTop: 20, paddingBottom: 8, paddingLeft: 24, paddingRight: 24, background: 'white', overflow: 'hidden', borderRadius: 10, outline: '1px #E2E5EA solid', outlineOffset: '-1px', flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'flex-start', display: 'flex'}}>
+            <div style={{alignSelf: 'stretch', color: '#181C23', fontSize: 18, fontFamily: 'Inter', fontWeight: '600', wordWrap: 'break-word'}}>Giấy tờ cần chuẩn bị</div>
+            <div style={{width: 10, height: 14}} />
+            <div style={{alignSelf: 'stretch', height: 1, background: '#E2E5EA'}} />
+            <div style={{alignSelf: 'stretch', paddingTop: 12, paddingBottom: 12, paddingLeft: 12, background: '#F5F6F8', overflow: 'hidden', justifyContent: 'flex-start', alignItems: 'flex-start', gap: 12, display: 'inline-flex'}}>
+                <div style={{width: 40, color: '#181C23', fontSize: 13, fontFamily: 'Inter', fontWeight: '600', wordWrap: 'break-word'}}>STT</div>
+                <div style={{width: 220, color: '#181C23', fontSize: 13, fontFamily: 'Inter', fontWeight: '600', wordWrap: 'break-word'}}>Tên giấy tờ</div>
+                <div style={{flex: '1 1 0', color: '#181C23', fontSize: 13, fontFamily: 'Inter', fontWeight: '600', wordWrap: 'break-word'}}>Mô tả và yêu cầu</div>
+                <div style={{width: 120, color: '#181C23', fontSize: 13, fontFamily: 'Inter', fontWeight: '600', wordWrap: 'break-word'}}>Mẫu</div>
+            </div>
+            <div style={{alignSelf: 'stretch', height: 1, background: '#E2E5EA'}} />
+            <div style={{alignSelf: 'stretch', paddingTop: 12, paddingBottom: 12, paddingLeft: 12, overflow: 'hidden', justifyContent: 'flex-start', alignItems: 'flex-start', gap: 12, display: 'inline-flex'}}>
+                <div style={{width: 40, color: '#68717D', fontSize: 13, fontFamily: 'Inter', fontWeight: '400', wordWrap: 'break-word'}}>01</div>
+                <div style={{width: 220, color: '#181C23', fontSize: 13, fontFamily: 'Inter', fontWeight: '400', wordWrap: 'break-word'}}>Đơn đề nghị cấp bảng điểm</div>
+                <div style={{flex: '1 1 0', color: '#181C23', fontSize: 13, fontFamily: 'Inter', fontWeight: '400', wordWrap: 'break-word'}}>Điền theo mẫu và ký tên trước khi tải lên. Chấp nhận PDF, JPG, PNG; tối đa 5 MB/tệp.</div>
+                <div style={{width: 120, overflow: 'hidden', justifyContent: 'flex-start', alignItems: 'flex-start', display: 'flex'}}>
+                    <div style={{paddingLeft: 10, paddingRight: 10, paddingTop: 5, paddingBottom: 5, background: 'white', overflow: 'hidden', borderRadius: 6, outline: '1px #AA2327 solid', outlineOffset: '-1px', justifyContent: 'flex-start', alignItems: 'flex-start', display: 'flex'}}>
+                        <div style={{color: '#AA2327', fontSize: 12, fontFamily: 'Inter', fontWeight: '500', wordWrap: 'break-word'}}>Tải mẫu ↓</div>
+                    </div>
+                </div>
+            </div>
+            <div style={{alignSelf: 'stretch', height: 1, background: '#E2E5EA'}} />
+            <div style={{alignSelf: 'stretch', paddingTop: 12, paddingBottom: 12, paddingLeft: 12, overflow: 'hidden', justifyContent: 'flex-start', alignItems: 'flex-start', gap: 12, display: 'inline-flex'}}>
+                <div style={{width: 40, color: '#68717D', fontSize: 13, fontFamily: 'Inter', fontWeight: '400', wordWrap: 'break-word'}}>02</div>
+                <div style={{width: 220, color: '#181C23', fontSize: 13, fontFamily: 'Inter', fontWeight: '400', wordWrap: 'break-word'}}>Thông tin mục đích sử dụng</div>
+                <div style={{flex: '1 1 0', color: '#181C23', fontSize: 13, fontFamily: 'Inter', fontWeight: '400', wordWrap: 'break-word'}}>Chuẩn bị số bản, ngôn ngữ và phương thức nhận kết quả.</div>
+                <div style={{width: 120, color: '#181C23', fontSize: 13, fontFamily: 'Inter', fontWeight: '400', wordWrap: 'break-word'}}>—</div>
+            </div>
+        </div>
+        <div style={{alignSelf: 'stretch', paddingTop: 20, paddingBottom: 24, paddingLeft: 24, paddingRight: 24, background: 'white', overflow: 'hidden', borderRadius: 10, outline: '1px #E2E5EA solid', outlineOffset: '-1px', flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'flex-start', gap: 20, display: 'flex'}}>
+            <div style={{alignSelf: 'stretch', color: '#181C23', fontSize: 18, fontFamily: 'Inter', fontWeight: '600', wordWrap: 'break-word'}}>Quy trình thực hiện</div>
+            <div style={{alignSelf: 'stretch', overflow: 'hidden', justifyContent: 'flex-start', alignItems: 'flex-start', display: 'inline-flex'}}>
+                <div style={{flex: '1 1 0', overflow: 'hidden', flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'center', gap: 10, display: 'inline-flex'}}>
+                    <div style={{alignSelf: 'stretch', overflow: 'hidden', justifyContent: 'flex-start', alignItems: 'center', display: 'inline-flex'}}>
+                        <div style={{flex: '1 1 0', height: 2}} />
+                        <div style={{paddingLeft: 12, paddingRight: 12, paddingTop: 8, paddingBottom: 8, background: '#F5F6F8', overflow: 'hidden', borderRadius: 999, outline: '1.50px #E2E5EA solid', outlineOffset: '-1.50px', justifyContent: 'flex-start', alignItems: 'flex-start', display: 'flex'}}>
+                            <div style={{color: '#68717D', fontSize: 14, fontFamily: 'Inter', fontWeight: '600', wordWrap: 'break-word'}}>1</div>
+                        </div>
+                        <div style={{flex: '1 1 0', height: 2, background: '#E2E5EA'}} />
+                    </div>
+                    <div style={{textAlign: 'center', color: '#181C23', fontSize: 14, fontFamily: 'Inter', fontWeight: '600', wordWrap: 'break-word'}}>Điền thông tin</div>
+                    <div style={{width: 180, textAlign: 'center', color: '#68717D', fontSize: 12, fontFamily: 'Inter', fontWeight: '400', wordWrap: 'break-word'}}>Điền thông tin và tải giấy tờ cần thiết</div>
+                </div>
+                <div style={{flex: '1 1 0', overflow: 'hidden', flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'center', gap: 10, display: 'inline-flex'}}>
+                    <div style={{alignSelf: 'stretch', overflow: 'hidden', justifyContent: 'flex-start', alignItems: 'center', display: 'inline-flex'}}>
+                        <div style={{flex: '1 1 0', height: 2, background: '#E2E5EA'}} />
+                        <div style={{paddingLeft: 12, paddingRight: 12, paddingTop: 8, paddingBottom: 8, background: '#F5F6F8', overflow: 'hidden', borderRadius: 999, outline: '1.50px #E2E5EA solid', outlineOffset: '-1.50px', justifyContent: 'flex-start', alignItems: 'flex-start', display: 'flex'}}>
+                            <div style={{color: '#68717D', fontSize: 14, fontFamily: 'Inter', fontWeight: '600', wordWrap: 'break-word'}}>2</div>
+                        </div>
+                        <div style={{flex: '1 1 0', height: 2, background: '#E2E5EA'}} />
+                    </div>
+                    <div style={{textAlign: 'center', color: '#181C23', fontSize: 14, fontFamily: 'Inter', fontWeight: '600', wordWrap: 'break-word'}}>Gửi &amp; thanh toán</div>
+                    <div style={{width: 180, textAlign: 'center', color: '#68717D', fontSize: 12, fontFamily: 'Inter', fontWeight: '400', wordWrap: 'break-word'}}>Gửi yêu cầu và thanh toán lệ phí</div>
+                </div>
+                <div style={{flex: '1 1 0', overflow: 'hidden', flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'center', gap: 10, display: 'inline-flex'}}>
+                    <div style={{alignSelf: 'stretch', overflow: 'hidden', justifyContent: 'flex-start', alignItems: 'center', display: 'inline-flex'}}>
+                        <div style={{flex: '1 1 0', height: 2, background: '#E2E5EA'}} />
+                        <div style={{paddingLeft: 12, paddingRight: 12, paddingTop: 8, paddingBottom: 8, background: '#F5F6F8', overflow: 'hidden', borderRadius: 999, outline: '1.50px #E2E5EA solid', outlineOffset: '-1.50px', justifyContent: 'flex-start', alignItems: 'flex-start', display: 'flex'}}>
+                            <div style={{color: '#68717D', fontSize: 14, fontFamily: 'Inter', fontWeight: '600', wordWrap: 'break-word'}}>3</div>
+                        </div>
+                        <div style={{flex: '1 1 0', height: 2, background: '#E2E5EA'}} />
+                    </div>
+                    <div style={{textAlign: 'center', color: '#181C23', fontSize: 14, fontFamily: 'Inter', fontWeight: '600', wordWrap: 'break-word'}}>Xử lý</div>
+                    <div style={{width: 180, textAlign: 'center', color: '#68717D', fontSize: 12, fontFamily: 'Inter', fontWeight: '400', wordWrap: 'break-word'}}>Phòng Đào tạo tiếp nhận, xử lý</div>
+                </div>
+                <div style={{flex: '1 1 0', overflow: 'hidden', flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'center', gap: 10, display: 'inline-flex'}}>
+                    <div style={{alignSelf: 'stretch', overflow: 'hidden', justifyContent: 'flex-start', alignItems: 'center', display: 'inline-flex'}}>
+                        <div style={{flex: '1 1 0', height: 2, background: '#E2E5EA'}} />
+                        <div style={{paddingLeft: 12, paddingRight: 12, paddingTop: 8, paddingBottom: 8, background: '#F5F6F8', overflow: 'hidden', borderRadius: 999, outline: '1.50px #E2E5EA solid', outlineOffset: '-1.50px', justifyContent: 'flex-start', alignItems: 'flex-start', display: 'flex'}}>
+                            <div style={{color: '#68717D', fontSize: 14, fontFamily: 'Inter', fontWeight: '600', wordWrap: 'break-word'}}>4</div>
+                        </div>
+                        <div style={{flex: '1 1 0', height: 2}} />
+                    </div>
+                    <div style={{textAlign: 'center', color: '#181C23', fontSize: 14, fontFamily: 'Inter', fontWeight: '600', wordWrap: 'break-word'}}>Nhận kết quả</div>
+                    <div style={{width: 180, textAlign: 'center', color: '#68717D', fontSize: 12, fontFamily: 'Inter', fontWeight: '400', wordWrap: 'break-word'}}>Nhận PDF hoặc đặt lịch nhận bản giấy</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-11-01T00:24:02+07:00.
+
+The user's current state is as follows:
+Other open documents:
+- d:\VJU_EF\vju-portal-admin\vju-portal-admin\src\components\common\DateRangePicker.css (LANGUAGE_UNSPECIFIED)
+- d:\VJU_EF\vju-portal-admin\vju-portal-admin\src\components\student\SupplementSuccess.js (LANGUAGE_UNSPECIFIED)
+- d:\VJU_EF\vju-portal-admin\vju-portal-admin\src\components\student\SupplementForm.js (LANGUAGE_UNSPECIFIED)
+- d:\VJU_EF\vju-portal-admin\vju-portal-admin\src\components\common\CustomDropdown.css (LANGUAGE_UNSPECIFIED)
+- d:\VJU_EF\vju-portal-admin\vju-portal-admin\src\components\student\FeedbackForm.js (LANGUAGE_UNSPECIFIED)
+</ADDITIONAL_METADATA>

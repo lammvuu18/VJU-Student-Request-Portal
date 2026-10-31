@@ -122,7 +122,7 @@ function ProcedureCatalog() {
                             className="procedure-card-btn"
                             onClick={(e) => {
                               e.stopPropagation();
-                              navigate(`/student/request/new/${proc.id}`);
+                              navigate(`/student/procedure/${proc.id}`);
                             }}
                           >
                             Nộp ngay

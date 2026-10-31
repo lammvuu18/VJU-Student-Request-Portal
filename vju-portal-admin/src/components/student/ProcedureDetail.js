@@ -71,8 +71,25 @@ function ProcedureDetail() {
     },
   ];
 
+  const getResultTypeDisplay = () => {
+    if (procedure.id === 1) {
+      return 'PDF ký số / Bản giấy tại phòng';
+    }
+    return procedure.result_type || 'PDF ký số / Bản giấy tại phòng';
+  };
+
   const handleDownloadTemplate = (templateName) => {
-    alert(`Đang tải xuống biểu mẫu: ${templateName}`);
+    const filename = templateName || 'don_de_nghi_cap_bang_diem.docx';
+    const sampleContent = `CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nĐộc lập - Tự do - Hạnh phúc\n\nĐƠN ĐỀ NGHỊ CẤP BẢNG ĐIỂM\n\nKính gửi: Phòng Đào tạo - Trường Đại học Việt Nhật\n\nTên sinh viên: Nguyễn Minh Anh\nMã sinh viên: 21CS001\nNgành học: Khoa học và Kỹ thuật Máy tính\nKhóa học: 2021 - 2025\n\nNội dung đề nghị: Cấp 01 bản bảng điểm tiếng Việt phục vụ xin việc / thực tập.\n\nSinh viên cam kết thông tin khai báo trên là chính xác.\n\nNgười làm đơn\n(Ký và ghi rõ họ tên)`;
+    const blob = new Blob([sampleContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const getPurpose = () => {
@@ -149,7 +166,7 @@ function ProcedureDetail() {
 
         <div className="pdetail-info-row">
           <div className="pdetail-info-label">Hình thức trả kết quả</div>
-          <div className="pdetail-info-value">{procedure.result_type || 'PDF ký số / Bản giấy tại phòng'}</div>
+          <div className="pdetail-info-value">{getResultTypeDisplay()}</div>
         </div>
         <div className="pdetail-divider" />
 
@@ -178,7 +195,7 @@ function ProcedureDetail() {
             <React.Fragment key={doc.stt}>
               <div className="pdetail-table-row">
                 <div className="pdetail-col-stt pdetail-td-stt">{doc.stt}</div>
-                <div className="pdetail-col-name pdetail-td-text" style={{ fontWeight: 500 }}>
+                <div className="pdetail-col-name pdetail-td-text">
                   {doc.name}
                 </div>
                 <div className="pdetail-col-desc pdetail-td-text">

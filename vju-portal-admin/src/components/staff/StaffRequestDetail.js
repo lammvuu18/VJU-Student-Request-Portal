@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import Modal from '../common/Modal';
 import SupplementRequestModal from '../common/SupplementRequestModal';
@@ -34,6 +34,13 @@ function StaffRequestDetail({ defaultStatus = '', defaultToast = '' }) {
 
   const initialToast = defaultToast || (isTransferredParam ? 'Đã chuyển yêu cầu sang Phòng KHTC' : '');
   const [toastMsg, setToastMsg] = useState(initialToast);
+
+  useEffect(() => {
+    if (initialToast) {
+      const timer = setTimeout(() => setToastMsg(''), 4500);
+      return () => clearTimeout(timer);
+    }
+  }, [initialToast]);
 
   // Modals
   const [showDocModal, setShowDocModal] = useState(false);
@@ -143,11 +150,11 @@ function StaffRequestDetail({ defaultStatus = '', defaultToast = '' }) {
     setShowTransferModal(false);
     setCurrentStatus('Đã chuyển PB');
     let deptShort = department;
-    if (deptShort.includes('Kế hoạch') || deptShort.includes('Tài chính')) {
+    if (!deptShort || deptShort.includes('Kế hoạch') || deptShort.includes('Tài chính') || deptShort.includes('KHTC')) {
       deptShort = 'Phòng KHTC';
-    } else if (deptShort.includes('Công tác Sinh viên')) {
+    } else if (deptShort.includes('Công tác Sinh viên') || deptShort.includes('CTSV')) {
       deptShort = 'Phòng CTSV';
-    } else if (deptShort.includes('Đào tạo')) {
+    } else if (deptShort.includes('Đào tạo') || deptShort.includes('PĐT')) {
       deptShort = 'Phòng Đào tạo';
     }
     showToast(`Đã chuyển yêu cầu sang ${deptShort}`);
@@ -157,11 +164,11 @@ function StaffRequestDetail({ defaultStatus = '', defaultToast = '' }) {
     <div className="staff-detail-container">
       {/* Toast Notification (Figma spec) */}
       {toastMsg && (
-        <div className="depthead-toast-card">
-          <div className="depthead-toast-icon-circle">
-            <span className="depthead-toast-icon-check">✓</span>
+        <div className="staff-toast-card depthead-toast-card">
+          <div className="staff-toast-icon-circle depthead-toast-icon-circle">
+            <span className="staff-toast-icon-check depthead-toast-icon-check">✓</span>
           </div>
-          <span className="depthead-toast-text">{toastMsg}</span>
+          <span className="staff-toast-text depthead-toast-text">{toastMsg}</span>
         </div>
       )}
 

@@ -112,6 +112,7 @@ function App() {
           <Route path="dashboard" element={<StudentDashboard />} />
           <Route path="procedures" element={<ProcedureCatalog />} />
           <Route path="catalog" element={<Navigate to="/student/procedures" replace />} />
+          <Route path="procedure" element={<ProcedureDetail />} />
           <Route path="procedure/:id" element={<ProcedureDetail />} />
           <Route path="request/new" element={<RequestForm />} />
           <Route path="request/new/:procedureId" element={<RequestForm />} />
