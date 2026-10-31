@@ -1,21 +1,96 @@
 import React, { useState } from 'react';
-import Button from '../../../components/common/Button';
-import Toggle from '../../../components/common/Toggle';
-import { formFields, fieldTypeOptions } from '../../../data/mockData';
 import './FormDesigner.css';
 
-function FormDesigner() {
-  const [fields, setFields] = useState(formFields);
-  const [selectedId, setSelectedId] = useState(fields[0]?.id || 1);
+export const initialFormFields = [
+  {
+    id: 1,
+    name: 'Họ và tên',
+    key: 'ho_va_ten',
+    type: 'Text',
+    required: true,
+    placeholder: 'Nhập họ và tên sinh viên...',
+    values: [],
+  },
+  {
+    id: 2,
+    name: 'Mã số sinh viên',
+    key: 'ma_so_sinh_vien',
+    type: 'Text',
+    required: true,
+    placeholder: 'Nhập mã số sinh viên...',
+    values: [],
+  },
+  {
+    id: 3,
+    name: 'Mục đích sử dụng',
+    key: 'muc_dich',
+    type: 'Dropdown',
+    required: true,
+    placeholder: 'Nhập mục đích xin cấp bảng điểm...',
+    values: ['Xin việc', 'Du học', 'Lưu trữ cá nhân'],
+  },
+  {
+    id: 4,
+    name: 'Số bản',
+    key: 'so_ban',
+    type: 'Number',
+    required: true,
+    placeholder: 'Nhập số lượng bản in...',
+    values: [],
+  },
+  {
+    id: 5,
+    name: 'Ngôn ngữ',
+    key: 'ngon_ngu',
+    type: 'Radio',
+    required: true,
+    placeholder: '',
+    values: ['Tiếng Việt', 'Tiếng Anh', 'Song ngữ'],
+  },
+  {
+    id: 6,
+    name: 'Ghi chú',
+    key: 'ghi_chu',
+    type: 'Textarea',
+    required: false,
+    placeholder: 'Nhập ghi chú nếu có...',
+    values: [],
+  },
+  {
+    id: 7,
+    name: 'Hồ sơ đính kèm',
+    key: 'ho_so_dinh_kem',
+    type: 'File upload',
+    required: false,
+    placeholder: '',
+    values: [],
+  },
+];
+
+const typeOptions = [
+  { value: 'Dropdown', label: 'Danh sách chọn (Dropdown)' },
+  { value: 'Text', label: 'Nhập văn bản (Text)' },
+  { value: 'Number', label: 'Số (Number)' },
+  { value: 'Radio', label: 'Chọn một (Radio)' },
+  { value: 'Textarea', label: 'Văn bản dài (Textarea)' },
+  { value: 'File upload', label: 'Tải tệp (File upload)' },
+];
+
+function FormDesigner({ fields, setFields }) {
+  const [selectedId, setSelectedId] = useState(3); // Field "Mục đích sử dụng" selected by default
   const selectedField = fields.find((f) => f.id === selectedId) || fields[0];
 
-  const [editName, setEditName] = useState(selectedField?.name || '');
-  const [editKey, setEditKey] = useState(selectedField?.key || '');
-  const [editType, setEditType] = useState(selectedField?.type || 'Text');
+  // Config state for the selected field
+  const [editName, setEditName] = useState(selectedField?.name || 'Mục đích sử dụng');
+  const [editKey, setEditKey] = useState(selectedField?.key || 'muc_dich');
+  const [editType, setEditType] = useState(selectedField?.type || 'Dropdown');
   const [editRequired, setEditRequired] = useState(selectedField?.required ?? true);
-  const [editValues, setEditValues] = useState(selectedField?.values || ['Lựa chọn 1', 'Lựa chọn 2']);
-  const [editPlaceholder, setEditPlaceholder] = useState('');
+  const [editValues, setEditValues] = useState(selectedField?.values || ['Xin việc', 'Du học', 'Lưu trữ cá nhân']);
+  const [editPlaceholder, setEditPlaceholder] = useState(selectedField?.placeholder || 'Nhập mục đích xin cấp bảng điểm...');
   const [toastMessage, setToastMessage] = useState('');
+
+  // Drag-and-drop ordering state
+  const [draggedIndex, setDraggedIndex] = useState(null);
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -28,7 +103,7 @@ function FormDesigner() {
     setEditKey(field.key);
     setEditType(field.type);
     setEditRequired(field.required);
-    setEditValues(field.values || ['Lựa chọn 1', 'Lựa chọn 2']);
+    setEditValues(field.values && field.values.length > 0 ? [...field.values] : ['Lựa chọn 1', 'Lựa chọn 2']);
     setEditPlaceholder(field.placeholder || '');
   };
 
@@ -37,13 +112,14 @@ function FormDesigner() {
     const newField = {
       id: newId,
       name: 'Trường thông tin mới',
-      key: `field_${newId.toString().slice(-4)}`,
+      key: `truong_${newId.toString().slice(-4)}`,
       type: 'Text',
       required: false,
       placeholder: 'Nhập thông tin...',
       values: [],
     };
-    setFields([...fields, newField]);
+    const updated = [...fields, newField];
+    setFields(updated);
     handleSelectField(newField);
     showToast('Đã thêm một trường mới vào biểu mẫu!');
   };
@@ -70,9 +146,9 @@ function FormDesigner() {
             ...f,
             name: editName,
             key: editKey,
-            type: editType.includes('Dropdown') ? 'Dropdown' : editType.includes('Radio') ? 'Radio' : editType.includes('Textarea') ? 'Textarea' : editType.includes('File') ? 'File upload' : editType.includes('Number') ? 'Number' : 'Text',
+            type: editType,
             required: editRequired,
-            values: editValues,
+            values: editType === 'Dropdown' || editType === 'Radio' ? editValues : [],
             placeholder: editPlaceholder,
           };
         }
@@ -80,6 +156,13 @@ function FormDesigner() {
       })
     );
     showToast(`Đã lưu cấu hình trường "${editName}" thành công!`);
+  };
+
+  const handleCancelEdit = () => {
+    if (selectedField) {
+      handleSelectField(selectedField);
+      showToast('Đã khôi phục cài đặt trường');
+    }
   };
 
   const handleRemoveValue = (index) => {
@@ -90,188 +173,256 @@ function FormDesigner() {
     setEditValues((prev) => [...prev, `Lựa chọn ${prev.length + 1}`]);
   };
 
-  const typeBadgeClass = (type) => {
-    const map = {
-      'Text': 'type-text',
-      'Dropdown': 'type-dropdown',
-      'Number': 'type-number',
-      'Radio': 'type-radio',
-      'Textarea': 'type-textarea',
-      'File upload': 'type-file',
-    };
-    return map[type] || 'type-text';
+  const handleValueChange = (index, value) => {
+    setEditValues((prev) => {
+      const next = [...prev];
+      next[index] = value;
+      return next;
+    });
+  };
+
+  // Reorder handlers
+  const handleDragStart = (e, index) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e, index) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+    const items = [...fields];
+    const [draggedItem] = items.splice(draggedIndex, 1);
+    items.splice(index, 0, draggedItem);
+    setFields(items);
+    setDraggedIndex(null);
   };
 
   return (
-    <div>
+    <div className="form-designer-wrapper">
       {toastMessage && (
-        <div style={{
-          backgroundColor: '#ECFDF5',
-          color: '#059669',
-          border: '1px solid #A7F3D0',
-          borderRadius: 8,
-          padding: '12px 16px',
-          marginBottom: 16,
-          fontWeight: 500,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-        }}>
-          <span>✓</span>
+        <div className="fd-toast-banner">
+          <span className="fd-toast-icon">✓</span>
           <span>{toastMessage}</span>
         </div>
       )}
 
-      <div className="form-designer">
-        {/* Left: Field list */}
-        <div className="fd-left">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <h3 className="fd-section-title" style={{ margin: 0 }}>Các trường trong biểu mẫu ({fields.length})</h3>
+      <div className="form-designer-container">
+        {/* Left Column: Form Fields List (620px) */}
+        <div className="fd-left-column">
+          <div className="fd-column-header">
+            <h2 className="fd-column-title">Các trường trong biểu mẫu</h2>
           </div>
 
-          <div className="fd-field-list">
-            {fields.map((field) => (
-              <div
-                key={field.id}
-                className={`fd-field-card ${field.id === selectedId ? 'selected' : ''}`}
-                onClick={() => handleSelectField(field)}
-              >
-                <div className="fd-field-drag" title="Kéo thả để sắp xếp">
-                  <svg width="8" height="14" viewBox="0 0 8 14" fill="none">
-                    <circle cx="2" cy="2" r="1.5" fill="#9CA3AF"/>
-                    <circle cx="6" cy="2" r="1.5" fill="#9CA3AF"/>
-                    <circle cx="2" cy="7" r="1.5" fill="#9CA3AF"/>
-                    <circle cx="6" cy="7" r="1.5" fill="#9CA3AF"/>
-                    <circle cx="2" cy="12" r="1.5" fill="#9CA3AF"/>
-                    <circle cx="6" cy="12" r="1.5" fill="#9CA3AF"/>
-                  </svg>
-                </div>
-                <div className="fd-field-info">
-                  <span className="fd-field-name">{field.name}</span>
-                  <div className="fd-field-meta">
-                    <span className={`fd-type-badge ${typeBadgeClass(field.type)}`}>{field.type}</span>
-                    <span className={`fd-required-badge ${field.required ? 'required' : 'optional'}`}>
-                      {field.required ? 'Bắt buộc' : 'Tùy chọn'}
-                    </span>
+          <div className="fd-fields-list">
+            {fields.map((field, index) => {
+              const isSelected = field.id === selectedId;
+              return (
+                <div
+                  key={field.id}
+                  className={`fd-field-card ${isSelected ? 'active-card' : ''}`}
+                  onClick={() => handleSelectField(field)}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, index)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDrop={(e) => handleDrop(e, index)}
+                >
+                  <div className="fd-drag-grip" title="Kéo để sắp xếp">
+                    ⠿
                   </div>
-                </div>
-                <div className="fd-field-actions">
+
+                  <div className="fd-field-content">
+                    <div className="fd-field-name">{field.name}</div>
+                    <div className="fd-badges-group">
+                      <span className="fd-badge fd-badge--type">{field.type}</span>
+                      <span
+                        className={`fd-badge ${
+                          field.required ? 'fd-badge--required' : 'fd-badge--optional'
+                        }`}
+                      >
+                        {field.required ? 'Bắt buộc' : 'Tùy chọn'}
+                      </span>
+                    </div>
+                  </div>
+
                   <button
                     type="button"
-                    className="fd-icon-btn"
-                    title="Xóa trường này"
+                    className="fd-action-btn"
+                    title="Chỉnh sửa trường"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSelectField(field);
+                    }}
+                  >
+                    ✎
+                  </button>
+
+                  <button
+                    type="button"
+                    className="fd-action-btn"
+                    title="Xóa trường"
                     onClick={(e) => handleDeleteField(e, field.id)}
                   >
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                      <path d="M4 4l8 8M12 4l-8 8" stroke="#DC2626" strokeWidth="1.5" strokeLinecap="round"/>
-                    </svg>
+                    ✕
                   </button>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
-          <button
-            type="button"
-            className="fd-add-field"
-            onClick={handleAddField}
-          >
+          <button type="button" className="fd-add-field-btn" onClick={handleAddField}>
             + Thêm trường mới
           </button>
         </div>
 
-        {/* Right: Field config */}
-        <div className="fd-right">
-          <h3 className="fd-section-title">Cấu hình trường đang chọn</h3>
+        {/* Right Column: Field Configuration (Flex 1) */}
+        <div className="fd-right-column">
+          <div className="fd-column-header">
+            <h2 className="fd-column-title">Cấu hình trường</h2>
+          </div>
+
           {selectedField ? (
-            <div className="fd-config-form">
-              <div className="fd-config-field">
-                <label>Tên trường hiển thị</label>
-                <input
-                  type="text"
-                  value={editName}
-                  onChange={(e) => {
-                    setEditName(e.target.value);
-                    setEditKey(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '_'));
-                  }}
-                />
+            <div className="fd-config-body">
+              {/* Tên trường */}
+              <div className="fd-form-group">
+                <label className="fd-input-label">Tên trường</label>
+                <div className="fd-input-wrapper">
+                  <input
+                    type="text"
+                    className="fd-input-text"
+                    value={editName}
+                    onChange={(e) => {
+                      setEditName(e.target.value);
+                      setEditKey(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '_'));
+                    }}
+                    placeholder="Nhập tên trường..."
+                  />
+                </div>
               </div>
 
-              <div className="fd-config-field">
-                <label>Khóa biến (Key)</label>
-                <input type="text" value={editKey} className="input-muted" readOnly />
+              {/* Khóa trường */}
+              <div className="fd-form-group">
+                <label className="fd-input-label">Khóa trường</label>
+                <div className="fd-input-wrapper">
+                  <input
+                    type="text"
+                    className="fd-input-text"
+                    value={editKey}
+                    onChange={(e) => setEditKey(e.target.value)}
+                    placeholder="field_key"
+                  />
+                </div>
               </div>
 
-              <div className="fd-config-field">
-                <label>Loại trường dữ liệu</label>
-                <select value={editType} onChange={(e) => setEditType(e.target.value)}>
-                  {fieldTypeOptions.map((opt) => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                  <option value="Dropdown">Danh sách chọn (Dropdown)</option>
-                  <option value="Text">Nhập văn bản (Text)</option>
-                  <option value="Number">Số (Number)</option>
-                  <option value="Radio">Chọn một (Radio)</option>
-                  <option value="Textarea">Văn bản dài (Textarea)</option>
-                  <option value="File upload">Tải tệp (File upload)</option>
-                </select>
+              {/* Loại trường */}
+              <div className="fd-form-group">
+                <label className="fd-input-label">Loại trường</label>
+                <div className="fd-select-wrapper">
+                  <select
+                    className="fd-select"
+                    value={editType}
+                    onChange={(e) => setEditType(e.target.value)}
+                  >
+                    {typeOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="fd-select-arrow">▾</span>
+                </div>
               </div>
 
-              {/* Value list for dropdown / radio */}
-              {(editType.includes('Dropdown') || editType.includes('Radio') || editType === 'Dropdown' || editType === 'Radio') && (
-                <div className="fd-config-field">
-                  <label>Danh sách tùy chọn lựa chọn</label>
-                  <div className="fd-value-list">
-                    {editValues.map((val, i) => (
-                      <div key={i} className="fd-value-item">
+              {/* Danh sách giá trị (for Dropdown & Radio) */}
+              {(editType === 'Dropdown' || editType === 'Radio') && (
+                <div className="fd-form-group">
+                  <label className="fd-input-label">Danh sách giá trị</label>
+                  <div className="fd-values-list">
+                    {editValues.map((val, idx) => (
+                      <div key={idx} className="fd-value-row">
                         <input
                           type="text"
+                          className="fd-value-input"
                           value={val}
-                          onChange={(e) => {
-                            const newVals = [...editValues];
-                            newVals[i] = e.target.value;
-                            setEditValues(newVals);
-                          }}
+                          onChange={(e) => handleValueChange(idx, e.target.value)}
+                          placeholder={`Lựa chọn ${idx + 1}`}
                         />
                         <button
                           type="button"
-                          className="fd-value-remove"
-                          onClick={() => handleRemoveValue(i)}
+                          className="fd-value-del-btn"
+                          onClick={() => handleRemoveValue(idx)}
                           title="Xóa lựa chọn này"
                         >
-                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                            <path d="M4 4l6 6M10 4l-6 6" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round"/>
-                          </svg>
+                          ✕
                         </button>
                       </div>
                     ))}
                   </div>
-                  <button type="button" className="fd-add-value" onClick={handleAddValue}>+ Thêm lựa chọn</button>
+                  <button
+                    type="button"
+                    className="fd-add-value-btn"
+                    onClick={handleAddValue}
+                  >
+                    + Thêm giá trị
+                  </button>
                 </div>
               )}
 
-              <div className="fd-config-toggle-row">
-                <label>Bắt buộc nhập</label>
-                <Toggle checked={editRequired} onChange={setEditRequired} />
+              {/* Bắt buộc toggle */}
+              <div className="fd-toggle-row">
+                <span className="fd-input-label">Bắt buộc</span>
+                <div
+                  className={`fd-switch-pill ${editRequired ? 'switch-on' : 'switch-off'}`}
+                  onClick={() => setEditRequired(!editRequired)}
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Chuyển trạng thái bắt buộc"
+                >
+                  <div className="fd-switch-knob" />
+                </div>
               </div>
 
-              <div className="fd-config-field">
-                <label>Gợi ý nhập (Placeholder)</label>
-                <input
-                  type="text"
-                  value={editPlaceholder}
-                  onChange={(e) => setEditPlaceholder(e.target.value)}
-                  placeholder="Ví dụ: Vui lòng nhập chi tiết lý do..."
-                />
+              {/* Placeholder */}
+              <div className="fd-form-group">
+                <label className="fd-input-label">Placeholder</label>
+                <div className="fd-input-wrapper">
+                  <input
+                    type="text"
+                    className="fd-input-text fd-input-placeholder"
+                    value={editPlaceholder}
+                    onChange={(e) => setEditPlaceholder(e.target.value)}
+                    placeholder="Nhập mục đích xin cấp bảng điểm..."
+                  />
+                </div>
               </div>
 
-              <div className="fd-config-actions">
-                <Button variant="secondary" onClick={() => handleSelectField(selectedField)}>Hủy</Button>
-                <Button variant="primary" onClick={handleSaveField}>Lưu trường</Button>
+              {/* Divider */}
+              <div className="fd-divider" />
+
+              {/* Bottom Buttons */}
+              <div className="fd-actions-row">
+                <button
+                  type="button"
+                  className="fd-btn-cancel"
+                  onClick={handleCancelEdit}
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  className="fd-btn-save"
+                  onClick={handleSaveField}
+                >
+                  Lưu trường
+                </button>
               </div>
             </div>
           ) : (
-            <p style={{ color: '#9CA3AF' }}>Vui lòng chọn hoặc thêm một trường để cấu hình.</p>
+            <p className="fd-empty-text">Vui lòng chọn một trường để cấu hình.</p>
           )}
         </div>
       </div>
