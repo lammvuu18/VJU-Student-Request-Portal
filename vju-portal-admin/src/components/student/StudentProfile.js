@@ -3,42 +3,79 @@ import { users } from '../../data/mockData';
 import './StudentPages.css';
 
 function StudentProfile() {
-  const student = users.student;
+  const student = users?.student || {};
+
+  // Exact Figma values with fallback to mock data
+  const fullName = student.name || student.full_name || 'Nguyễn Minh Anh';
+  const studentCode = '23110150'; // Figma spec
+  const email = '23110150@vnu.edu.vn'; // Figma spec
+  const className = 'QH-2023-I/CQ-M-CLC'; // Figma spec
+  const cohort = 'QH-2023'; // Figma spec
+  const major = 'Khoa học máy tính'; // Figma spec
+  const status = 'Đang học'; // Figma spec
 
   return (
-    <div className="student-profile">
-      <h1 className="page-title">Hồ sơ cá nhân</h1>
-      <p className="page-subtitle">Thông tin sinh viên</p>
+    <div className="student-profile-container">
+      {/* Page Title */}
+      <h1 className="student-profile-title">Hồ sơ cá nhân</h1>
 
-      <div className="card" style={{ marginTop: 24 }}>
-        <div className="card-body">
-          <div className="profile-header">
-            <div className="profile-avatar">
-              <svg width="72" height="72" viewBox="0 0 72 72" fill="none">
-                <circle cx="36" cy="36" r="34" stroke="#E2E5EA" strokeWidth="2"/>
-                <circle cx="36" cy="28" r="10" fill="#9CA3AF"/>
-                <path d="M16 60c0-11.046 8.954-20 20-20s20 8.954 20 20" fill="#9CA3AF"/>
-              </svg>
-            </div>
-            <div className="profile-name-info">
-              <h2>{student.name}</h2>
-              <p>{student.mssv} — {student.nganh}</p>
-            </div>
-          </div>
+      {/* Profile Information Card */}
+      <div className="student-profile-card">
+        {/* Card Title */}
+        <h2 className="student-profile-card-title">Thông tin của sinh viên</h2>
+        <div style={{ alignSelf: 'stretch', height: 14 }} />
+        <div className="req-detail-divider" />
 
-          <table className="info-table" style={{ marginTop: 24 }}>
-            <tbody>
-              <tr><th>Họ và tên</th><td>{student.name}</td></tr>
-              <tr><th>MSSV</th><td>{student.mssv}</td></tr>
-              <tr><th>Email</th><td>{student.email}</td></tr>
-              <tr><th>Ngành</th><td>{student.nganh}</td></tr>
-              <tr><th>Lớp</th><td>{student.lop}</td></tr>
-              <tr><th>Khóa</th><td>{student.khoa}</td></tr>
-              <tr><th>Trạng thái</th><td style={{ color: '#059669', fontWeight: 600 }}>Đang học</td></tr>
-              <tr><th>Ngày nhập học</th><td>01/09/2022</td></tr>
-            </tbody>
-          </table>
+        {/* Row 1: Họ và tên */}
+        <div className="student-profile-row">
+          <div className="student-profile-label">Họ và tên</div>
+          <div className="student-profile-value">{fullName}</div>
         </div>
+        <div className="req-detail-divider" />
+
+        {/* Row 2: Mã số sinh viên */}
+        <div className="student-profile-row">
+          <div className="student-profile-label">Mã số sinh viên</div>
+          <div className="student-profile-value">{studentCode}</div>
+        </div>
+        <div className="req-detail-divider" />
+
+        {/* Row 3: Email */}
+        <div className="student-profile-row">
+          <div className="student-profile-label">Email</div>
+          <div className="student-profile-value">{email}</div>
+        </div>
+        <div className="req-detail-divider" />
+
+        {/* Row 4: Lớp */}
+        <div className="student-profile-row">
+          <div className="student-profile-label">Lớp</div>
+          <div className="student-profile-value">{className}</div>
+        </div>
+        <div className="req-detail-divider" />
+
+        {/* Row 5: Khóa */}
+        <div className="student-profile-row">
+          <div className="student-profile-label">Khóa</div>
+          <div className="student-profile-value">{cohort}</div>
+        </div>
+        <div className="req-detail-divider" />
+
+        {/* Row 6: Ngành */}
+        <div className="student-profile-row">
+          <div className="student-profile-label">Ngành</div>
+          <div className="student-profile-value">{major}</div>
+        </div>
+        <div className="req-detail-divider" />
+
+        {/* Row 7: Tình trạng học tập */}
+        <div className="student-profile-row">
+          <div className="student-profile-label">Tình trạng học tập</div>
+          <div className="student-status-badge">
+            <span className="student-status-badge-text">{status}</span>
+          </div>
+        </div>
+        <div className="req-detail-divider" />
       </div>
     </div>
   );

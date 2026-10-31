@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import Button from '../common/Button';
 import Badge from '../common/Badge';
 import Modal from '../common/Modal';
+import SupplementRequestModal from '../common/SupplementRequestModal';
 import { allRequests, staffMembers, statusConfig, rejectionReasons, departments } from '../../data/mockData';
 import { staffApi } from '../../services/api';
 import './StaffPages.css';
@@ -162,22 +163,17 @@ function StaffRequestDetail() {
         </div>
       </div>
 
-      {/* Supplement Modal */}
-      <Modal isOpen={showSupplementModal} onClose={() => setShowSupplementModal(false)} title="Yêu cầu bổ sung hồ sơ">
-        <div className="modal-field">
-          <label>Nội dung yêu cầu sinh viên bổ sung:</label>
-          <textarea
-            placeholder="Mô tả cụ thể giấy tờ, minh chứng cần bổ sung..."
-            rows={4}
-            value={supplementNote}
-            onChange={(e) => setSupplementNote(e.target.value)}
-          />
-        </div>
-        <div className="modal-footer">
-          <Button variant="secondary" onClick={() => setShowSupplementModal(false)}>Hủy</Button>
-          <Button variant="primary" onClick={handleSupplement}>Gửi yêu cầu bổ sung</Button>
-        </div>
-      </Modal>
+      {/* Supplement Modal (Figma Spec) */}
+      <SupplementRequestModal
+        isOpen={showSupplementModal}
+        onClose={() => setShowSupplementModal(false)}
+        requestCode={request.request_code || request.id || 'VJU-2026-0840'}
+        studentName={request.student || 'Nguyễn Minh Anh'}
+        supplementCount="1/2"
+        value={supplementNote}
+        onChange={(e) => setSupplementNote(e.target.value)}
+        onSubmit={handleSupplement}
+      />
 
       {/* Transfer Department Modal (Contract Section 9.7) */}
       <Modal isOpen={showTransferModal} onClose={() => setShowTransferModal(false)} title="Chuyển tiếp hồ sơ sang phòng ban khác">

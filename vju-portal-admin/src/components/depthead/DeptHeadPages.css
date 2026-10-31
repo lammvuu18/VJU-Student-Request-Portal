@@ -195,3 +195,900 @@
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
 }
+
+
+/* ===== Dept Head Overview (Frame: Tổng quan Phòng Đào tạo) ===== */
+.depthead-overview-container {
+  width: 100%;
+  max-width: 1208px;
+  min-height: calc(100vh - 88px);
+  padding: 28px 36px 40px;
+  background: #F5F6F8;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 28px;
+  box-sizing: border-box;
+  font-family: 'Inter', sans-serif;
+  margin: 0 auto;
+}
+
+.depthead-overview-title {
+  align-self: stretch;
+  color: #1F2937;
+  font-size: 28px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  margin: 0;
+  word-wrap: break-word;
+}
+
+.depthead-stat-cards-row {
+  align-self: stretch;
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 16px;
+  box-sizing: border-box;
+}
+
+@media (max-width: 900px) {
+  .depthead-stat-cards-row {
+    flex-wrap: wrap;
+  }
+}
+
+.depthead-stat-card {
+  flex: 1 1 0;
+  min-width: 140px;
+  padding: 16px 20px;
+  background: #FFFFFF;
+  border-radius: 10px;
+  border: 1px solid #E2E5EA;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 4px;
+  box-sizing: border-box;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.depthead-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.depthead-stat-card--alert {
+  border: 2px solid #AA2327;
+  border-left: 4px solid #AA2327;
+  cursor: pointer;
+}
+
+.depthead-stat-num {
+  color: #1F2937;
+  font-size: 28px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.depthead-stat-num--alert {
+  color: #AA2327;
+}
+
+.depthead-stat-label {
+  align-self: stretch;
+  color: #6B7280;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  line-height: 1.3;
+}
+
+.depthead-stat-label--alert {
+  color: #AA2327;
+}
+
+/* Monthly Bar Chart Card */
+.depthead-chart-card {
+  align-self: stretch;
+  padding: 24px 28px;
+  background: #FFFFFF;
+  border-radius: 12px;
+  border: 1px solid #E2E5EA;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  box-sizing: border-box;
+}
+
+.depthead-chart-title {
+  align-self: stretch;
+  color: #1F2937;
+  font-size: 16px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  margin: 0;
+  word-wrap: break-word;
+}
+
+.depthead-chart-wrapper {
+  align-self: stretch;
+  height: 180px;
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-start;
+  box-sizing: border-box;
+  margin-top: 16px;
+}
+
+.depthead-chart-yaxis {
+  width: 32px;
+  height: 180px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding-bottom: 22px; /* offset for month label height */
+  box-sizing: border-box;
+}
+
+.depthead-chart-y-tick {
+  color: #6B7280;
+  font-size: 9px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  text-align: right;
+  width: 100%;
+}
+
+.depthead-chart-bars-track {
+  flex: 1 1 0;
+  align-self: stretch;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 6px;
+  box-sizing: border-box;
+}
+
+.depthead-chart-col {
+  flex: 1 1 0;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.depthead-chart-bar-rect {
+  width: 24px;
+  background: #AA2327;
+  border-radius: 3px;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  cursor: pointer;
+}
+
+.depthead-chart-bar-rect:hover {
+  opacity: 0.88;
+  transform: scaleY(1.03);
+}
+
+.depthead-chart-month-label {
+  color: #6B7280;
+  font-size: 9px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+}
+
+/* Overdue Table Card */
+.depthead-overdue-card {
+  align-self: stretch;
+  padding: 24px 24px 16px 24px;
+  background: #FFFFFF;
+  border-radius: 12px;
+  border: 1px solid #E2E5EA;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  box-sizing: border-box;
+}
+
+.depthead-overdue-title {
+  align-self: stretch;
+  color: #1F2937;
+  font-size: 16px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  margin: 0;
+  word-wrap: break-word;
+}
+
+.depthead-table-container {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  box-sizing: border-box;
+  margin-top: 16px;
+  overflow-x: auto;
+}
+
+.depthead-table-head {
+  align-self: stretch;
+  padding: 10px 8px;
+  background: #F5F6F8;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-width: 760px;
+}
+
+.depthead-th {
+  flex: 1 1 0;
+  color: #1F2937;
+  font-size: 12px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  word-wrap: break-word;
+}
+
+.depthead-table-row {
+  align-self: stretch;
+  padding: 10px 8px;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  min-width: 760px;
+}
+
+.depthead-table-row:hover {
+  background-color: #FDF2F2;
+}
+
+.depthead-td {
+  flex: 1 1 0;
+  color: #1F2937;
+  font-size: 12px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  word-wrap: break-word;
+}
+
+.depthead-badge-pending-assign {
+  padding: 2px 8px;
+  background: #FEF3C7;
+  border-radius: 999px;
+  color: #92400E;
+  font-size: 11px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+}
+
+.depthead-badge-pending-approval {
+  padding: 2px 8px;
+  background: #DBEAFE;
+  border-radius: 999px;
+  color: #1D4ED8;
+  font-size: 11px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+}
+
+
+/* ===== Dept Head All Requests (Frame: Hồ sơ chờ phân công / Tất cả yêu cầu) ===== */
+.depthead-requests-container {
+  width: 100%;
+  max-width: 1208px;
+  min-height: calc(100vh - 88px);
+  padding: 28px 36px 40px;
+  background: #F5F6F8;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 28px;
+  box-sizing: border-box;
+  font-family: 'Inter', sans-serif;
+  margin: 0 auto;
+}
+
+.depthead-requests-title {
+  align-self: stretch;
+  color: #1F2937;
+  font-size: 28px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  margin: 0;
+  word-wrap: break-word;
+}
+
+.depthead-specialists-section {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.depthead-section-heading {
+  align-self: stretch;
+  color: #1F2937;
+  font-size: 16px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  margin: 0;
+  word-wrap: break-word;
+}
+
+.depthead-specialists-cards-row {
+  align-self: stretch;
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 16px;
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .depthead-specialists-cards-row {
+    flex-wrap: wrap;
+  }
+}
+
+.depthead-spec-card {
+  flex: 1 1 0;
+  min-width: 140px;
+  padding: 16px 20px;
+  background: #FFFFFF;
+  border-radius: 10px;
+  border: 1px solid #E2E5EA;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 4px;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.depthead-spec-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border-color: #CBD5E1;
+}
+
+.depthead-spec-card--active {
+  border-color: #AA2327;
+  background-color: #FFF8F8;
+}
+
+.depthead-spec-num {
+  color: #1F2937;
+  font-size: 28px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.depthead-spec-name {
+  align-self: stretch;
+  color: #6B7280;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  line-height: 1.3;
+}
+
+/* Request List Card */
+.depthead-reqlist-card {
+  align-self: stretch;
+  padding: 20px 20px 16px 20px;
+  position: relative;
+  background: #FFFFFF;
+  border-radius: 12px;
+  border: 1px solid #E2E5EA;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  box-sizing: border-box;
+}
+
+.depthead-filters-row {
+  align-self: stretch;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 12px;
+  box-sizing: border-box;
+}
+
+@media (max-width: 900px) {
+  .depthead-filters-row {
+    flex-wrap: wrap;
+  }
+}
+
+.depthead-filter-dropdown-btn {
+  flex: 1 1 0;
+  min-width: 140px;
+  padding: 10px 14px;
+  background: #FFFFFF;
+  border-radius: 8px;
+  border: 1px solid #E2E5EA;
+  color: #6B7280;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  cursor: pointer;
+  position: relative;
+  user-select: none;
+  transition: border-color 0.15s ease;
+}
+
+.depthead-filter-dropdown-btn:hover {
+  border-color: #CBD5E1;
+}
+
+.depthead-search-box {
+  width: 240px;
+  padding: 10px 12px;
+  background: #FFFFFF;
+  border-radius: 8px;
+  border: 1px solid #E2E5EA;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+}
+
+.depthead-search-input {
+  flex: 1 1 0;
+  border: none;
+  outline: none;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  color: #1F2937;
+}
+
+.depthead-search-input::placeholder {
+  color: #9CA3AF;
+}
+
+/* Request Table */
+.depthead-table-main-wrapper {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  box-sizing: border-box;
+  margin-top: 8px;
+  overflow-x: auto;
+}
+
+.depthead-th-row {
+  align-self: stretch;
+  padding: 9px 8px;
+  background: #F5F6F8;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  box-sizing: border-box;
+  min-width: 820px;
+}
+
+.depthead-th-cell {
+  flex: 1 1 0;
+  color: #1F2937;
+  font-size: 11px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  word-wrap: break-word;
+}
+
+.depthead-tr-row {
+  align-self: stretch;
+  padding: 9px 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  box-sizing: border-box;
+  background: #FFFFFF;
+  transition: background-color 0.15s ease;
+  min-width: 820px;
+  position: relative;
+}
+
+.depthead-tr-row--urgent {
+  background: #FCE8E8;
+}
+
+.depthead-tr-row:hover {
+  filter: brightness(0.98);
+}
+
+.depthead-td-cell {
+  flex: 1 1 0;
+  color: #1F2937;
+  font-size: 11px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  word-wrap: break-word;
+}
+
+.depthead-badge-status {
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.depthead-badge-status--yellow {
+  background: #FEF3C7;
+  color: #92400E;
+}
+
+.depthead-badge-status--blue {
+  background: #DBEAFE;
+  color: #1D4ED8;
+}
+
+.depthead-badge-status--green {
+  background: #DCFCE7;
+  color: #168039;
+}
+
+.depthead-assignee-select-btn {
+  flex: 1 1 0;
+  padding: 4px 8px;
+  background: #FFFFFF;
+  border-radius: 6px;
+  border: 1px solid #E2E5EA;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 10px;
+  font-family: 'Inter', sans-serif;
+  color: #1F2937;
+  transition: border-color 0.15s ease;
+}
+
+.depthead-assignee-select-btn:hover {
+  border-color: #CBD5E1;
+}
+
+.depthead-assignee-select-btn--empty {
+  color: #9CA3AF;
+}
+
+.btn-depthead-view-detail {
+  padding: 4px 8px;
+  background: #AA2327;
+  border-radius: 6px;
+  border: none;
+  color: #FFFFFF;
+  font-size: 10px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-depthead-view-detail:hover {
+  background: #931E22;
+}
+
+/* Floating Assignee Dropdown Menu */
+.depthead-floating-assignee-menu {
+  width: 147px;
+  padding: 4px 0;
+  position: fixed;
+  background: #FFFFFF;
+  box-shadow: 0px 4px 16px rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  border: 1px solid #E2E5EA;
+  display: flex;
+  flex-direction: column;
+  z-index: 9999;
+  animation: fadeIn 0.12s ease-out;
+}
+
+/* Figma Toast Notification */
+.depthead-toast-card {
+  position: fixed;
+  top: 96px;
+  right: 36px;
+  z-index: 9999;
+  background: #FFFFFF;
+  box-shadow: 0px 4px 16px rgba(0, 0, 0, 0.12);
+  border-radius: 10px;
+  outline: 1px #DCFCE7 solid;
+  outline-offset: -1px;
+  padding: 12px 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-sizing: border-box;
+  font-family: 'Inter', sans-serif;
+  animation: deptheadToastSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.depthead-toast-icon-circle {
+  width: 24px;
+  height: 24px;
+  background: #168039;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.depthead-toast-icon-check {
+  color: #FFFFFF;
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.depthead-toast-text {
+  color: #1F2937;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  word-wrap: break-word;
+  white-space: nowrap;
+}
+
+@keyframes deptheadToastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.depthead-assignee-item {
+  width: 100%;
+  padding: 8px 12px;
+  color: #1F2937;
+  font-size: 12px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  transition: background-color 0.1s ease;
+}
+
+.depthead-assignee-item:hover {
+  background-color: #F9FAFB;
+}
+
+.depthead-assignee-item--selected {
+  background-color: #FCE8E8;
+  color: #AA2327;
+  font-weight: 600;
+}
+
+
+/* ===== Dept Head Request Detail (Frame: Chi tiết hồ sơ) ===== */
+.depthead-detail-container {
+  width: 100%;
+  max-width: 1208px;
+  min-height: calc(100vh - 88px);
+  padding: 28px 36px 40px;
+  background: #F5F6F8;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 24px;
+  box-sizing: border-box;
+  font-family: 'Inter', sans-serif;
+  margin: 0 auto;
+}
+
+.depthead-detail-topbar {
+  align-self: stretch;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.depthead-detail-title {
+  flex: 1 1 0;
+  color: #1F2937;
+  font-size: 28px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  margin: 0;
+  word-wrap: break-word;
+}
+
+.btn-depthead-back-list {
+  padding: 8px 14px;
+  background: #FFFFFF;
+  border-radius: 8px;
+  border: 1px solid #E2E5EA;
+  color: #6B7280;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-depthead-back-list:hover {
+  background: #F9FAFB;
+  border-color: #D1D5DB;
+  color: #374151;
+}
+
+.depthead-detail-card {
+  align-self: stretch;
+  padding: 24px 28px 20px 28px;
+  background: #FFFFFF;
+  border-radius: 12px;
+  border: 1px solid #E2E5EA;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  box-sizing: border-box;
+}
+
+.depthead-detail-card-title {
+  align-self: stretch;
+  color: #1F2937;
+  font-size: 16px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  margin: 0;
+  word-wrap: break-word;
+}
+
+.depthead-detail-row {
+  align-self: stretch;
+  padding: 14px 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-sizing: border-box;
+}
+
+.depthead-detail-label {
+  width: 180px;
+  color: #6B7280;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  flex-shrink: 0;
+  word-wrap: break-word;
+}
+
+.depthead-detail-value {
+  flex: 1 1 0;
+  color: #1F2937;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  word-wrap: break-word;
+}
+
+.btn-depthead-view-docs {
+  padding: 4px 10px;
+  background: #AA2327;
+  border-radius: 6px;
+  border: none;
+  color: #FFFFFF;
+  font-size: 12px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: background-color 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-depthead-view-docs:hover {
+  background: #931E22;
+}
+
+.depthead-detail-actions {
+  align-self: stretch;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+}
+
+.btn-depthead-action-white {
+  padding: 10px 16px;
+  background: #FFFFFF;
+  border-radius: 8px;
+  border: 1px solid #E2E5EA;
+  color: #1F2937;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-depthead-action-white:hover {
+  background: #F9FAFB;
+  border-color: #D1D5DB;
+}
+
+.btn-depthead-action-primary {
+  padding: 10px 20px;
+  background: #AA2327;
+  border-radius: 8px;
+  border: none;
+  color: #FFFFFF;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-depthead-action-primary:hover {
+  background: #931E22;
+}
