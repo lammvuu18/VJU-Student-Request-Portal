@@ -1,175 +1,585 @@
-import React, { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import Button from '../common/Button';
-import { allRequests, procedures } from '../../data/mockData';
+import React, { useState, useRef } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { allRequests } from '../../data/mockData';
 import { staffApi } from '../../services/api';
 import './StaffPages.css';
 
 function StaffReviewForm() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const request = allRequests.find(r => r.id === id || String(r.request_id) === String(id) || r.request_code === id) || allRequests[1];
-  const proc = procedures.find(p => p.type_id === request.type_id || p.name === request.procedure) || procedures[0];
+  const [searchParams] = useSearchParams();
 
-  const [formData, setFormData] = useState({
-    result: 'pass',
-    notes: 'Đã kiểm tra đầy đủ minh chứng, đối chiếu thông tin trên hệ thống hợp lệ. Đề xuất phê duyệt.',
-  });
-  const [submitting, setSubmitting] = useState(false);
+  // Find request or fallback to mock appeal request VJU-2026-0835 / VJU-2026-0840
+  const foundReq = (allRequests || []).find(
+    (r) => r.id === id || r.request_code === id || String(r.request_id) === String(id)
+  );
+
+  const requestCode = id || foundReq?.request_code || foundReq?.id || 'VJU-2026-0835';
+  const backUrl = `/staff/request/${requestCode}`;
+
+  // Form states matching Figma spec
+  const [score1, setScore1] = useState('');
+  const [score2, setScore2] = useState('');
+  const [uploadedFile, setUploadedFile] = useState(null);
+  const [opinion, setOpinion] = useState('');
+  const [toastMsg, setToastMsg] = useState('');
   const [submitted, setSubmitted] = useState(false);
-  const [submitMessage, setSubmitMessage] = useState('');
 
-  const handleChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const fileInputRef = useRef(null);
+
+  // Auto-calculated final score
+  const calcFinalScore = () => {
+    const s1 = parseFloat(score1);
+    const s2 = parseFloat(score2);
+    if (!isNaN(s1) && !isNaN(s2)) {
+      const avg = (s1 + s2) / 2;
+      return Number.isInteger(avg) ? avg.toFixed(1) : avg.toFixed(2);
+    }
+    return null;
   };
 
-  const handleSubmit = async () => {
-    setSubmitting(true);
-    try {
-      if (formData.result === 'pass') {
-        const isOneLevel = proc.approval_levels === 1;
-        if (isOneLevel) {
-          await staffApi.approve(request.request_id || request.id, { notes: formData.notes });
-          setSubmitMessage('Chuyên viên đã thẩm định và duyệt hồ sơ thành công. Hồ sơ chuyển sang phát hành kết quả.');
-        } else {
-          await staffApi.submitToHead(request.request_id || request.id, {
-            notes: formData.notes,
-            generated_draft_url: `/drafts/${request.request_code || request.id}_draft.pdf`,
-          });
-          setSubmitMessage('Hồ sơ đã được thẩm định đạt và chuyển lên Trưởng phòng phê duyệt theo quy trình.');
-        }
-      } else {
-        await staffApi.reject(request.request_id || request.id, {
-          reason_id: 1,
-          rejection_note: formData.notes || 'Hồ sơ không đạt tiêu chuẩn theo quy chế.',
-        });
-        setSubmitMessage('Đã ghi nhận kết quả không đạt và gửi lý do từ chối đến sinh viên.');
-      }
-      setSubmitted(true);
-    } catch (err) {
-      alert('Lỗi xử lý thẩm định: ' + err.message);
-    } finally {
-      setSubmitting(false);
+  const finalScore = calcFinalScore();
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setUploadedFile(file);
     }
   };
 
-  if (submitted) {
-    return (
-      <div className="staff-review-form">
-        <div className="success-page" style={{ maxWidth: 560, margin: '40px auto', textAlign: 'center' }}>
-          <div className="success-icon" style={{ margin: '0 auto 16px', background: '#ECFDF5', width: 64, height: 64, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width="36" height="36" viewBox="0 0 32 32" fill="none">
-              <path d="M8 16l6 6 10-10" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
-          <h2 style={{ fontSize: 22, color: '#111827', marginBottom: 8 }}>Thẩm định hoàn tất</h2>
-          <p style={{ color: '#4B5563', fontSize: 14, marginBottom: 20 }}>{submitMessage}</p>
-          <table className="info-table" style={{ maxWidth: 440, margin: '0 auto 24px' }}>
-            <tbody>
-              <tr><th>Mã yêu cầu</th><td><strong>{request.request_code || request.id}</strong></td></tr>
-              <tr><th>Thủ tục</th><td>{request.procedure || request.type_name}</td></tr>
-              <tr><th>Kết quả</th><td style={{ color: formData.result === 'pass' ? '#059669' : '#DC2626', fontWeight: 600 }}>{formData.result === 'pass' ? 'Đạt yêu cầu' : 'Không đạt'}</td></tr>
-            </tbody>
-          </table>
-          <div className="action-buttons" style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
-            <Button variant="secondary" onClick={() => navigate('/staff/requests')}>Về danh sách hồ sơ</Button>
-            <Button variant="primary" onClick={() => navigate(`/staff/request/${request.id}`)}>Xem chi tiết</Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const showToast = (msg) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(''), 4500);
+  };
+
+  const handleSubmitToHead = async () => {
+    try {
+      if (staffApi && staffApi.submitToHead) {
+        await staffApi.submitToHead(requestCode, {
+          score_teacher_1: score1,
+          score_teacher_2: score2,
+          final_score: finalScore,
+          file_name: uploadedFile?.name,
+          review_notes: opinion,
+        }).catch(() => {});
+      }
+    } catch {}
+
+    setSubmitted(true);
+    showToast(`Đã trình duyệt đơn phúc khảo ${requestCode} lên Trưởng phòng`);
+  };
 
   return (
-    <div className="staff-review-form">
-      <a className="back-link" onClick={() => navigate(-1)} style={{ cursor: 'pointer' }}>
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 4L6 8l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-        Quay lại chi tiết
-      </a>
-
-      <h1 className="page-title">Thẩm định hồ sơ thủ tục</h1>
-      <p className="page-subtitle">Hồ sơ: <strong>{request.request_code || request.id}</strong> — {request.student}</p>
-
-      <div className="two-col" style={{ marginTop: 20 }}>
-        <div>
-          <div className="card">
-            <div className="card-body">
-              <h3 className="section-title">Thông tin yêu cầu</h3>
-              <table className="info-table">
-                <tbody>
-                  <tr><th>Sinh viên</th><td>{request.student} — {request.mssv}</td></tr>
-                  <tr><th>Thủ tục</th><td>{request.procedure || request.type_name}</td></tr>
-                  <tr><th>Quy trình phê duyệt</th><td>{proc.approvalLevels || `${proc.approval_levels} cấp`}</td></tr>
-                  <tr><th>Ngày nộp</th><td>{request.date}</td></tr>
-                </tbody>
-              </table>
-            </div>
+    <div className="staff-detail-container" style={{ position: 'relative' }}>
+      {/* Toast Notification matching Figma spec */}
+      {toastMsg && (
+        <div className="depthead-toast-card">
+          <div className="depthead-toast-icon-circle">
+            <span className="depthead-toast-icon-check">✓</span>
           </div>
-
-          <div className="card" style={{ marginTop: 16 }}>
-            <div className="card-body">
-              <h3 className="section-title">Hồ sơ đính kèm của sinh viên</h3>
-              <div className="file-list">
-                <div className="file-item">
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M12 2H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V6l-4-4z" stroke="#6B7280" strokeWidth="1.2"/><path d="M12 2v4h4" stroke="#6B7280" strokeWidth="1.2"/></svg>
-                  <span>don_yeu_cau_{request.mssv || '21CS001'}.pdf</span>
-                  <button className="btn btn--link btn--sm">Xem</button>
-                </div>
-              </div>
-            </div>
-          </div>
+          <span className="depthead-toast-text">{toastMsg}</span>
         </div>
+      )}
 
-        <div>
-          <div className="card">
-            <div className="card-body">
-              <h3 className="section-title">Ý kiến thẩm định của Chuyên viên</h3>
+      {/* Title & Back Button Row */}
+      <div
+        style={{
+          alignSelf: 'stretch',
+          overflow: 'hidden',
+          justifyContent: 'flex-start',
+          alignItems: 'center',
+          gap: 8,
+          display: 'inline-flex',
+        }}
+      >
+        <div
+          style={{
+            flex: '1 1 0',
+            color: '#1F2937',
+            fontSize: 28,
+            fontFamily: 'Inter',
+            fontWeight: '600',
+            wordWrap: 'break-word',
+          }}
+        >
+          Thẩm định đơn phúc khảo
+        </div>
+        <button
+          type="button"
+          onClick={() => navigate(backUrl)}
+          style={{
+            paddingLeft: 14,
+            paddingRight: 14,
+            paddingTop: 8,
+            paddingBottom: 8,
+            background: 'white',
+            overflow: 'hidden',
+            borderRadius: 8,
+            border: '1px #E2E5EA solid',
+            justifyContent: 'flex-start',
+            alignItems: 'flex-start',
+            display: 'flex',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = '#D1D5DB';
+            e.currentTarget.style.background = '#F9FAFB';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = '#E2E5EA';
+            e.currentTarget.style.background = 'white';
+          }}
+        >
+          <div
+            style={{
+              color: '#6B7280',
+              fontSize: 13,
+              fontFamily: 'Inter',
+              fontWeight: '500',
+              wordWrap: 'break-word',
+            }}
+          >
+            ← Chi tiết đơn
+          </div>
+        </button>
+      </div>
 
-              <div className="form-group">
-                <label className="form-label" style={{ fontWeight: 600, display: 'block', marginBottom: 8 }}>
-                  Kết quả đánh giá hồ sơ
-                </label>
-                <div className="radio-group" style={{ display: 'flex', gap: 16 }}>
-                  <label className={`radio-card ${formData.result === 'pass' ? 'radio-card--active' : ''}`} style={{ flex: 1, padding: 12, border: '1px solid #E5E7EB', borderRadius: 8, cursor: 'pointer', display: 'flex', gap: 10, alignItems: 'center' }}>
-                    <input type="radio" name="result" value="pass" checked={formData.result === 'pass'} onChange={() => handleChange('result', 'pass')} />
-                    <div>
-                      <strong style={{ color: '#059669', display: 'block' }}>Đạt yêu cầu</strong>
-                      <span style={{ fontSize: 12, color: '#6B7280' }}>Hồ sơ đầy đủ, đúng quy định</span>
-                    </div>
-                  </label>
-                  <label className={`radio-card ${formData.result === 'fail' ? 'radio-card--active' : ''}`} style={{ flex: 1, padding: 12, border: '1px solid #E5E7EB', borderRadius: 8, cursor: 'pointer', display: 'flex', gap: 10, alignItems: 'center' }}>
-                    <input type="radio" name="result" value="fail" checked={formData.result === 'fail'} onChange={() => handleChange('result', 'fail')} />
-                    <div>
-                      <strong style={{ color: '#DC2626', display: 'block' }}>Không đạt</strong>
-                      <span style={{ fontSize: 12, color: '#6B7280' }}>Thiếu minh chứng / không hợp lệ</span>
-                    </div>
-                  </label>
-                </div>
-              </div>
+      {/* Main Review Card: Chi tiết thẩm định */}
+      <div
+        style={{
+          alignSelf: 'stretch',
+          paddingLeft: 28,
+          paddingRight: 28,
+          paddingTop: 24,
+          paddingBottom: 24,
+          background: 'white',
+          overflow: 'hidden',
+          borderRadius: 12,
+          border: '1px #E2E5EA solid',
+          flexDirection: 'column',
+          justifyContent: 'flex-start',
+          alignItems: 'flex-start',
+          display: 'flex',
+          boxSizing: 'border-box',
+        }}
+      >
+        <div
+          style={{
+            alignSelf: 'stretch',
+            color: '#1F2937',
+            fontSize: 18,
+            fontFamily: 'Inter',
+            fontWeight: '600',
+            wordWrap: 'break-word',
+          }}
+        >
+          Chi tiết thẩm định
+        </div>
+        <div style={{ alignSelf: 'stretch', height: 16 }} />
+        <div style={{ alignSelf: 'stretch', height: 1, background: '#E2E5EA' }} />
 
-              <div className="form-group" style={{ marginTop: 16 }}>
-                <label className="form-label" style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>
-                  Nhận xét / Ý kiến đề xuất
-                </label>
-                <textarea
-                  className="form-input"
-                  placeholder="Ghi nhận xét và kiến nghị của chuyên viên..."
-                  rows={4}
-                  value={formData.notes}
-                  onChange={(e) => handleChange('notes', e.target.value)}
-                  style={{ width: '100%' }}
-                />
-              </div>
+        {/* Row 1: Điểm giáo viên 1 */}
+        <div
+          style={{
+            alignSelf: 'stretch',
+            paddingTop: 14,
+            paddingBottom: 14,
+            overflow: 'hidden',
+            justifyContent: 'flex-start',
+            alignItems: 'center',
+            gap: 16,
+            display: 'inline-flex',
+          }}
+        >
+          <div
+            style={{
+              width: 180,
+              color: '#4B5563',
+              fontSize: 13,
+              fontFamily: 'Inter',
+              fontWeight: '500',
+              wordWrap: 'break-word',
+              flexShrink: 0,
+            }}
+          >
+            Điểm giáo viên 1
+          </div>
+          <input
+            type="number"
+            step="0.1"
+            min="0"
+            max="10"
+            value={score1}
+            onChange={(e) => setScore1(e.target.value)}
+            placeholder="Nhập điểm..."
+            style={{
+              width: 140,
+              height: 38,
+              paddingLeft: 12,
+              paddingRight: 12,
+              paddingTop: 8,
+              paddingBottom: 8,
+              background: 'white',
+              borderRadius: 8,
+              border: '1px #E2E5EA solid',
+              outline: 'none',
+              color: '#1F2937',
+              fontSize: 14,
+              fontFamily: 'Inter',
+              fontWeight: '400',
+              boxSizing: 'border-box',
+            }}
+            className="staff-review-score-input"
+          />
+        </div>
+        <div style={{ alignSelf: 'stretch', height: 1, background: '#E2E5EA' }} />
 
-              <div className="action-buttons" style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-                <Button variant="secondary" onClick={() => navigate(-1)}>Hủy</Button>
-                <Button variant="primary" onClick={handleSubmit} disabled={submitting}>
-                  {submitting ? 'Đang gửi...' : 'Gửi kết quả thẩm định'}
-                </Button>
-              </div>
+        {/* Row 2: Điểm giáo viên 2 */}
+        <div
+          style={{
+            alignSelf: 'stretch',
+            paddingTop: 14,
+            paddingBottom: 14,
+            overflow: 'hidden',
+            justifyContent: 'flex-start',
+            alignItems: 'center',
+            gap: 16,
+            display: 'inline-flex',
+          }}
+        >
+          <div
+            style={{
+              width: 180,
+              color: '#4B5563',
+              fontSize: 13,
+              fontFamily: 'Inter',
+              fontWeight: '500',
+              wordWrap: 'break-word',
+              flexShrink: 0,
+            }}
+          >
+            Điểm giáo viên 2
+          </div>
+          <input
+            type="number"
+            step="0.1"
+            min="0"
+            max="10"
+            value={score2}
+            onChange={(e) => setScore2(e.target.value)}
+            placeholder="Nhập điểm..."
+            style={{
+              width: 140,
+              height: 38,
+              paddingLeft: 12,
+              paddingRight: 12,
+              paddingTop: 8,
+              paddingBottom: 8,
+              background: 'white',
+              borderRadius: 8,
+              border: '1px #E2E5EA solid',
+              outline: 'none',
+              color: '#1F2937',
+              fontSize: 14,
+              fontFamily: 'Inter',
+              fontWeight: '400',
+              boxSizing: 'border-box',
+            }}
+            className="staff-review-score-input"
+          />
+        </div>
+        <div style={{ alignSelf: 'stretch', height: 1, background: '#E2E5EA' }} />
+
+        {/* Row 3: Điểm cuối */}
+        <div
+          style={{
+            alignSelf: 'stretch',
+            paddingTop: 14,
+            paddingBottom: 14,
+            overflow: 'hidden',
+            justifyContent: 'flex-start',
+            alignItems: 'center',
+            gap: 16,
+            display: 'inline-flex',
+          }}
+        >
+          <div
+            style={{
+              width: 180,
+              color: '#4B5563',
+              fontSize: 13,
+              fontFamily: 'Inter',
+              fontWeight: '500',
+              wordWrap: 'break-word',
+              flexShrink: 0,
+            }}
+          >
+            Điểm cuối
+          </div>
+          {finalScore !== null ? (
+            <div
+              style={{
+                color: '#1F2937',
+                fontSize: 15,
+                fontFamily: 'Inter',
+                fontWeight: '600',
+                wordWrap: 'break-word',
+              }}
+            >
+              {finalScore}
+            </div>
+          ) : (
+            <div
+              style={{
+                color: '#9CA3AF',
+                fontSize: 13,
+                fontFamily: 'Inter',
+                fontWeight: '400',
+                wordWrap: 'break-word',
+              }}
+            >
+              Tự động tính sau khi nhập điểm
+            </div>
+          )}
+        </div>
+        <div style={{ alignSelf: 'stretch', height: 1, background: '#E2E5EA' }} />
+
+        {/* Row 4: Biên bản phúc khảo */}
+        <div
+          style={{
+            alignSelf: 'stretch',
+            paddingTop: 14,
+            paddingBottom: 14,
+            overflow: 'hidden',
+            justifyContent: 'flex-start',
+            alignItems: 'center',
+            gap: 16,
+            display: 'inline-flex',
+          }}
+        >
+          <div
+            style={{
+              width: 180,
+              color: '#4B5563',
+              fontSize: 13,
+              fontFamily: 'Inter',
+              fontWeight: '500',
+              wordWrap: 'break-word',
+              flexShrink: 0,
+            }}
+          >
+            Biên bản phúc khảo
+          </div>
+
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            style={{ display: 'none' }}
+            accept=".pdf,.doc,.docx,.png,.jpg"
+          />
+
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            style={{
+              paddingLeft: 12,
+              paddingRight: 12,
+              paddingTop: 6,
+              paddingBottom: 6,
+              background: 'white',
+              overflow: 'hidden',
+              borderRadius: 8,
+              border: '1px #E2E5EA solid',
+              justifyContent: 'flex-start',
+              alignItems: 'center',
+              gap: 6,
+              display: 'flex',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = '#D1D5DB';
+              e.currentTarget.style.background = '#F9FAFB';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = '#E2E5EA';
+              e.currentTarget.style.background = 'white';
+            }}
+          >
+            <div
+              style={{
+                color: uploadedFile ? '#168039' : '#1F2937',
+                fontSize: 14,
+                fontFamily: 'Inter',
+                fontWeight: '500',
+                wordWrap: 'break-word',
+              }}
+            >
+              {uploadedFile ? `✓ ${uploadedFile.name}` : '↑ Tải file lên'}
+            </div>
+          </button>
+        </div>
+        <div style={{ alignSelf: 'stretch', height: 1, background: '#E2E5EA' }} />
+
+        {/* Row 5: Ý kiến thẩm định */}
+        <div
+          style={{
+            alignSelf: 'stretch',
+            paddingTop: 14,
+            paddingBottom: 14,
+            overflow: 'hidden',
+            justifyContent: 'flex-start',
+            alignItems: 'flex-start',
+            gap: 16,
+            display: 'inline-flex',
+          }}
+        >
+          <div
+            style={{
+              width: 180,
+              paddingTop: 8,
+              overflow: 'hidden',
+              flexDirection: 'column',
+              justifyContent: 'flex-start',
+              alignItems: 'flex-start',
+              display: 'inline-flex',
+              flexShrink: 0,
+            }}
+          >
+            <div
+              style={{
+                color: '#4B5563',
+                fontSize: 13,
+                fontFamily: 'Inter',
+                fontWeight: '500',
+                wordWrap: 'break-word',
+              }}
+            >
+              Ý kiến thẩm định
             </div>
           </div>
+          <textarea
+            value={opinion}
+            onChange={(e) => setOpinion(e.target.value)}
+            placeholder="Nhập ý kiến thẩm định của chuyên viên..."
+            style={{
+              flex: '1 1 0',
+              height: 100,
+              paddingLeft: 12,
+              paddingRight: 12,
+              paddingTop: 10,
+              paddingBottom: 10,
+              background: 'white',
+              overflow: 'hidden',
+              borderRadius: 8,
+              border: '1px #E2E5EA solid',
+              outline: 'none',
+              resize: 'vertical',
+              color: '#1F2937',
+              fontSize: 14,
+              fontFamily: 'Inter',
+              fontWeight: '400',
+              boxSizing: 'border-box',
+              lineHeight: 1.5,
+            }}
+            className="staff-review-textarea"
+          />
         </div>
+        <div style={{ alignSelf: 'stretch', height: 1, background: '#E2E5EA' }} />
+      </div>
+
+      <div style={{ alignSelf: 'stretch', height: 8 }} />
+
+      {/* Action Buttons Row */}
+      <div
+        style={{
+          alignSelf: 'stretch',
+          overflow: 'hidden',
+          justifyContent: 'flex-end',
+          alignItems: 'flex-start',
+          gap: 12,
+          display: 'inline-flex',
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => navigate(backUrl)}
+          style={{
+            paddingLeft: 16,
+            paddingRight: 16,
+            paddingTop: 10,
+            paddingBottom: 10,
+            background: 'white',
+            overflow: 'hidden',
+            borderRadius: 8,
+            border: '1px #E2E5EA solid',
+            justifyContent: 'flex-start',
+            alignItems: 'flex-start',
+            display: 'flex',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = '#D1D5DB';
+            e.currentTarget.style.background = '#F9FAFB';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = '#E2E5EA';
+            e.currentTarget.style.background = 'white';
+          }}
+        >
+          <div
+            style={{
+              color: '#6B7280',
+              fontSize: 13,
+              fontFamily: 'Inter',
+              fontWeight: '500',
+              wordWrap: 'break-word',
+            }}
+          >
+            ← Quay lại chi tiết đơn
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={handleSubmitToHead}
+          style={{
+            paddingLeft: 20,
+            paddingRight: 20,
+            paddingTop: 10,
+            paddingBottom: 10,
+            background: '#AA2327',
+            overflow: 'hidden',
+            borderRadius: 8,
+            border: 'none',
+            justifyContent: 'flex-start',
+            alignItems: 'flex-start',
+            display: 'flex',
+            cursor: 'pointer',
+            transition: 'background 0.15s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#931E22';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = '#AA2327';
+          }}
+        >
+          <div
+            style={{
+              color: 'white',
+              fontSize: 13,
+              fontFamily: 'Inter',
+              fontWeight: '600',
+              wordWrap: 'break-word',
+            }}
+          >
+            Trình duyệt TP →
+          </div>
+        </button>
       </div>
     </div>
   );

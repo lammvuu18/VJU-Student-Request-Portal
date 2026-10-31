@@ -1,59 +1,289 @@
-/* ===== Principal Pages Styles ===== */
+/* ===== Principal Pages Styles (Figma Spec) ===== */
 
-/* PDF preview large */
-.pdf-preview--large {
-  min-height: 480px;
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  overflow: hidden;
+.principal-container {
+  width: 100%;
+  min-height: calc(100vh - 88px);
+  padding: 28px 36px 40px 36px;
+  background: #F5F6F8;
   display: flex;
   flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 28px;
+  box-sizing: border-box;
+  font-family: 'Inter', sans-serif;
 }
 
-.pdf-header-bar {
+.principal-title {
+  color: #1F2937;
+  font-size: 28px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 0;
+  align-self: stretch;
+}
+
+.principal-card {
+  align-self: stretch;
+  padding: 20px 24px 16px 24px;
+  position: relative;
+  background: #FFFFFF;
+  border-radius: 12px;
+  outline: 1px #E2E5EA solid;
+  outline-offset: -1px;
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  box-sizing: border-box;
+}
+
+.principal-card-title {
+  align-self: stretch;
+  color: #1F2937;
+  font-size: 16px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+/* Filters row */
+.principal-filters-row {
+  align-self: stretch;
+  display: flex;
+  justify-content: flex-start;
   align-items: center;
-  padding: 10px 16px;
-  background: #F3F4F6;
-  border-bottom: 1px solid var(--color-border);
-  font-size: var(--font-size-sm);
-  font-weight: 500;
+  gap: 12px;
+  position: relative;
+  z-index: 20;
 }
 
-.pdf-body {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-  padding: 24px;
-  background: #E5E7EB;
+.principal-filter-item {
+  flex: 1 1 0;
+  position: relative;
 }
 
-.pdf-doc-mock {
-  background: white;
-  border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  padding: 40px 36px;
+.principal-filter-btn {
   width: 100%;
-  max-width: 500px;
-  font-size: 13px;
-  line-height: 1.7;
+  padding: 10px 14px;
+  background: #FFFFFF;
+  border-radius: 8px;
+  outline: 1px #E2E5EA solid;
+  outline-offset: -1px;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  box-sizing: border-box;
+  user-select: none;
+  transition: all 0.15s ease;
 }
 
-.pdf-doc-header {
-  text-align: center;
-  margin-bottom: 24px;
-  border-bottom: 2px solid var(--vju-red);
-  padding-bottom: 16px;
+.principal-filter-btn:hover {
+  outline-color: #D1D5DB;
+  background: #F9FAFB;
 }
 
-.pdf-doc-header strong {
-  display: block;
-  font-size: 15px;
-  color: var(--vju-red);
-}
-
-.pdf-doc-header span {
-  font-size: 12px;
+.principal-filter-btn-label {
+  flex: 1 1 0;
   color: #6B7280;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.principal-filter-btn-chevron {
+  color: #6B7280;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+}
+
+.principal-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: #FFFFFF;
+  border-radius: 8px;
+  outline: 1px #E2E5EA solid;
+  outline-offset: -1px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  z-index: 50;
+  overflow: hidden;
+}
+
+.principal-dropdown-item {
+  padding: 8px 14px;
+  color: #1F2937;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.principal-dropdown-item:hover {
+  background: #F9FAFB;
+}
+
+.principal-dropdown-item--active {
+  color: #AA2327;
+  font-weight: 600;
+  background: #FDF2F2;
+}
+
+/* Search Box */
+.principal-search-box {
+  width: 220px;
+  padding: 10px 12px;
+  background: #FFFFFF;
+  border-radius: 8px;
+  outline: 1px #E2E5EA solid;
+  outline-offset: -1px;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+}
+
+.principal-search-icon {
+  color: #6B7280;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+}
+
+.principal-search-input {
+  flex: 1 1 0;
+  border: none;
+  outline: none;
+  color: #1F2937;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  background: transparent;
+  padding: 0;
+}
+
+.principal-search-input::placeholder {
+  color: #9CA3AF;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+}
+
+/* Table container & scrollbar mock */
+.principal-table-container {
+  align-self: stretch;
+  position: relative;
+  overflow: hidden;
+}
+
+.principal-table-wrapper {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  overflow: hidden;
+}
+
+.principal-th-row {
+  align-self: stretch;
+  padding: 10px 8px;
+  background: #F5F6F8;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 4px;
+  box-sizing: border-box;
+}
+
+.principal-th-cell {
+  flex: 1 1 0;
+  color: #1F2937;
+  font-size: 12px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  word-wrap: break-word;
+}
+
+.principal-table-divider {
+  align-self: stretch;
+  height: 1px;
+  background: #E2E5EA;
+}
+
+.principal-tr-row {
+  align-self: stretch;
+  padding: 10px 8px;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 4px;
+  box-sizing: border-box;
+  transition: background-color 0.12s ease;
+}
+
+.principal-tr-row:hover {
+  background: #F9FAFB;
+}
+
+.principal-td-cell {
+  flex: 1 1 0;
+  color: #1F2937;
+  font-size: 12px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  word-wrap: break-word;
+}
+
+.btn-principal-view-detail {
+  padding: 4px 8px;
+  background: #AA2327;
+  border-radius: 6px;
+  border: none;
+  color: #FFFFFF;
+  font-size: 10px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-principal-view-detail:hover {
+  background: #931E22;
+}
+
+/* Mock scrollbar from Figma */
+.principal-scrollbar-track {
+  width: 6px;
+  height: 380px;
+  position: absolute;
+  right: 0;
+  top: 0;
+  background: #F0F0F0;
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+.principal-scrollbar-thumb {
+  width: 6px;
+  height: 150px;
+  position: absolute;
+  right: 0;
+  top: 0;
+  background: #BEC2C8;
+  border-radius: 3px;
+  pointer-events: none;
 }
