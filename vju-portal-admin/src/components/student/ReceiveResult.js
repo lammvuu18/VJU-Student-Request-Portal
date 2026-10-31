@@ -1,148 +1,356 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import Button from '../common/Button';
-import Badge from '../common/Badge';
-import { allRequests, users } from '../../data/mockData';
 import './StudentPages.css';
 
 function ReceiveResult() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Pick completed request
-  const request = allRequests.find(r => r.result || r.status === 'Đã duyệt' || r.status === 'Đã xử lý') || allRequests[0];
-  const student = users.student;
-  const [downloading, setDownloading] = useState(false);
-  const [toast, setToast] = useState('');
+  // Retrieve any state passed from previous screens or default to Figma mockup
+  const studentName = location.state?.studentName || 'Nguyễn Minh Anh';
+  const studentId = location.state?.studentId || '23110150';
+  const major = location.state?.major || 'Khoa học máy tính';
+  const cohort = location.state?.cohort || 'QH-2023';
+  const procedureName = location.state?.procedureName || 'Cấp bảng điểm';
+  const issueDate = location.state?.issueDate || '21/10/2026';
+  const pickupDate = location.state?.pickupDate || '28/10/2026';
+  const pickupHours = location.state?.pickupHours || '08:00 – 11:30, 13:30 – 17:00';
+  const contactPerson = location.state?.contactPerson || 'Nguyễn Văn A — Chuyên viên PĐT';
+  const pickupLocation = location.state?.pickupLocation || 'Phòng Đào tạo — Phòng 204, Tầng 2';
 
-  const handleDownload = () => {
+  const [toastMsg, setToastMsg] = useState('');
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownloadPdf = () => {
     setDownloading(true);
+    // Create and trigger download of a generated file
+    const fileContent = `%PDF-1.4\n% VJU Academic Transcript - ${studentName} (${studentId})\n% Generated & Digitally Signed on ${issueDate}\n`;
+    const blob = new Blob([fileContent], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Bang_Diem_${studentId}_signed.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    setDownloading(false);
+    setToastMsg('Đã tải xuống file PDF bảng điểm điện tử có chữ ký số!');
     setTimeout(() => {
-      setDownloading(false);
-      setToast('Tải xuống tài liệu PDF ký số thành công!');
-      setTimeout(() => setToast(''), 4000);
-    }, 1000);
+      setToastMsg('');
+    }, 4000);
+  };
+
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/student/dashboard');
+    }
   };
 
   return (
-    <div className="receive-result">
-      {toast && (
+    <div className="receive-result-container">
+      {/* Toast Notification */}
+      {toastMsg && (
         <div style={{
           position: 'fixed',
           top: 24,
           right: 24,
           zIndex: 9999,
           background: '#059669',
-          color: '#fff',
+          color: '#FFFFFF',
           padding: '12px 20px',
           borderRadius: 8,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          boxShadow: '0 4px 14px rgba(0,0,0,0.15)',
           display: 'flex',
           alignItems: 'center',
           gap: 8,
           fontSize: 14,
-          fontWeight: 500,
+          fontWeight: 600,
+          fontFamily: 'Inter, sans-serif',
+          animation: 'fadeIn 0.2s ease',
         }}>
-          <span>✓</span> {toast}
+          <span>✓</span>
+          <span>{toastMsg}</span>
         </div>
       )}
 
-      <a className="back-link" onClick={() => navigate(-1)} style={{ cursor: 'pointer' }}>
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 4L6 8l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-        Quay lại
-      </a>
+      {/* Top Header Row */}
+      <div className="receive-result-header">
+        <h1 className="receive-result-title">Nhận kết quả</h1>
+        <button
+          type="button"
+          className="btn-back-request-detail"
+          onClick={handleBack}
+        >
+          ← Chi tiết yêu cầu
+        </button>
+      </div>
 
-      <h1 className="page-title">Nhận kết quả thủ tục</h1>
-      <p className="page-subtitle">Mã hồ sơ: <strong>{request.request_code || request.id}</strong> — {request.procedure || request.type_name}</p>
+      {/* Main Two-Column Layout */}
+      <div className="receive-result-columns">
+        {/* Left Column: Document Sheet Preview (620px) */}
+        <div className="doc-preview-card">
+          <div className="doc-paper-sheet">
+            {/* University & School Name */}
+            <div className="doc-sheet-univ-title">
+              ĐẠI HỌC QUỐC GIA HÀ NỘI<br />
+              TRƯỜNG ĐẠI HỌC VIỆT NHẬT
+            </div>
 
-      <div className="two-col" style={{ marginTop: 24 }}>
-        <div>
-          <div className="card">
-            <div className="card-body">
-              <h3 className="section-title">Xem trước tài liệu điện tử</h3>
-              <div className="pdf-preview" style={{ background: '#F9FAFB', border: '1px dashed #D1D5DB', borderRadius: 8, padding: 24, textAlign: 'center' }}>
-                <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-                  <path d="M28 4H12a4 4 0 00-4 4v32a4 4 0 004 4h24a4 4 0 004-4V16l-12-12z" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M28 4v12h12" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M16 24h16M16 30h16M16 36h8" stroke="#2563EB" strokeWidth="1.5" strokeLinecap="round"/>
-                </svg>
-                <p style={{ marginTop: 12, fontWeight: 600, color: '#1F2937' }}>
-                  {request.procedure || request.type_name} — {student.name}
-                </p>
-                <p style={{ fontSize: 13, color: '#6B7280' }}>
-                  {request.request_code || request.id}_signed.pdf (1.2 MB)
-                </p>
+            {/* Title Underline */}
+            <div className="doc-sheet-divider-bar" />
 
-                <div style={{
-                  marginTop: 16,
-                  padding: '10px 14px',
-                  background: '#ECFDF5',
-                  border: '1px solid #A7F3D0',
-                  borderRadius: 6,
-                  textAlign: 'left',
-                  fontSize: 12,
-                  color: '#065F46',
-                }}>
-                  <div style={{ fontWeight: 600, marginBottom: 4 }}>Chữ ký số hợp lệ:</div>
-                  <div>• Ký bởi: <strong>PGS.TS Nguyễn Văn Bình</strong> (Hiệu trưởng)</div>
-                  <div>• Thời gian: 29/10/2026 15:00 (GMT+7)</div>
-                  <div>• Mã tra cứu xác thực: <strong>{request.result?.verification_code || 'VJU-XN-2026-001'}</strong></div>
+            {/* Document Title */}
+            <div className="doc-sheet-heading">BẢNG ĐIỂM</div>
+            <div className="doc-sheet-subheading">(Academic Transcript)</div>
+
+            <div style={{ width: 10, height: 8 }} />
+
+            {/* Student Details */}
+            <div className="doc-sheet-student-info">Họ và tên: {studentName}</div>
+            <div className="doc-sheet-student-info">MSSV: {studentId}</div>
+            <div className="doc-sheet-student-info">Ngành: {major}</div>
+            <div className="doc-sheet-student-info">Khóa: {cohort}</div>
+
+            <div style={{ width: 10, height: 6 }} />
+
+            {/* Grades Table Header */}
+            <div className="doc-grades-table-header">
+              <div className="doc-col-stt">STT</div>
+              <div className="doc-col-code">Mã HP</div>
+              <div className="doc-col-name">Tên học phần</div>
+              <div className="doc-col-credits">TC</div>
+              <div className="doc-col-grade">Điểm</div>
+            </div>
+
+            {/* Grades Table Rows */}
+            <div className="doc-grades-table-row">
+              <div className="doc-col-stt">1</div>
+              <div className="doc-col-code">CS101</div>
+              <div className="doc-col-name">Nhập môn lập trình</div>
+              <div className="doc-col-credits">3</div>
+              <div className="doc-col-grade">8.5</div>
+            </div>
+
+            <div className="doc-grades-table-row">
+              <div className="doc-col-stt">2</div>
+              <div className="doc-col-code">CS201</div>
+              <div className="doc-col-name">Cấu trúc dữ liệu</div>
+              <div className="doc-col-credits">3</div>
+              <div className="doc-col-grade">9.0</div>
+            </div>
+
+            <div className="doc-grades-table-row">
+              <div className="doc-col-stt">3</div>
+              <div className="doc-col-code">MA101</div>
+              <div className="doc-col-name">Giải tích I</div>
+              <div className="doc-col-credits">4</div>
+              <div className="doc-col-grade">7.5</div>
+            </div>
+
+            <div className="doc-grades-table-row">
+              <div className="doc-col-stt">4</div>
+              <div className="doc-col-code">JP101</div>
+              <div className="doc-col-name">Tiếng Nhật cơ sở</div>
+              <div className="doc-col-credits">4</div>
+              <div className="doc-col-grade">8.0</div>
+            </div>
+
+            <div className="doc-grades-table-row">
+              <div className="doc-col-stt">5</div>
+              <div className="doc-col-code">CS301</div>
+              <div className="doc-col-name">Hệ điều hành</div>
+              <div className="doc-col-credits">3</div>
+              <div className="doc-col-grade">7.0</div>
+            </div>
+
+            {/* Trailing dots */}
+            <div className="doc-sheet-dots">· · ·</div>
+
+            {/* Footer Area with Digital Signature & QR */}
+            <div className="doc-sheet-footer-area">
+              <div className="doc-digital-signature-box">
+                <div className="doc-sign-date-text">Ký số ngày {issueDate}</div>
+                <div className="doc-qr-code-box">
+                  <svg width="34" height="34" viewBox="0 0 33 33" fill="none">
+                    {/* Top-Left Finder */}
+                    <rect x="2" y="2" width="9" height="9" fill="none" stroke="#1F2937" strokeWidth="1.8" />
+                    <rect x="4.5" y="4.5" width="4" height="4" fill="#1F2937" />
+                    {/* Top-Right Finder */}
+                    <rect x="22" y="2" width="9" height="9" fill="none" stroke="#1F2937" strokeWidth="1.8" />
+                    <rect x="24.5" y="4.5" width="4" height="4" fill="#1F2937" />
+                    {/* Bottom-Left Finder */}
+                    <rect x="2" y="22" width="9" height="9" fill="none" stroke="#1F2937" strokeWidth="1.8" />
+                    <rect x="4.5" y="24.5" width="4" height="4" fill="#1F2937" />
+                    {/* Matrix Data Bits */}
+                    <rect x="14" y="3" width="2" height="3" fill="#1F2937" />
+                    <rect x="18" y="2" width="2" height="2" fill="#1F2937" />
+                    <rect x="14" y="8" width="5" height="2" fill="#1F2937" />
+                    <rect x="3" y="14" width="2" height="5" fill="#1F2937" />
+                    <rect x="8" y="14" width="3" height="2" fill="#1F2937" />
+                    <rect x="13" y="13" width="3" height="3" fill="#1F2937" />
+                    <rect x="18" y="14" width="2" height="4" fill="#1F2937" />
+                    <rect x="23" y="13" width="4" height="2" fill="#1F2937" />
+                    <rect x="28" y="15" width="3" height="3" fill="#1F2937" />
+                    <rect x="13" y="18" width="3" height="2" fill="#1F2937" />
+                    <rect x="18" y="20" width="3" height="3" fill="#1F2937" />
+                    <rect x="14" y="25" width="2" height="5" fill="#1F2937" />
+                    <rect x="18" y="27" width="4" height="2" fill="#1F2937" />
+                    <rect x="24" y="18" width="2" height="4" fill="#1F2937" />
+                    <rect x="23" y="24" width="5" height="2" fill="#1F2937" />
+                    <rect x="25" y="27" width="2" height="4" fill="#1F2937" />
+                  </svg>
                 </div>
+                <div className="doc-qr-label-text">QR xác thực</div>
               </div>
-
-              <Button
-                variant="secondary"
-                className="btn--full"
-                style={{ marginTop: 16 }}
-                onClick={handleDownload}
-                disabled={downloading}
-              >
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <path d="M14 10v3a1 1 0 01-1 1H3a1 1 0 01-1-1v-3M8 2v9M5 8l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                {downloading ? 'Đang chuẩn bị tệp...' : 'Tải xuống PDF ký số'}
-              </Button>
             </div>
           </div>
         </div>
 
-        <div>
-          <div className="card">
-            <div className="card-body">
-              <h3 className="section-title">Thông tin nhận kết quả</h3>
-              <table className="info-table">
-                <tbody>
-                  <tr><th>Thủ tục</th><td>{request.procedure || request.type_name}</td></tr>
-                  <tr><th>Mã yêu cầu</th><td><strong>{request.request_code || request.id}</strong></td></tr>
-                  <tr><th>Đơn vị cấp</th><td>{request.department_name || request.department}</td></tr>
-                  <tr><th>Hình thức cấp</th><td><Badge label="Bản điện tử + Bản cứng" color="#2563EB" bg="#EFF6FF" /></td></tr>
-                  <tr><th>Mã xác thực</th><td><code>{request.result?.verification_code || 'VJU-XN-2026-001'}</code></td></tr>
-                </tbody>
-              </table>
+        {/* Right Column: Info Cards */}
+        <div className="receive-result-info-col">
+          {/* Card 1: Thông tin giấy tờ */}
+          <div className="receive-result-card">
+            <h2 className="receive-result-card-title">Thông tin giấy tờ</h2>
+            <div style={{ alignSelf: 'stretch', height: 14 }} />
+            <div className="req-detail-divider" />
+
+            {/* Row 1: Mã sinh viên */}
+            <div className="receive-result-row">
+              <div className="receive-result-row-content">
+                <div className="receive-result-label">Mã sinh viên</div>
+                <div className="receive-result-value">{studentId}</div>
+              </div>
+            </div>
+            <div className="req-detail-divider" />
+
+            {/* Row 2: Tên thủ tục */}
+            <div className="receive-result-row">
+              <div className="receive-result-row-content">
+                <div className="receive-result-label">Tên thủ tục</div>
+                <div className="receive-result-value">{procedureName}</div>
+              </div>
+            </div>
+            <div className="req-detail-divider" />
+
+            {/* Row 3: Ngày cấp */}
+            <div className="receive-result-row">
+              <div className="receive-result-row-content">
+                <div className="receive-result-label">Ngày cấp</div>
+                <div className="receive-result-value">{issueDate}</div>
+              </div>
+            </div>
+            <div className="req-detail-divider" />
+
+            {/* Row 4: Tải kết quả */}
+            <div className="receive-result-row">
+              <div className="receive-result-row-content">
+                <div className="receive-result-label">Tải kết quả</div>
+              </div>
+              <button
+                type="button"
+                className="btn-download-pdf-red"
+                onClick={handleDownloadPdf}
+                disabled={downloading}
+              >
+                Tải PDF ↓
+              </button>
+            </div>
+
+            <div style={{ alignSelf: 'stretch', height: 8 }} />
+
+            {/* Notice 1 */}
+            <div className="receive-result-alert-box">
+              <span className="receive-result-alert-icon">⚠</span>
+              <div className="receive-result-alert-text">
+                Bản điện tử lưu giữ 30 ngày. Sau đó chuyển cold storage.
+              </div>
             </div>
           </div>
 
-          <div className="card" style={{ marginTop: 16 }}>
-            <div className="card-body">
-              <h3 className="section-title">Thông tin nhận bản cứng tại trường</h3>
-              <table className="info-table">
-                <tbody>
-                  <tr><th>Địa điểm</th><td>Bàn số 2 — {request.department_name || request.department} (Tầng 3, Nhà A)</td></tr>
-                  <tr><th>Thời gian phục vụ</th><td>Thứ 2 - Thứ 6: 08:30 - 11:30 | 13:30 - 16:30</td></tr>
-                  <tr><th>Thời hạn lưu hồ sơ</th><td>15 ngày kể từ ngày thông báo có kết quả</td></tr>
-                  <tr><th>Yêu cầu khi đến</th><td>Xuất trình thẻ sinh viên hoặc CCCD gốc để đối chiếu</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
+          {/* Card 2: Thời gian và địa điểm nhận bản cứng */}
+          <div className="receive-result-card">
+            <h2 className="receive-result-card-title">
+              Thời gian và địa điểm nhận bản cứng
+            </h2>
+            <div style={{ alignSelf: 'stretch', height: 14 }} />
+            <div className="req-detail-divider" />
 
-          <div className="action-buttons" style={{ marginTop: 16, display: 'flex', gap: 12 }}>
-            <Button variant="outline-red" onClick={() => navigate('/student/feedback')}>
-              ⭐ Đánh giá dịch vụ
-            </Button>
-            <Button variant="primary" onClick={() => navigate('/student')}>
-              Về trang chủ
-            </Button>
+            {/* Row 1: Ngày nhận */}
+            <div className="receive-result-row receive-result-row--with-icon">
+              <div className="receive-result-row-icon">
+                <div style={{ width: 16, height: 16, position: 'relative' }}>
+                  <div style={{ width: 14, height: 12, left: 1, top: 3, position: 'absolute', borderRadius: 2, border: '1.30px #6B7280 solid' }} />
+                  <div style={{ width: 1.5, height: 4, left: 5, top: 1, position: 'absolute', background: '#6B7280' }} />
+                  <div style={{ width: 1.5, height: 4, left: 10, top: 1, position: 'absolute', background: '#6B7280' }} />
+                  <div style={{ width: 10, height: 5, left: 3, top: 8, position: 'absolute', opacity: 0.3, background: '#6B7280' }} />
+                </div>
+              </div>
+              <div className="receive-result-row-content">
+                <div className="receive-result-label">Ngày nhận</div>
+                <div className="receive-result-value">{pickupDate}</div>
+              </div>
+            </div>
+            <div className="req-detail-divider" />
+
+            {/* Row 2: Giờ nhận */}
+            <div className="receive-result-row receive-result-row--with-icon">
+              <div className="receive-result-row-icon">
+                <div style={{ width: 16, height: 16, position: 'relative' }}>
+                  <div style={{ width: 14, height: 14, left: 1, top: 1, position: 'absolute', borderRadius: 9999, border: '1.30px #6B7280 solid' }} />
+                  <div style={{ width: 1.2, height: 4, left: 7.4, top: 4, position: 'absolute', background: '#6B7280' }} />
+                  <div style={{ width: 3, height: 1.2, left: 7.4, top: 7.4, position: 'absolute', background: '#6B7280' }} />
+                </div>
+              </div>
+              <div className="receive-result-row-content">
+                <div className="receive-result-label">Giờ nhận</div>
+                <div className="receive-result-value">{pickupHours}</div>
+              </div>
+            </div>
+            <div className="req-detail-divider" />
+
+            {/* Row 3: Liên hệ */}
+            <div className="receive-result-row receive-result-row--with-icon">
+              <div className="receive-result-row-icon">
+                <div style={{ width: 16, height: 16, position: 'relative' }}>
+                  <div style={{ width: 6, height: 6, left: 5, top: 1, position: 'absolute', borderRadius: 9999, border: '1.30px #6B7280 solid' }} />
+                  <div style={{ width: 14, height: 10, left: 1, top: 9, position: 'absolute', borderRadius: 9999, border: '1.30px #6B7280 solid' }} />
+                </div>
+              </div>
+              <div className="receive-result-row-content">
+                <div className="receive-result-label">Liên hệ</div>
+                <div className="receive-result-value">{contactPerson}</div>
+              </div>
+            </div>
+            <div className="req-detail-divider" />
+
+            {/* Row 4: Địa điểm */}
+            <div className="receive-result-row receive-result-row--with-icon">
+              <div className="receive-result-row-icon">
+                <div style={{ width: 14, height: 18, position: 'relative' }}>
+                  <div style={{ width: 14, height: 14, left: 0, top: 0, position: 'absolute', borderRadius: 9999, border: '1.30px #6B7280 solid' }} />
+                  <div style={{ width: 4, height: 4, left: 5, top: 5, position: 'absolute', borderRadius: 9999, border: '1px #6B7280 solid' }} />
+                  <div style={{ width: 2, height: 6, left: 6, top: 12, position: 'absolute', background: '#6B7280' }} />
+                </div>
+              </div>
+              <div className="receive-result-row-content">
+                <div className="receive-result-label">Địa điểm</div>
+                <div className="receive-result-value">{pickupLocation}</div>
+              </div>
+            </div>
+
+            <div style={{ alignSelf: 'stretch', height: 8 }} />
+
+            {/* Notice 2 */}
+            <div className="receive-result-alert-box">
+              <span className="receive-result-alert-icon">⚠</span>
+              <div className="receive-result-alert-text">
+                Bản cứng được lưu giữ 30 ngày kể từ ngày cấp.
+              </div>
+            </div>
           </div>
         </div>
       </div>

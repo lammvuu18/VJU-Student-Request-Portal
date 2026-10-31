@@ -23,6 +23,7 @@ import SupplementForm from './components/student/SupplementForm';
 import SupplementSuccess from './components/student/SupplementSuccess';
 import ReceiveResult from './components/student/ReceiveResult';
 import FeedbackForm from './components/student/FeedbackForm';
+import FeedbackSuccess from './components/student/FeedbackSuccess';
 import StudentProfile from './components/student/StudentProfile';
 
 // Dept Head pages
@@ -95,11 +96,13 @@ function App() {
           <Route path="request/supplement/success" element={<SupplementSuccess />} />
           <Route path="request/result" element={<ReceiveResult />} />
           <Route path="feedback" element={<FeedbackForm />} />
+          <Route path="feedback/success" element={<FeedbackSuccess />} />
           <Route path="request/:id" element={<RequestDetail />} />
           <Route path="request/:id/supplement" element={<SupplementForm />} />
           <Route path="request/:id/supplement/success" element={<SupplementSuccess />} />
           <Route path="request/:id/receive" element={<ReceiveResult />} />
           <Route path="request/:id/feedback" element={<FeedbackForm />} />
+          <Route path="request/:id/feedback/success" element={<FeedbackSuccess />} />
           <Route path="profile" element={<StudentProfile />} />
         </Route>
 
