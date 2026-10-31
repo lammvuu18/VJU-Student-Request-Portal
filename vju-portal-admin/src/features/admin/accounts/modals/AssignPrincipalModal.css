@@ -1,0 +1,275 @@
+/* ===== Assign Principal Modal Styles (Figma Spec Pixel-Perfect) ===== */
+
+.assign-principal-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.40);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+  animation: apmFadeIn 0.15s ease-out;
+}
+
+.assign-principal-modal-card {
+  width: 100%;
+  max-width: 500px;
+  padding-left: 28px;
+  padding-right: 28px;
+  padding-top: 24px;
+  padding-bottom: 24px;
+  background: #FFFFFF;
+  box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.15);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 16px;
+  box-sizing: border-box;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  animation: apmSlideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes apmFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes apmSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Header Row */
+.apm-header-row {
+  align-self: stretch;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.apm-title {
+  flex: 1 1 0;
+  color: #1F2937;
+  font-size: 18px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.apm-close-btn {
+  background: none;
+  border: none;
+  color: #6B7280;
+  font-size: 18px;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  border-radius: 4px;
+  transition: color 0.15s ease;
+}
+
+.apm-close-btn:hover {
+  color: #111827;
+}
+
+/* Divider */
+.apm-divider {
+  align-self: stretch;
+  height: 1px;
+  background: #E2E5EA;
+  margin: 0;
+}
+
+/* Field Group */
+.apm-field-group {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.apm-field-label {
+  color: #374151;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.apm-field-required {
+  color: #DC2626;
+  margin-left: 2px;
+}
+
+.apm-input-box {
+  align-self: stretch;
+  height: 38px;
+  padding-left: 12px;
+  padding-right: 12px;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #E2E5EA;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.apm-input-box:focus-within {
+  border-color: #AA2327;
+  box-shadow: 0 0 0 2px rgba(170, 35, 39, 0.1);
+}
+
+.apm-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  outline: none;
+  color: #1F2937;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+}
+
+.apm-input::placeholder {
+  color: #9CA3AF;
+}
+
+/* Select Box */
+.apm-select-box {
+  align-self: stretch;
+  height: 38px;
+  padding-left: 12px;
+  padding-right: 12px;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #E2E5EA;
+  display: flex;
+  align-items: center;
+  position: relative;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.apm-select-box:focus-within {
+  border-color: #AA2327;
+  box-shadow: 0 0 0 2px rgba(170, 35, 39, 0.1);
+}
+
+.apm-select {
+  width: 100%;
+  border: none;
+  background: transparent;
+  outline: none;
+  color: #1F2937;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 20px;
+  cursor: pointer;
+}
+
+.apm-select-arrow {
+  position: absolute;
+  right: 12px;
+  color: #6B7280;
+  font-size: 12px;
+  pointer-events: none;
+}
+
+/* Notice Box */
+.apm-notice-box {
+  align-self: stretch;
+  background: #FFFBEB;
+  border: 1px solid #FDE68A;
+  border-radius: 8px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  box-sizing: border-box;
+}
+
+.apm-notice-icon {
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.apm-notice-text {
+  color: #92400E;
+  font-size: 12px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+/* Action Buttons Row */
+.apm-actions-row {
+  align-self: stretch;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+}
+
+.apm-btn-cancel {
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 9px;
+  padding-bottom: 9px;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #D1D5DB;
+  color: #374151;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  line-height: 1.2;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.apm-btn-cancel:hover {
+  background: #F9FAFB;
+  border-color: #9CA3AF;
+}
+
+.apm-btn-save {
+  padding-left: 18px;
+  padding-right: 18px;
+  padding-top: 9px;
+  padding-bottom: 9px;
+  background: #AA2327;
+  border-radius: 8px;
+  border: none;
+  color: white;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  line-height: 1.2;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.apm-btn-save:hover {
+  opacity: 0.92;
+}
