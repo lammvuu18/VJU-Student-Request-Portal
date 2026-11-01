@@ -8,19 +8,34 @@ import os
 from pathlib import Path
 from urllib.parse import quote
 
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "fallback-key-for-dev")
-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "True") == "True"
 
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
+if not SECRET_KEY:
+    # Chỉ dùng key dự phòng khi dev, thiếu key ở production thì dừng ngay khi khởi động
+    if not DEBUG:
+        raise ImproperlyConfigured("DJANGO_SECRET_KEY is required when DEBUG=False")
+    SECRET_KEY = "fallback-key-for-dev"
+
 ALLOWED_HOSTS = ["*"]
+
+CORS_ALLOWED_ORIGINS = os.getenv(
+    "CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
+).split(",")
+
+# Client ID của Google OAuth, dùng để kiểm tra Google ID token
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+# Cho phép truyền email thay cho Google token, chỉ có hiệu lực khi DEBUG=True
+GOOGLE_AUTH_DEV_BYPASS = DEBUG and os.getenv("GOOGLE_AUTH_DEV_BYPASS", "False") == "True"
 
 
 # Application definition

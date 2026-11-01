@@ -1,11 +1,19 @@
 import json
-import base64
+from datetime import datetime, timezone as dt_timezone
+from urllib.error import URLError
+from urllib.parse import urlencode
+from urllib.request import urlopen
+
+from django.conf import settings
 from django.http import JsonResponse
+from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 
-from .models import User, StudentRegistry
+from .models import RevokedToken, User, StudentRegistry
 from .jwt_utils import generate_jwt_token, decode_jwt_token
+
+GOOGLE_TOKENINFO_URL = 'https://oauth2.googleapis.com/tokeninfo'
 
 
 def _json_error(code: str, message: str, status: int = 400):
@@ -17,15 +25,37 @@ def _json_error(code: str, message: str, status: int = 400):
         }
     }, status=status)
 
-def _get_authenticated_user(request):
+def _read_json_object(request):
     """
-    Trích xuất và xác thực user từ header Authorization: Bearer <token>
+    Đọc body JSON dạng object. Trả về None nếu body không hợp lệ.
+    """
+    try:
+        body = json.loads(request.body.decode('utf-8'))
+    except (UnicodeDecodeError, ValueError):
+        return None
+    return body if isinstance(body, dict) else None
+
+def _get_token_payload(request):
+    """
+    Trích xuất payload từ header Authorization: Bearer <token>
+    Token đã bị thu hồi khi đăng xuất được xem là không hợp lệ.
     """
     auth_header = request.headers.get('Authorization', '')
     if not auth_header.startswith('Bearer '):
         return None
     token = auth_header.split(' ', 1)[1].strip()
     payload = decode_jwt_token(token)
+    if not payload:
+        return None
+    if RevokedToken.objects.filter(jti=payload.get('jti')).exists():
+        return None
+    return payload
+
+def _get_authenticated_user(request):
+    """
+    Trích xuất và xác thực user từ header Authorization: Bearer <token>
+    """
+    payload = _get_token_payload(request)
     if not payload:
         return None
     user_id = payload.get('user_id')
@@ -39,6 +69,35 @@ def _get_authenticated_user(request):
     except User.DoesNotExist:
         return None
 
+def _verify_google_token(token: str):
+    """
+    Xác thực Google ID token với Google và trả về email đã được xác minh.
+    Trả về None nếu token không hợp lệ.
+    """
+    # Chỉ bật ở môi trường dev: google_token là email để thử luồng đăng nhập
+    if settings.GOOGLE_AUTH_DEV_BYPASS and '@' in token:
+        return token.strip().lower()
+
+    if not settings.GOOGLE_CLIENT_ID:
+        return None
+
+    try:
+        with urlopen(f"{GOOGLE_TOKENINFO_URL}?{urlencode({'id_token': token})}", timeout=5) as response:
+            info = json.load(response)
+    except (URLError, TimeoutError, ValueError):
+        return None
+
+    if info.get('aud') != settings.GOOGLE_CLIENT_ID or str(info.get('email_verified')).lower() != 'true':
+        return None
+    return str(info.get('email', '')).strip().lower() or None
+
+
+def api_not_found_view(request):
+    """
+    Trả lỗi 404 theo format JSON chung cho các đường dẫn /api/ không tồn tại
+    """
+    return _json_error("NOT_FOUND", "Không tìm thấy đường dẫn.", status=404)
+
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -49,31 +108,9 @@ def google_auth_view(request):
     - Sinh viên: mail @st.vju.ac.vn (phải có trong danh mục StudentRegistry do Admin import - BR-01)
     - Giảng viên/Cán bộ/Hiệu trưởng/Admin: mail @vju.ac.vn (phải có tài khoản trong hệ thống)
     """
-    try:
-        body = json.loads(request.body.decode('utf-8'))
-    except Exception:
-        body = {}
-
-    google_token = body.get('google_token') or body.get('id_token') or body.get('email')
-    email = body.get('email', '').strip().lower()
-
-    # Nếu truyền token, trích xuất email từ Google ID token (hỗ trợ JWT từ Google hoặc dev mock token)
-    if google_token and not email:
-        token_str = str(google_token).strip()
-        if '@' in token_str and ' ' not in token_str and not token_str.startswith('eyJ'):
-            # Trực tiếp truyền email dạng tiện ích dev / test
-            email = token_str.lower()
-        elif token_str.startswith('eyJ'):
-            # Là JWT token (Google ID token)
-            parts = token_str.split('.')
-            if len(parts) >= 2:
-                try:
-                    padding = '=' * (4 - (len(parts[1]) % 4))
-                    decoded = base64.urlsafe_b64decode(parts[1] + padding).decode('utf-8')
-                    payload = json.loads(decoded)
-                    email = payload.get('email', '').strip().lower()
-                except Exception:
-                    pass
+    body = _read_json_object(request) or {}
+    google_token = body.get('google_token') or body.get('id_token')
+    email = _verify_google_token(google_token) if isinstance(google_token, str) else None
 
     if not email:
         return _json_error("INVALID_TOKEN", "Không tìm thấy thông tin email từ Google OAuth token.", status=400)
@@ -167,14 +204,16 @@ def password_login_view(request):
     - Giảng viên/Cán bộ/Trưởng phòng, Admin, Hiệu trưởng: ĐƯỢC PHÉP đăng nhập bằng email + mật khẩu.
     - Sinh viên: KHÔNG ĐƯỢC PHÉP đăng nhập bằng mật khẩu (chỉ đăng nhập bằng mail VJU/Google).
     """
-    try:
-        body = json.loads(request.body.decode('utf-8'))
-    except Exception:
+    body = _read_json_object(request)
+    if body is None:
         return _json_error("INVALID_JSON", "Dữ liệu gửi lên không đúng định dạng JSON.", status=400)
 
-    email = body.get('email', '').strip().lower()
-    password = body.get('password', '')
+    email = body.get('email')
+    password = body.get('password')
+    if not isinstance(email, str) or not isinstance(password, str):
+        return _json_error("MISSING_CREDENTIALS", "Vui lòng nhập đầy đủ email và mật khẩu.", status=400)
 
+    email = email.strip().lower()
     if not email or not password:
         return _json_error("MISSING_CREDENTIALS", "Vui lòng nhập đầy đủ email và mật khẩu.", status=400)
 
@@ -242,8 +281,17 @@ def me_view(request):
 def logout_view(request):
     """
     POST /api/auth/logout
-    Đăng xuất tài khoản
+    Đăng xuất tài khoản: vô hiệu hóa access token hiện tại
     """
+    payload = _get_token_payload(request)
+    if payload and payload.get('jti'):
+        RevokedToken.objects.get_or_create(
+            jti=payload['jti'],
+            defaults={'expires_at': datetime.fromtimestamp(payload['exp'], tz=dt_timezone.utc)}
+        )
+    # Token đã hết hạn thì không dùng lại được nữa, không cần lưu
+    RevokedToken.objects.filter(expires_at__lt=timezone.now()).delete()
+
     return JsonResponse({
         "success": True,
         "message": "Đăng xuất thành công."

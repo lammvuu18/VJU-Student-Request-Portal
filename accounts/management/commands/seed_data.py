@@ -15,7 +15,7 @@ class Command(BaseCommand):
             }
         )
         pdt, _ = Department.objects.get_or_create(
-            code='PĐT',
+            code='PDT',
             defaults={
                 'name': 'Phòng Đào tạo',
                 'description': 'Tiếp nhận các thủ tục học vụ, bảng điểm, bảo lưu, phúc khảo điểm thi...',

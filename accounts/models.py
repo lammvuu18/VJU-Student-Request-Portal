@@ -175,6 +175,13 @@ class User(models.Model):
 
         return data
 
+class RevokedToken(models.Model):
+    jti = models.CharField(max_length=32, primary_key=True, verbose_name="Mã định danh token")
+    expires_at = models.DateTimeField(verbose_name="Thời điểm token hết hạn")
+
+    class Meta:
+        db_table = 'revoked_token'
+
 # -------------------- 14 MODELS BỔ SUNG --------------------
 
 class ProcedureType(models.Model):

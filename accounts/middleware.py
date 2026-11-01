@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.http import HttpResponse
 
 class CorsMiddleware:
@@ -24,8 +25,11 @@ class CorsMiddleware:
         return response
 
     def _add_cors_headers(self, response, request):
-        origin = request.headers.get('Origin', '*')
-        response['Access-Control-Allow-Origin'] = origin if origin else '*'
+        response['Vary'] = 'Origin'
+        origin = request.headers.get('Origin')
+        if origin not in settings.CORS_ALLOWED_ORIGINS:
+            return
+        response['Access-Control-Allow-Origin'] = origin
         response['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS, PATCH'
         response['Access-Control-Allow-Headers'] = 'Authorization, Content-Type, X-CSRFToken, X-Requested-With'
         response['Access-Control-Allow-Credentials'] = 'true'

@@ -1,7 +1,8 @@
 import json
-from django.test import TestCase, Client
+from django.test import TestCase, Client, override_settings
 from accounts.models import Department, StudentRegistry, User
 
+@override_settings(GOOGLE_AUTH_DEV_BYPASS=True)
 class AuthRoleTestCase(TestCase):
     def setUp(self):
         self.client = Client()

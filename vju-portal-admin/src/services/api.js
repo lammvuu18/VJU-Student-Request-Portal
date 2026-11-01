@@ -187,12 +187,16 @@ export const authApi = {
   },
 
   logout: async () => {
-    setAuthToken(null);
-    setSavedUser(null);
-    return apiFetch('/auth/logout', { method: 'POST' }, () => ({
-      success: true,
-      message: 'Đăng xuất thành công',
-    }));
+    // Phải gửi token lên trước để backend vô hiệu hóa, sau đó mới xóa ở trình duyệt
+    try {
+      return await apiFetch('/auth/logout', { method: 'POST' }, () => ({
+        success: true,
+        message: 'Đăng xuất thành công',
+      }));
+    } finally {
+      setAuthToken(null);
+      setSavedUser(null);
+    }
   },
 
   refreshToken: async (refreshToken) => {

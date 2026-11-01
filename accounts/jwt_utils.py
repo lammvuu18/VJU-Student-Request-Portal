@@ -3,6 +3,7 @@ import base64
 import hmac
 import hashlib
 import time
+import uuid
 from django.conf import settings
 
 def _base64url_encode(data: bytes) -> str:
@@ -20,6 +21,7 @@ def generate_jwt_token(payload: dict, expires_in: int = 86400) -> str:
     now = int(time.time())
     full_payload = {
         **payload,
+        "jti": uuid.uuid4().hex,
         "iat": now,
         "exp": now + expires_in
     }

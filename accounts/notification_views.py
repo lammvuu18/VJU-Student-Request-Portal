@@ -1,9 +1,32 @@
+from math import ceil
+
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 from .models import Notification
 from .views import _get_authenticated_user, _json_error
+
+DEFAULT_LIMIT = 20
+MAX_LIMIT = 100
+
+
+def _parse_positive_int(value, default):
+    """
+    Trả về default nếu không truyền, None nếu giá trị không phải số nguyên dương
+    """
+    if value is None:
+        return default
+    try:
+        parsed = int(value)
+    except ValueError:
+        return None
+    return parsed if parsed >= 1 else None
+
+
+def _format_datetime(value):
+    # DB lưu UTC, API trả về giờ địa phương theo TIME_ZONE
+    return timezone.localtime(value).strftime("%Y-%m-%dT%H:%M:%S") if value else None
 
 
 @require_http_methods(["GET"])
@@ -18,6 +41,12 @@ def notification_list_view(request):
     if not user:
         return _json_error("UNAUTHORIZED", "Chưa đăng nhập.", status=401)
 
+    page = _parse_positive_int(request.GET.get("page"), default=1)
+    limit = _parse_positive_int(request.GET.get("limit"), default=DEFAULT_LIMIT)
+    if page is None or limit is None:
+        return _json_error("INVALID_PARAM", "page và limit phải là số nguyên dương.", status=400)
+    limit = min(limit, MAX_LIMIT)
+
     # Lấy toàn bộ thông báo của chính user này
     user_notifications = Notification.objects.filter(user=user).select_related('request')
 
@@ -30,11 +59,17 @@ def notification_list_view(request):
         notifications_qs = user_notifications.filter(is_read=True)
     elif is_read_param == "false":
         notifications_qs = user_notifications.filter(is_read=False)
+    elif is_read_param:
+        return _json_error("INVALID_PARAM", "is_read phải là true hoặc false.", status=400)
     else:
         notifications_qs = user_notifications
 
     # Sắp xếp mới nhất trước
     notifications_qs = notifications_qs.order_by("-sent_at", "-notification_id")
+
+    total = notifications_qs.count()
+    offset = (page - 1) * limit
+    page_items = notifications_qs[offset:offset + limit] if offset < total else []
 
     data = [
         {
@@ -44,16 +79,22 @@ def notification_list_view(request):
             "title": n.title,
             "message": n.message,
             "is_read": n.is_read,
-            "sent_at": n.sent_at.strftime("%Y-%m-%dT%H:%M:%S") if n.sent_at else None,
-            "read_at": n.read_at.strftime("%Y-%m-%dT%H:%M:%S") if n.read_at else None,
+            "sent_at": _format_datetime(n.sent_at),
+            "read_at": _format_datetime(n.read_at),
         }
-        for n in notifications_qs
+        for n in page_items
     ]
 
     return JsonResponse({
         "success": True,
         "data": data,
-        "unread_count": unread_count
+        "unread_count": unread_count,
+        "pagination": {
+            "page": page,
+            "limit": limit,
+            "total": total,
+            "total_pages": ceil(total / limit)
+        }
     })
 
 

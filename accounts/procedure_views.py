@@ -5,6 +5,11 @@ from .models import ProcedureType
 from .views import _get_authenticated_user, _json_error
 
 
+def _forbidden_error():
+    # API Contract: danh mục thủ tục chỉ dành cho sinh viên (Actor = SV)
+    return _json_error("FORBIDDEN", "Bạn không có quyền truy cập.", status=403)
+
+
 @require_http_methods(["GET"])
 def procedure_catalog_view(request):
     """
@@ -17,6 +22,8 @@ def procedure_catalog_view(request):
     user = _get_authenticated_user(request)
     if not user:
         return _json_error("UNAUTHORIZED", "Chưa đăng nhập.", status=401)
+    if user.role != "student":
+        return _forbidden_error()
 
     department_id_param = request.GET.get("department_id", "").strip()
     search_param = request.GET.get("search", "") or request.GET.get("q", "")
@@ -33,7 +40,7 @@ def procedure_catalog_view(request):
             dept_id_int = int(department_id_param)
             procedures_qs = procedures_qs.filter(department__dept_id=dept_id_int)
         except ValueError:
-            return JsonResponse({"success": True, "data": []})
+            return _json_error("INVALID_PARAM", "department_id phải là số nguyên.", status=400)
 
     # Tìm kiếm theo tên hoặc mô tả thủ tục
     if search_param:
@@ -86,6 +93,8 @@ def procedure_detail_view(request, type_id):
     user = _get_authenticated_user(request)
     if not user:
         return _json_error("UNAUTHORIZED", "Chưa đăng nhập.", status=401)
+    if user.role != "student":
+        return _forbidden_error()
 
     # Tìm kiếm thủ tục theo type_id
     try:
