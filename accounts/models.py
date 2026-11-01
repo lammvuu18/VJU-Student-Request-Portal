@@ -182,6 +182,15 @@ class RevokedToken(models.Model):
     class Meta:
         db_table = 'revoked_token'
 
+class LoginAttempt(models.Model):
+    email = models.CharField(max_length=254, primary_key=True, verbose_name="Email đăng nhập")
+    failed_count = models.IntegerField(default=0, verbose_name="Số lần sai")
+    last_failed_at = models.DateTimeField(verbose_name="Lần sai gần nhất")
+    locked_until = models.DateTimeField(null=True, blank=True, verbose_name="Khóa đến")
+
+    class Meta:
+        db_table = 'login_attempt'
+
 # -------------------- 14 MODELS BỔ SUNG --------------------
 
 class ProcedureType(models.Model):

@@ -174,11 +174,11 @@ Lần chạy gần nhất không còn ca nào không đạt.
 | `user_id` | Dùng tài khoản theo email, vì `user_id` 2, 3, 10 trong database không khớp vai trò ghi trong Spec |
 | Test 5.1 | Đổi sang SV B, vì SV A đã hết thông báo chưa đọc sau TC-4.1 |
 | Test 2.1 mục 7 | Không kiểm tra "chỉ hiện khi chọn NVQS": API không có dữ liệu điều kiện, nên chuyển sang test giao diện |
-| `search`, `q` | Không đưa vào, vì contract không có các tham số này |
+| `search`, `q` | Chưa có ca test, vì không có trong Spec. Contract đã bổ sung, kiểm tra bằng test tự động và thủ công |
 | Lệ phí bằng 0 khi `is_fee_required = true` | Không đưa vào, vì contract chưa quy định |
 
-## 7. Điểm cần nhóm chốt
+## 7. Các điểm đã chốt trong contract
 
-1. **Quyền xem thủ tục.** Tiêu đề mục 2 ghi "(Public)", quy ước chung yêu cầu token, bảng Actor ghi `SV`. Code và kịch bản theo bảng Actor. Nếu nhóm muốn cán bộ cũng xem được thì sửa contract, code và bỏ TC-1.7a-c, TC-2.11.
-2. **Múi giờ của `sent_at`, `read_at`.** Contract chưa nói rõ. Code và kịch bản theo giờ Việt Nam như Spec.
-3. **Bổ sung vào contract.** API có `read_at`, `department_name`, mã lỗi `INVALID_PARAM` và `limit` tối đa 100, nhưng contract chưa ghi.
+1. **Quyền xem thủ tục:** chỉ dành cho sinh viên, vai trò khác nhận 403.
+2. **Thời gian:** trả về theo giờ Việt Nam.
+3. **Bổ sung:** `read_at`, `department_name`, `search`, `q`, `INVALID_PARAM`, `limit` tối đa 100.

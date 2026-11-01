@@ -1,12 +1,15 @@
 import json
+from datetime import timedelta
 from io import BytesIO, StringIO
 from unittest.mock import patch
 
 from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.test import TestCase, override_settings
+from django.utils import timezone
 
 from accounts.jwt_utils import generate_jwt_token
-from accounts.models import Notification, User
+from accounts.models import FormField, LoginAttempt, Notification, ProcedureType, User
 
 
 @override_settings(DEBUG=True, GOOGLE_AUTH_DEV_BYPASS=False, GOOGLE_CLIENT_ID='')
@@ -22,6 +25,53 @@ class Module0TestCase(TestCase):
     def auth(self, user):
         token = generate_jwt_token({'user_id': user.user_id})
         return {'HTTP_AUTHORIZATION': f'Bearer {token}'}
+
+
+class BootstrapProductionTests(TestCase):
+    def setUp(self):
+        with override_settings(DEBUG=True):
+            call_command('seed_data', stdout=StringIO())
+
+    def bootstrap(self, **env):
+        with patch.dict('os.environ', env):
+            call_command('bootstrap_production', stdout=StringIO())
+
+    def test_disables_sample_passwords(self):
+        self.bootstrap()
+        res = self.client.post(
+            '/api/auth/login', data=json.dumps({'email': 'admin@vju.ac.vn', 'password': 'admin123'}),
+            content_type='application/json',
+        )
+        self.assertEqual(res.status_code, 401)
+
+    def test_creates_admin_once_without_overwriting_password(self):
+        env = {'BOOTSTRAP_ADMIN_EMAIL': 'root@vju.ac.vn', 'BOOTSTRAP_ADMIN_PASSWORD': 'a-long-secret-pass'}
+        self.bootstrap(**env)
+        admin = User.objects.get(email='root@vju.ac.vn')
+        self.assertEqual(admin.role, 'admin')
+        admin.set_password('changed-after-deploy')
+        admin.save()
+
+        self.bootstrap(**env)
+        self.assertTrue(User.objects.get(email='root@vju.ac.vn').check_password('changed-after-deploy'))
+
+    def test_rejects_weak_admin_password(self):
+        with self.assertRaises(CommandError):
+            self.bootstrap(BOOTSTRAP_ADMIN_EMAIL='root@vju.ac.vn', BOOTSTRAP_ADMIN_PASSWORD='short')
+
+    def test_seeds_catalog_once_without_test_procedures(self):
+        self.bootstrap()
+        self.bootstrap()
+        names = list(ProcedureType.objects.values_list('name', flat=True))
+        self.assertEqual(len(names), len(set(names)))
+        self.assertIn('Giấy xác nhận sinh viên', names)
+        self.assertNotIn('Thủ tục đã ẩn (soft delete)', names)
+        self.assertEqual(FormField.objects.filter(procedure_type__name='Giấy xác nhận sinh viên').count(), 11)
+
+    @override_settings(DEBUG=False)
+    def test_seed_data_refuses_to_run_in_production(self):
+        with self.assertRaises(CommandError):
+            call_command('seed_data', stdout=StringIO())
 
 
 class ProcedureTests(Module0TestCase):
@@ -138,6 +188,38 @@ class AuthSecurityTests(Module0TestCase):
         self.assertEqual(self.client.get('/api/auth/me', **headers).status_code, 200)
         self.assertEqual(self.client.post('/api/auth/logout', **headers).status_code, 200)
         self.assertEqual(self.client.get('/api/auth/me', **headers).status_code, 401)
+
+    @override_settings(GOOGLE_AUTH_DEV_BYPASS=True)
+    def test_suspended_and_graduated_students_can_login(self):
+        for email in ('suspended@st.vju.ac.vn', 'graduated@st.vju.ac.vn'):
+            User.objects.filter(email=email).update(account_status='active')
+            res = self.post_json('/api/auth/google', {'google_token': email})
+            self.assertEqual(res.status_code, 200, email)
+
+    def test_login_locks_after_repeated_failures(self):
+        credentials = {'email': 'admin@vju.ac.vn', 'password': 'wrong-password'}
+        for _ in range(5):
+            self.assertEqual(self.post_json('/api/auth/login', credentials).status_code, 401)
+
+        res = self.post_json('/api/auth/login', {'email': 'admin@vju.ac.vn', 'password': 'admin123'})
+        self.assertEqual(res.status_code, 409)
+        self.assertEqual(res.json()['error']['code'], 'RATE_LIMIT_EXCEEDED')
+        other = self.post_json('/api/auth/login', {'email': 'hoangnam@vju.ac.vn', 'password': 'staff123'})
+        self.assertEqual(other.status_code, 200)
+
+    def test_login_lock_expires_and_success_clears_failures(self):
+        credentials = {'email': 'admin@vju.ac.vn', 'password': 'wrong-password'}
+        for _ in range(5):
+            self.post_json('/api/auth/login', credentials)
+        LoginAttempt.objects.update(locked_until=timezone.now() - timedelta(seconds=1))
+
+        res = self.post_json('/api/auth/login', {'email': 'admin@vju.ac.vn', 'password': 'admin123'})
+        self.assertEqual(res.status_code, 200)
+        self.assertFalse(LoginAttempt.objects.exists())
+
+    def test_login_with_oversized_email_does_not_crash(self):
+        res = self.post_json('/api/auth/login', {'email': 'a' * 300 + '@vju.ac.vn', 'password': 'x'})
+        self.assertEqual(res.status_code, 401)
 
     def test_cors_only_allows_configured_origins(self):
         allowed = self.client.get('/api/auth/me', HTTP_ORIGIN='http://localhost:3000')

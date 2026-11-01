@@ -1,19 +1,23 @@
 import json
-from datetime import datetime, timezone as dt_timezone
+from datetime import datetime, timedelta, timezone as dt_timezone
 from urllib.error import URLError
 from urllib.parse import urlencode
 from urllib.request import urlopen
 
 from django.conf import settings
+from django.db import transaction
 from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 
-from .models import RevokedToken, User, StudentRegistry
+from .models import LoginAttempt, RevokedToken, User, StudentRegistry
 from .jwt_utils import generate_jwt_token, decode_jwt_token
 
 GOOGLE_TOKENINFO_URL = 'https://oauth2.googleapis.com/tokeninfo'
+LOGIN_MAX_FAILURES = 5
+LOGIN_LOCK_MINUTES = 15
+EMAIL_MAX_LENGTH = 254
 
 
 def _json_error(code: str, message: str, status: int = 400):
@@ -90,6 +94,29 @@ def _verify_google_token(token: str):
     if info.get('aud') != settings.GOOGLE_CLIENT_ID or str(info.get('email_verified')).lower() != 'true':
         return None
     return str(info.get('email', '')).strip().lower() or None
+
+
+def _is_login_locked(email: str):
+    return LoginAttempt.objects.filter(email=email[:EMAIL_MAX_LENGTH], locked_until__gt=timezone.now()).exists()
+
+def _record_login_failure(email: str):
+    """
+    Ghi nhận một lần đăng nhập sai. Sai đủ LOGIN_MAX_FAILURES lần trong
+    LOGIN_LOCK_MINUTES phút thì khóa đăng nhập theo email trong LOGIN_LOCK_MINUTES phút.
+    """
+    now = timezone.now()
+    window = timedelta(minutes=LOGIN_LOCK_MINUTES)
+    with transaction.atomic():
+        LoginAttempt.objects.filter(last_failed_at__lt=now - window).delete()
+        attempt, _ = LoginAttempt.objects.select_for_update().get_or_create(
+            email=email[:EMAIL_MAX_LENGTH],
+            defaults={'last_failed_at': now}
+        )
+        attempt.failed_count += 1
+        attempt.last_failed_at = now
+        if attempt.failed_count >= LOGIN_MAX_FAILURES:
+            attempt.locked_until = now + window
+        attempt.save()
 
 
 def api_not_found_view(request):
@@ -217,6 +244,13 @@ def password_login_view(request):
     if not email or not password:
         return _json_error("MISSING_CREDENTIALS", "Vui lòng nhập đầy đủ email và mật khẩu.", status=400)
 
+    if _is_login_locked(email):
+        return _json_error(
+            "RATE_LIMIT_EXCEEDED",
+            f"Đăng nhập sai quá {LOGIN_MAX_FAILURES} lần. Vui lòng thử lại sau {LOGIN_LOCK_MINUTES} phút.",
+            status=409
+        )
+
     user = User.objects.filter(email=email).first()
     if not user:
         # Kiểm tra xem có phải là email của sinh viên trong StudentRegistry hay không
@@ -227,6 +261,7 @@ def password_login_view(request):
                 "Sinh viên chỉ có thể đăng nhập bằng tài khoản Google VJU (@st.vju.ac.vn), không được dùng mật khẩu.",
                 status=403
             )
+        _record_login_failure(email)
         return _json_error("INVALID_CREDENTIALS", "Email hoặc mật khẩu không chính xác.", status=401)
 
     # Sinh viên đã có tài khoản User trong hệ thống cũng không được đăng nhập mật khẩu
@@ -241,7 +276,10 @@ def password_login_view(request):
         return _json_error("ACCOUNT_LOCKED", "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.", status=403)
 
     if not user.check_password(password):
+        _record_login_failure(email)
         return _json_error("INVALID_CREDENTIALS", "Email hoặc mật khẩu không chính xác.", status=401)
+
+    LoginAttempt.objects.filter(email=email).delete()
 
     token = generate_jwt_token({
         "user_id": user.user_id,

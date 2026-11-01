@@ -16,14 +16,16 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv("DEBUG", "True") == "True"
+DEBUG = os.getenv("DEBUG", "False") == "True"
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 if not SECRET_KEY:
     # Chỉ dùng key dự phòng khi dev, thiếu key ở production thì dừng ngay khi khởi động
     if not DEBUG:
-        raise ImproperlyConfigured("DJANGO_SECRET_KEY is required when DEBUG=False")
+        raise ImproperlyConfigured(
+            "DJANGO_SECRET_KEY is required when DEBUG=False. For local development, copy .env.example to .env"
+        )
     SECRET_KEY = "fallback-key-for-dev"
 
 ALLOWED_HOSTS = ["*"]

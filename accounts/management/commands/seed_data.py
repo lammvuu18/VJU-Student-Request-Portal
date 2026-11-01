@@ -1,10 +1,15 @@
-from django.core.management.base import BaseCommand
+from django.conf import settings
+from django.core.management.base import BaseCommand, CommandError
 from accounts.models import Department, StudentRegistry, User
 
 class Command(BaseCommand):
     help = 'Khoi tao du lieu mau cho phong ban, sinh vien va tai khoan nguoi dung'
 
     def handle(self, *args, **options):
+        # Tai khoan mau co mat khau cong khai trong repo, khong duoc tao o production
+        if not settings.DEBUG:
+            raise CommandError('Tu choi chay: seed_data chi dung cho moi truong dev (DEBUG=True).')
+
         self.stdout.write("Khoi tao du lieu phong ban...")
         pctsv, _ = Department.objects.get_or_create(
             code='PCTSV',
