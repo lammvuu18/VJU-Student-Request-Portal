@@ -7,6 +7,7 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import User, StudentRegistry
 from .jwt_utils import generate_jwt_token, decode_jwt_token
 
+
 def _json_error(code: str, message: str, status: int = 400):
     return JsonResponse({
         "success": False,
@@ -247,3 +248,4 @@ def logout_view(request):
         "success": True,
         "message": "Đăng xuất thành công."
     })
+
