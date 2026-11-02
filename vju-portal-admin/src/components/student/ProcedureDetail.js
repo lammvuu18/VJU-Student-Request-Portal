@@ -1,15 +1,75 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import api from '../../services/api';
 import { procedures } from '../../data/mockData';
 import './StudentPages.css';
 
 function ProcedureDetail() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const procedure = procedures.find(p => p.id === parseInt(id)) || procedures[0];
 
-  // Specific preparation documents
+  // Dữ liệu mặc định từ mockData
+  const defaultProcedure = procedures.find(p => p.id === parseInt(id) || p.type_id === parseInt(id)) || procedures[0];
+
+  const [procedure, setProcedure] = useState(defaultProcedure);
+  const [loading, setLoading] = useState(true);
+  const [backendDocs, setBackendDocs] = useState([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchDetail = async () => {
+      setLoading(true);
+      try {
+        const res = await api.procedures.getDetail(id);
+        if (isMounted && res && res.data) {
+          const d = res.data;
+          const isFee = Boolean(d.is_fee_required && d.fee_amount && Number(d.fee_amount) > 0);
+          setProcedure({
+            id: d.type_id || parseInt(id),
+            type_id: d.type_id || parseInt(id),
+            name: d.name,
+            description: d.description,
+            department_name: d.department_name,
+            department: d.department_name,
+            sla_total_days: d.sla_total_days || 1,
+            time: `${d.sla_total_days || 1} ngày làm việc`,
+            is_fee_required: d.is_fee_required,
+            fee_amount: d.fee_amount,
+            fee: isFee ? `${Number(d.fee_amount).toLocaleString('vi-VN')} VNĐ` : 'Miễn phí',
+            approval_levels: d.approval_levels,
+            form_fields: d.form_fields || [],
+            attachment_configs: d.attachment_configs || [],
+          });
+
+          // Nếu backend trả về cấu hình file đính kèm
+          if (Array.isArray(d.attachment_configs) && d.attachment_configs.length > 0) {
+            const mappedDocs = d.attachment_configs.map((att, idx) => ({
+              stt: String(idx + 1).padStart(2, '0'),
+              name: att.file_label || `Tệp minh chứng ${idx + 1}`,
+              desc: att.file_description || `Yêu cầu tải lên định dạng ${att.allowed_extensions || 'PDF, JPG, PNG'}, tối đa ${att.max_size_mb || 5} MB.`,
+              hasTemplate: Boolean(att.template_url),
+              templateName: att.template_url || 'mau_ho_so.docx',
+            }));
+            setBackendDocs(mappedDocs);
+          }
+        }
+      } catch (err) {
+        console.warn('Lỗi khi tải chi tiết thủ tục từ Backend, dùng dữ liệu dự phòng:', err.message);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchDetail();
+    return () => { isMounted = false; };
+  }, [id]);
+
+  // Danh mục giấy tờ cần chuẩn bị (ưu tiên từ backend configs nếu có)
   const getDocuments = () => {
+    if (backendDocs.length > 0) {
+      return backendDocs;
+    }
+
     if (procedure.id === 1) {
       return [
         {
@@ -31,7 +91,7 @@ function ProcedureDetail() {
     return [
       {
         stt: '01',
-        name: `Đơn đề nghị ${procedure.name.toLowerCase()}`,
+        name: `Đơn đề nghị ${procedure.name ? procedure.name.toLowerCase() : 'thủ tục'}`,
         desc: 'Điền theo mẫu và ký tên trước khi tải lên. Chấp nhận PDF, JPG, PNG; tối đa 5 MB/tệp.',
         hasTemplate: true,
         templateName: procedure.template || 'don_de_nghi.docx',
@@ -47,7 +107,7 @@ function ProcedureDetail() {
 
   const documents = getDocuments();
 
-  // Steps
+  // Các bước thực hiện
   const steps = [
     {
       num: 1,
@@ -57,12 +117,12 @@ function ProcedureDetail() {
     {
       num: 2,
       title: 'Gửi & thanh toán',
-      desc: 'Gửi yêu cầu và thanh toán lệ phí',
+      desc: procedure.is_fee_required ? 'Gửi yêu cầu và thanh toán lệ phí' : 'Gửi yêu cầu xét duyệt',
     },
     {
       num: 3,
       title: 'Xử lý',
-      desc: `${procedure.department_name || 'Phòng Đào tạo'} tiếp nhận, xử lý`,
+      desc: `${procedure.department_name || 'Phòng ban chuyên môn'} tiếp nhận, xử lý`,
     },
     {
       num: 4,
@@ -79,8 +139,8 @@ function ProcedureDetail() {
   };
 
   const handleDownloadTemplate = (templateName) => {
-    const filename = templateName || 'don_de_nghi_cap_bang_diem.docx';
-    const sampleContent = `CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nĐộc lập - Tự do - Hạnh phúc\n\nĐƠN ĐỀ NGHỊ CẤP BẢNG ĐIỂM\n\nKính gửi: Phòng Đào tạo - Trường Đại học Việt Nhật\n\nTên sinh viên: Nguyễn Minh Anh\nMã sinh viên: 21CS001\nNgành học: Khoa học và Kỹ thuật Máy tính\nKhóa học: 2021 - 2025\n\nNội dung đề nghị: Cấp 01 bản bảng điểm tiếng Việt phục vụ xin việc / thực tập.\n\nSinh viên cam kết thông tin khai báo trên là chính xác.\n\nNgười làm đơn\n(Ký và ghi rõ họ tên)`;
+    const filename = templateName || 'don_de_nghi.docx';
+    const sampleContent = `CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nĐộc lập - Tự do - Hạnh phúc\n\nĐƠN ĐỀ NGHỊ ${procedure.name ? procedure.name.toUpperCase() : 'THỦ TỤC'}\n\nKính gửi: ${procedure.department_name || 'Phòng ban chuyên trách'} - Trường Đại học Việt Nhật\n\nTên sinh viên: Nguyễn Minh Anh\nMã sinh viên: 21CS001\nKhoa/Ngành: Khoa học và Kỹ thuật Máy tính\n\nNội dung đề nghị: ${procedure.description || procedure.name}\n\nSinh viên cam kết thông tin khai báo trên là chính xác.\n\nNgười làm đơn\n(Ký và ghi rõ họ tên)`;
     const blob = new Blob([sampleContent], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -93,21 +153,12 @@ function ProcedureDetail() {
   };
 
   const getPurpose = () => {
-    if (procedure.id === 1) {
-      return 'Thể hiện các học phần, số tín chỉ và kết quả học tập đã được cập nhật trong hệ thống đào tạo. Bản điện tử được ký số và có mã QR để xác minh.';
-    }
-    return procedure.description;
+    return procedure.description || 'Thực hiện giải quyết nhu cầu hành chính của sinh viên theo quy định của Trường Đại học Việt Nhật.';
   };
 
   const getDepartmentDisplay = () => {
-    if (procedure.department_name === 'Phòng Đào tạo') {
-      return 'Phòng Đào tạo (PĐT)';
-    }
-    if (procedure.department_name === 'Phòng Công tác Sinh viên') {
-      return 'Phòng Công tác Sinh viên (CTSV)';
-    }
-    if (procedure.department_name === 'Phòng Kế hoạch – Tài chính') {
-      return 'Phòng Kế hoạch – Tài chính (KHTC)';
+    if (procedure.department_name) {
+      return procedure.department_name;
     }
     return procedure.department || 'Phòng Đào tạo (PĐT)';
   };
@@ -128,12 +179,18 @@ function ProcedureDetail() {
           <button
             type="button"
             className="pdetail-btn-submit"
-            onClick={() => navigate(`/student/request/new/${procedure.id}`)}
+            onClick={() => navigate(`/student/request/new/${procedure.id || procedure.type_id}`)}
           >
             Nộp giấy tờ →
           </button>
         </div>
       </div>
+
+      {loading && (
+        <div style={{ padding: '8px 0', color: '#68717D', fontSize: 13 }}>
+          Đang đồng bộ dữ liệu từ máy chủ...
+        </div>
+      )}
 
       {/* Card 1: Thông tin chung */}
       <div className="pdetail-card">

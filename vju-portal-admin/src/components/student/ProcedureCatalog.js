@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { procedures } from '../../data/mockData';
+import api from '../../services/api';
+import { procedures as defaultProcedures } from '../../data/mockData';
 import './StudentPages.css';
 
 const SECTIONS = [
@@ -18,16 +19,81 @@ const SECTIONS = [
   },
 ];
 
+// Hàm chuyển đổi cấu trúc nhóm theo phòng ban từ Backend sang mảng phẳng cho giao diện
+const mapBackendToProcedures = (deptGroups) => {
+  if (!Array.isArray(deptGroups)) return [];
+  const list = [];
+  deptGroups.forEach(group => {
+    const deptName = group.department_name || '';
+    let category = 'hocvu';
+    if (deptName.toLowerCase().includes('công tác') || deptName.toLowerCase().includes('ctsv')) {
+      category = 'ctsv';
+    } else if (deptName.toLowerCase().includes('tài chính') || deptName.toLowerCase().includes('khtc')) {
+      category = 'taichinh';
+    }
+
+    (group.procedures || []).forEach(p => {
+      const isFee = Boolean(p.is_fee_required && p.fee_amount && Number(p.fee_amount) > 0);
+      list.push({
+        id: p.type_id,
+        type_id: p.type_id,
+        name: p.name,
+        description: p.description,
+        department_id: group.department_id,
+        department_name: deptName,
+        category,
+        sla_total_days: p.sla_total_days || 1,
+        time: `${p.sla_total_days || 1} ngày làm việc`,
+        is_fee_required: p.is_fee_required,
+        fee_amount: p.fee_amount,
+        fee: isFee ? `${Number(p.fee_amount).toLocaleString('vi-VN')} VNĐ` : 'Miễn phí',
+      });
+    });
+  });
+  return list;
+};
+
 function ProcedureCatalog() {
   const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [procedureList, setProcedureList] = useState(defaultProcedures);
+  const [loading, setLoading] = useState(true);
 
-  // Count items per category
-  const hocVuCount = procedures.filter(p => p.category === 'hocvu').length;
-  const ctsvCount = procedures.filter(p => p.category === 'ctsv').length;
-  const taiChinhCount = procedures.filter(p => p.category === 'taichinh').length;
-  const totalCount = procedures.length;
+  // Fetch danh mục thủ tục từ Backend API
+  useEffect(() => {
+    let isMounted = true;
+    const fetchProcedures = async () => {
+      setLoading(true);
+      try {
+        const res = await api.procedures.getAll();
+        if (isMounted && res && res.data) {
+          // Nếu backend trả về danh sách nhóm theo phòng ban
+          if (Array.isArray(res.data) && res.data.length > 0 && res.data[0].procedures) {
+            const mapped = mapBackendToProcedures(res.data);
+            if (mapped.length > 0) {
+              setProcedureList(mapped);
+            }
+          } else if (Array.isArray(res.data)) {
+            setProcedureList(res.data);
+          }
+        }
+      } catch (err) {
+        console.warn('Lỗi khi tải thủ tục từ Backend, dùng dữ liệu dự phòng:', err.message);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchProcedures();
+    return () => { isMounted = false; };
+  }, []);
+
+  // Đếm số lượng theo chuyên mục
+  const hocVuCount = procedureList.filter(p => p.category === 'hocvu').length;
+  const ctsvCount = procedureList.filter(p => p.category === 'ctsv').length;
+  const taiChinhCount = procedureList.filter(p => p.category === 'taichinh').length;
+  const totalCount = procedureList.length;
 
   const tabs = [
     { key: 'all', label: `Tất cả (${totalCount})` },
@@ -36,8 +102,8 @@ function ProcedureCatalog() {
     { key: 'taichinh', label: `Tài chính (${taiChinhCount})` },
   ];
 
-  // Filter procedures by category & search term
-  const filteredProcedures = procedures.filter(p => {
+  // Lọc thủ tục theo category & từ khóa tìm kiếm
+  const filteredProcedures = procedureList.filter(p => {
     const matchCategory = activeCategory === 'all' || p.category === activeCategory;
     const matchSearch = !searchTerm.trim() || p.name.toLowerCase().includes(searchTerm.toLowerCase().trim());
     return matchCategory && matchSearch;
@@ -81,6 +147,13 @@ function ProcedureCatalog() {
           />
         </div>
       </div>
+
+      {/* Loading state indicator */}
+      {loading && (
+        <div style={{ textAlign: 'center', padding: '16px', color: '#68717D', fontSize: 13 }}>
+          Đang đồng bộ dữ liệu thủ tục từ máy chủ...
+        </div>
+      )}
 
       {/* Sections List */}
       <div className="catalog-sections">
