@@ -39,7 +39,7 @@ Authorization: Bearer <access_token>
   "success": false,
   "error": {
     "code": "DUPLICATE_REQUEST",
-    "message": "Bạn đã có yêu cầu XN SV đang xử lý."
+    "message": "Bạn đã có yêu cầu Giấy xác nhận sinh viên đang xử lý."
   }
 }
 ```
@@ -64,6 +64,16 @@ Authorization: Bearer <access_token>
 | 401 | UNAUTHORIZED | Thiếu token, token sai, hết hạn, đã đăng xuất, hoặc tài khoản bị khóa |
 | 403 | FORBIDDEN | Không có quyền với tài nguyên hoặc vai trò không được phép |
 | 404 | NOT_FOUND | Không tìm thấy tài nguyên hoặc đường dẫn `/api/` không tồn tại |
+| 400 | INVALID_FORM_DATA | Dữ liệu form hoặc đánh giá không hợp lệ |
+| 400 | INVALID_FILE_FORMAT | Sai định dạng file |
+| 400 | FILE_TOO_LARGE | File quá dung lượng |
+| 400 | MISSING_ATTACHMENT | Thiếu đính kèm bắt buộc |
+| 400 | INVALID_ATTACHMENT | `config_id` không thuộc thủ tục |
+| 400 | INVALID_REASON | Lý do từ chối không hợp lệ |
+| 422 | INVALID_STATE | Hành động không hợp lệ với trạng thái hiện tại |
+| 422 | INVALID_STAFF | Chuyên viên không tồn tại, bị khóa hoặc khác phòng ban |
+| 422 | STUDENT_NOT_ELIGIBLE | Hệ thống học vụ báo sinh viên không đủ điều kiện |
+| 503 | EXTERNAL_SERVICE_ERROR | Hệ thống ngoài không phản hồi |
 
 ### Thời gian
 Mọi trường thời gian trả về theo giờ Việt Nam (Asia/Ho_Chi_Minh), định dạng `YYYY-MM-DDTHH:MM:SS`.
@@ -391,6 +401,24 @@ SV chọn 1 thủ tục → hệ thống trả về cấu trúc e-form động (
 
 ## 3. REQUESTS — Yêu cầu của SV
 
+### Trạng thái đơn thủ tục 1 cấp
+
+| Hành động | Từ internal_status | Sang internal_status | status |
+|-----------|--------------------|----------------------|--------|
+| Gửi đơn | (mới) | Chờ phân công | Đã gửi |
+| Hủy | Chờ phân công | Đã hủy | Đã hủy |
+| Phân công | Chờ phân công | CV đang thẩm định | Đang xử lý |
+| Yêu cầu bổ sung | CV đang thẩm định | Cần bổ sung | Cần bổ sung |
+| Nộp bổ sung | Cần bổ sung | CV đang thẩm định | Đang xử lý |
+| Quá hạn bổ sung | Cần bổ sung | Từ chối | Từ chối |
+| Duyệt | CV đang thẩm định | Đã duyệt — Đang chuẩn bị kết quả | Đã duyệt |
+| Từ chối | CV đang thẩm định | Từ chối | Từ chối |
+| Thu hồi duyệt | Đã duyệt — Đang chuẩn bị kết quả | CV đang thẩm định | Đang xử lý |
+| SV tải PDF lần đầu (Bản điện tử) | Đã duyệt — Đang chuẩn bị kết quả | Đã xử lý | Đã xử lý |
+| Xác nhận giao bản cứng | Đã duyệt — Đang chuẩn bị kết quả | Đã xử lý | Đã xử lý |
+
+SLA tính theo ngày làm việc (thứ Hai đến thứ Sáu, trừ ngày nghỉ trong Holiday).
+
 ### 3.1 Lấy danh sách yêu cầu của SV
 
 ```
@@ -402,7 +430,7 @@ SV xem tất cả đơn mình đã gửi, lọc theo trạng thái hoặc loại
 **Query params:**
 | Param | Kiểu | Mô tả |
 |-------|------|-------|
-| status | string (optional) | Lọc: "Đang xử lý", "Đã duyệt", "Từ chối", "Đã hủy" |
+| status | string (optional) | Lọc: "Đã gửi", "Đang xử lý", "Cần bổ sung", "Đã duyệt", "Đã xử lý", "Từ chối", "Đã hủy" |
 | type_id | int (optional) | Lọc theo loại thủ tục |
 | page | int (default: 1) | Trang |
 | limit | int (default: 20) | Số lượng/trang |
@@ -501,7 +529,7 @@ attachments[1][file]: (binary file)
   "success": false,
   "error": {
     "code": "DUPLICATE_REQUEST",
-    "message": "Bạn đã có yêu cầu XN SV đang xử lý."
+    "message": "Bạn đã có yêu cầu Giấy xác nhận sinh viên đang xử lý."
   }
 }
 ```
@@ -824,7 +852,7 @@ SV tải file PDF giấy tờ đã được render (có thể đã ký số Smar
 POST /api/requests/:request_id/feedback
 ```
 
-SV đánh giá sau khi nhận kết quả. Mỗi đơn chỉ đánh giá 1 lần.
+SV đánh giá khi đơn ở trạng thái "Đã xử lý". Mỗi đơn chỉ đánh giá 1 lần.
 
 **Request:**
 ```json
@@ -1355,7 +1383,7 @@ TP không đồng ý kết quả thẩm định, trả về CV xem lại.
 PUT /api/staff/requests/:request_id/revoke
 ```
 
-Thu hồi quyết định duyệt trong vòng 30 phút, cấp tiếp chưa xử lý, chưa xuất kết quả (BR-13).
+Thu hồi quyết định duyệt trong vòng 30 phút, khi cấp tiếp chưa xử lý, SV chưa tải PDF và chưa bàn giao bản cứng (BR-13). Thu hồi sẽ xóa kết quả và vô hiệu mã xác minh.
 
 **Response 200:**
 ```json

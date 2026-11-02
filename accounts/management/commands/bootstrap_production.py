@@ -6,7 +6,7 @@ from django.db import transaction
 from accounts.management.commands.seed_module0 import (
     ATTACHMENT_CONFIGS, FORM_FIELDS, FORMATS, PROCEDURES,
 )
-from accounts.models import AttachmentConfig, Department, FormField, ProcedureType, User
+from accounts.models import AttachmentConfig, Department, FormField, ProcedureType, RejectionReason, User
 
 # Tai khoan mau cua seed_data: mat khau da cong khai trong repo
 SAMPLE_CREDENTIALS = {
@@ -19,6 +19,18 @@ SAMPLE_CREDENTIALS = {
 }
 ADMIN_PASSWORD_MIN_LENGTH = 12
 LIVE_TYPE_IDS = {1, 2, 3, 4, 5, 6}  # type_id 7, 8 chi dung de test
+REJECTION_REASONS = [
+    'Hồ sơ không đầy đủ theo yêu cầu',
+    'Giấy tờ minh chứng không hợp lệ hoặc đã hết hiệu lực',
+    'Không thuộc đối tượng theo quy định',
+    'Quá thời hạn quy định',
+    'Thông tin kê khai không chính xác',
+    'Sinh viên đã bị buộc thôi học',
+    'Sinh viên không đang theo học',
+    'Học phần không có trong chương trình đào tạo',
+    'Không đạt điều kiện học tập theo quy định',
+    'Trùng với yêu cầu đã được xử lý',
+]
 
 
 class Command(BaseCommand):
@@ -29,6 +41,8 @@ class Command(BaseCommand):
             disabled = self._disable_sample_passwords()
             admin_created = self._ensure_admin()
             created = self._seed_catalog()
+            for reason_text in REJECTION_REASONS:
+                RejectionReason.objects.get_or_create(reason_text=reason_text)
         self.stdout.write(self.style.SUCCESS(
             f'Da vo hieu {disabled} mat khau mau, '
             f'{"tao" if admin_created else "giu nguyen"} tai khoan admin, '
