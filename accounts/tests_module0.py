@@ -9,7 +9,9 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from accounts.jwt_utils import generate_jwt_token
-from accounts.models import FormField, LoginAttempt, Notification, ProcedureType, User
+from accounts.models import (
+    FormField, LoginAttempt, Notification, ProcedureType, RejectionReason, StudentRegistry, User,
+)
 
 
 @override_settings(DEBUG=True, GOOGLE_AUTH_DEV_BYPASS=False, GOOGLE_CLIENT_ID='')
@@ -72,6 +74,90 @@ class BootstrapProductionTests(TestCase):
     def test_seed_data_refuses_to_run_in_production(self):
         with self.assertRaises(CommandError):
             call_command('seed_data', stdout=StringIO())
+
+
+@override_settings(DEBUG=False, GOOGLE_AUTH_DEV_BYPASS=True)
+class SeedDemoTests(TestCase):
+    ENV = {
+        'SEED_DEMO': 'True',
+        'DEMO_PASSWORD': 'demo-password-123',
+        'DEMO_STUDENT_EMAILS': ' Demo.One@gmail.com, demo.two@gmail.com ,',
+    }
+
+    def seed(self, **overrides):
+        with patch.dict('os.environ', {**self.ENV, **overrides}):
+            call_command('seed_demo', stdout=StringIO())
+
+    def login(self, email, password):
+        return self.client.post(
+            '/api/auth/login', data=json.dumps({'email': email, 'password': password}),
+            content_type='application/json',
+        )
+
+    def test_does_nothing_without_flag(self):
+        users_before = User.objects.count()
+        self.seed(SEED_DEMO='False')
+        self.assertEqual(User.objects.count(), users_before)
+
+    def test_rejects_short_password(self):
+        with self.assertRaises(CommandError):
+            self.seed(DEMO_PASSWORD='short')
+
+    def test_creates_demo_accounts_that_can_log_in(self):
+        self.seed()
+        res = self.login('demo.truongphong@vju.ac.vn', 'demo-password-123')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()['data']['user']['redirect_url'], '/dept-head')
+
+        student = User.objects.get(email='demo.one@gmail.com')
+        self.assertEqual(student.role, 'student')
+        self.assertEqual(student.student_registry.mssv, 'DEMO001')
+        res = self.client.post(
+            '/api/auth/google', data=json.dumps({'google_token': 'demo.two@gmail.com'}),
+            content_type='application/json',
+        )
+        self.assertEqual(res.json()['data']['user']['role'], 'student')
+        self.assertEqual(Notification.objects.filter(user=student, is_read=False).count(), 2)
+
+    def test_rerun_keeps_demo_changes_and_updates_password(self):
+        self.seed()
+        Notification.objects.filter(user__email='demo.one@gmail.com').update(is_read=True)
+        counts = (User.objects.count(), StudentRegistry.objects.count(), Notification.objects.count())
+
+        self.seed(DEMO_PASSWORD='new-demo-password')
+        self.assertEqual((User.objects.count(), StudentRegistry.objects.count(), Notification.objects.count()), counts)
+        self.assertFalse(Notification.objects.filter(user__email='demo.one@gmail.com', is_read=False).exists())
+        self.assertEqual(self.login('demo.chuyenvien@vju.ac.vn', 'new-demo-password').status_code, 200)
+
+    def test_new_student_email_is_added_on_next_deploy(self):
+        self.seed()
+        self.seed(DEMO_STUDENT_EMAILS='demo.one@gmail.com,demo.three@gmail.com')
+        self.assertEqual(StudentRegistry.objects.get(email='demo.three@gmail.com').mssv, 'DEMO003')
+
+    def test_skips_email_that_is_already_staff(self):
+        User.objects.create(email='staff.person@gmail.com', full_name='Can bo', role='staff')
+        self.seed(DEMO_STUDENT_EMAILS='staff.person@gmail.com')
+        self.assertEqual(User.objects.get(email='staff.person@gmail.com').role, 'staff')
+        self.assertFalse(StudentRegistry.objects.filter(email='staff.person@gmail.com').exists())
+
+
+@override_settings(DEBUG=True)
+class SeedModule1Tests(TestCase):
+    def test_seeds_actors_and_rejection_reasons_repeatedly(self):
+        call_command('seed_module1', allow_non_sqlite=True, stdout=StringIO())
+        call_command('seed_module1', allow_non_sqlite=True, stdout=StringIO())
+
+        self.assertEqual(RejectionReason.objects.count(), 10)
+        self.assertEqual(RejectionReason.objects.get(pk=6).reason_text, 'Sinh viên đã bị buộc thôi học')
+        self.assertEqual(FormField.objects.filter(procedure_type_id=2).count(), 5)
+        self.assertEqual(User.objects.get(email='suspended@st.vju.ac.vn').account_status, 'active')
+        self.assertEqual(User.objects.get(email='graduated@st.vju.ac.vn').role, 'student')
+        self.assertEqual(User.objects.get(email='cv2.pctsv@vju.ac.vn').department.code, 'PCTSV')
+
+    @override_settings(DEBUG=False)
+    def test_refuses_to_run_in_production(self):
+        with self.assertRaises(CommandError):
+            call_command('seed_module1', stdout=StringIO())
 
 
 class ProcedureTests(Module0TestCase):

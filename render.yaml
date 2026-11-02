@@ -27,6 +27,12 @@ services:
         sync: false
       - key: BOOTSTRAP_ADMIN_PASSWORD
         sync: false
+      - key: SEED_DEMO
+        value: "False"
+      - key: DEMO_PASSWORD
+        sync: false
+      - key: DEMO_STUDENT_EMAILS
+        sync: false
       - key: CORS_ALLOWED_ORIGINS
         value: "https://vju-student-request-portal.onrender.com"
       - key: PYTHON_VERSION
