@@ -134,6 +134,7 @@ def procedure_detail_view(request, type_id):
                 "field_key": field.field_key,
                 "data_type": field.data_type,
                 "is_required": field.is_required,
+                "required_if": field.required_if,
                 "placeholder": field.placeholder,
                 "auto_fill_field": field.auto_fill_field,
                 "dropdown_options": field.dropdown_options,

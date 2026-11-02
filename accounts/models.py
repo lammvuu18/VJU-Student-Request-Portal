@@ -224,6 +224,7 @@ class FormField(models.Model):
     placeholder = models.CharField(max_length=200, blank=True, null=True)
     auto_fill_field = models.CharField(max_length=100, blank=True, null=True)
     dropdown_options = models.JSONField(blank=True, null=True, verbose_name="Danh sách option")
+    required_if = models.JSONField(blank=True, null=True, verbose_name="Điều kiện bắt buộc")
     display_order = models.IntegerField(default=0, verbose_name="Thứ tự hiển thị")
 
     class Meta:
