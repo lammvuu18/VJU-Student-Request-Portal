@@ -104,6 +104,7 @@ class Command(BaseCommand):
                         procedure_type=procedure, field_name=field_name, field_key=key, data_type=data_type,
                         is_required=required, placeholder=placeholder, auto_fill_field=auto_fill,
                         dropdown_options=opts, display_order=order,
+                        required_if={'purpose': 'Tạm hoãn NVQS'} if (field_type == 1 and key in ('ho_khau', 'noi_dk_nvqs')) else None,
                     )
             for _, config_type, item_name, required, order in ATTACHMENT_CONFIGS:
                 if config_type == type_id:

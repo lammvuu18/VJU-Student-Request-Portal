@@ -156,6 +156,7 @@ class Command(BaseCommand):
                 field_id=field_id, procedure_type_id=type_id, field_name=name, field_key=key,
                 data_type=data_type, is_required=required, placeholder=placeholder,
                 auto_fill_field=auto_fill, dropdown_options=options, display_order=order,
+                required_if={'purpose': 'Tạm hoãn NVQS'} if (type_id == 1 and key in ('ho_khau', 'noi_dk_nvqs')) else None,
             )
         for config_id, type_id, name, required, order in ATTACHMENT_CONFIGS:
             AttachmentConfig.objects.create(
