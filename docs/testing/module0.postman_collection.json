@@ -1,0 +1,2623 @@
+{
+  "info": {
+    "name": "VJU Module 0 - Thủ tục và Thông báo",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Danh sách thủ tục",
+      "item": [
+        {
+          "name": "TC-1.1 Lấy toàn bộ thủ tục",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/procedures",
+            "description": "3 nhóm (PB 1: 1,2,5; PB 2: 3,4; PB 3: 6). Không có type_id 7, 8. Chỉ type 3 có phí 50000, còn lại `fee_amount = null`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200',()=>pm.response.to.have.status(200));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('success = true',()=>pm.expect(j.success).to.eql(true));",
+                  "pm.test(\"Đúng 3 nhóm phòng ban 1,2,3\",()=>pm.expect(!!(JSON.stringify(j.data.map(g=>g.department_id))===JSON.stringify([1, 2, 3]))).to.eql(true));",
+                  "pm.test(\"Đúng 6 thủ tục active\",()=>pm.expect(!!(j.data.flatMap(g=>g.procedures).length===6)).to.eql(true));",
+                  "pm.test(\"Nhóm đúng phòng ban\",()=>pm.expect(!!(JSON.stringify(j.data.map(g=>g.procedures.map(p=>p.type_id)))===JSON.stringify([[1, 2, 5], [3, 4], [6]]))).to.eql(true));",
+                  "pm.test(\"Không có type_id 7, 8\",()=>pm.expect(!!(!j.data.flatMap(g=>g.procedures).some(p=>[7,8].includes(p.type_id)))).to.eql(true));",
+                  "pm.test(\"Phúc khảo có phí 50000\",()=>pm.expect(!!(j.data.flatMap(g=>g.procedures).find(p=>p.type_id===3).fee_amount===50000)).to.eql(true));",
+                  "pm.test(\"Thủ tục miễn phí có fee_amount null\",()=>pm.expect(!!(j.data.flatMap(g=>g.procedures).filter(p=>p.type_id!==3).every(p=>p.fee_amount===null&&p.is_fee_required===false))).to.eql(true));",
+                  "pm.test(\"Đủ trường theo contract\",()=>pm.expect(!!(j.data.flatMap(g=>g.procedures).every(p=>[\"type_id\", \"name\", \"description\", \"sla_total_days\", \"approval_levels\", \"is_fee_required\", \"fee_amount\"].every(k=>k in p)))).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-1.2 Lọc theo phòng ban",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/procedures?department_id=2",
+            "description": "Chỉ 1 nhóm PB 2, gồm type_id 3, 4"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200',()=>pm.response.to.have.status(200));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('success = true',()=>pm.expect(j.success).to.eql(true));",
+                  "pm.test(\"Chỉ phòng 2\",()=>pm.expect(!!(JSON.stringify(j.data.map(g=>g.department_id))===JSON.stringify([2]))).to.eql(true));",
+                  "pm.test(\"Chỉ type 3, 4\",()=>pm.expect(!!(JSON.stringify(j.data.flatMap(g=>g.procedures).map(p=>p.type_id))===JSON.stringify([3, 4]))).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-1.3 department_id không tồn tại",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/procedures?department_id=999",
+            "description": "`data = []`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200',()=>pm.response.to.have.status(200));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('success = true',()=>pm.expect(j.success).to.eql(true));",
+                  "pm.test(\"data rỗng\",()=>pm.expect(!!(JSON.stringify(j.data)===JSON.stringify([]))).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-1.5 Phòng ban đã ngừng hoạt động",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/procedures?department_id={{inactiveDeptId}}",
+            "description": "`data = []`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200',()=>pm.response.to.have.status(200));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('success = true',()=>pm.expect(j.success).to.eql(true));",
+                  "pm.test(\"data rỗng\",()=>pm.expect(!!(JSON.stringify(j.data)===JSON.stringify([]))).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-1.6a department_id sai kiểu (abc)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/procedures?department_id=abc",
+            "description": "400, sai kiểu `int`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400',()=>pm.response.to.have.status(400));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-1.6b department_id sai kiểu (1.5)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/procedures?department_id=1.5",
+            "description": "400, sai kiểu `int`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400',()=>pm.response.to.have.status(400));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-1.7a Cán bộ gọi API chỉ dành cho SV (staff)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_staff}}"
+              }
+            ],
+            "url": "{{baseUrl}}/procedures",
+            "description": "403"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403',()=>pm.response.to.have.status(403));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-1.7b Cán bộ gọi API chỉ dành cho SV (head)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_head}}"
+              }
+            ],
+            "url": "{{baseUrl}}/procedures",
+            "description": "403"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403',()=>pm.response.to.have.status(403));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-1.7c Cán bộ gọi API chỉ dành cho SV (admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": "{{baseUrl}}/procedures",
+            "description": "403"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403',()=>pm.response.to.have.status(403));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-1.8 Sai method",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/procedures",
+            "description": "405"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 405',()=>pm.response.to.have.status(405));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Chi tiết thủ tục",
+      "item": [
+        {
+          "name": "TC-2.1 Chi tiết Giấy xác nhận SV",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/procedures/1",
+            "description": "11 `form_fields` (101-111) theo `display_order`; 107 là dropdown 5 giá trị; 108 là radio 3 giá trị; 1 đính kèm \"CCCD 2 mặt\""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200',()=>pm.response.to.have.status(200));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('success = true',()=>pm.expect(j.success).to.eql(true));",
+                  "pm.test(\"Đủ trường theo contract\",()=>pm.expect(!!([\"type_id\", \"name\", \"description\", \"sla_total_days\", \"approval_levels\", \"is_fee_required\", \"fee_amount\", \"form_fields\", \"attachment_configs\"].every(k=>k in j.data))).to.eql(true));",
+                  "pm.test(\"Đủ 11 trường 101-111, đúng thứ tự\",()=>pm.expect(!!(JSON.stringify(j.data.form_fields.map(f=>f.field_id))===JSON.stringify([101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111]))).to.eql(true));",
+                  "pm.test(\"display_order tăng dần\",()=>pm.expect(!!(JSON.stringify(j.data.form_fields.map(f=>f.display_order))===JSON.stringify([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]))).to.eql(true));",
+                  "pm.test(\"Mỗi field đủ khóa\",()=>pm.expect(!!(j.data.form_fields.every(f=>[\"field_id\", \"field_name\", \"field_key\", \"data_type\", \"is_required\", \"placeholder\", \"auto_fill_field\", \"dropdown_options\", \"display_order\"].every(k=>k in f)))).to.eql(true));",
+                  "pm.test(\"107 dropdown 5 lựa chọn\",()=>pm.expect(!!(j.data.form_fields.find(f=>f.field_id===107).data_type==='dropdown'&&j.data.form_fields.find(f=>f.field_id===107).dropdown_options.length===5)).to.eql(true));",
+                  "pm.test(\"108 radio 3 lựa chọn\",()=>pm.expect(!!(j.data.form_fields.find(f=>f.field_id===108).data_type==='radio'&&j.data.form_fields.find(f=>f.field_id===108).dropdown_options.length===3)).to.eql(true));",
+                  "pm.test(\"101 auto fill\",()=>pm.expect(!!(j.data.form_fields.find(f=>f.field_id===101).auto_fill_field==='student.full_name')).to.eql(true));",
+                  "pm.test(\"109 không bắt buộc\",()=>pm.expect(!!(j.data.form_fields.find(f=>f.field_id===109).is_required===false)).to.eql(true));",
+                  "pm.test(\"1 đính kèm CCCD đúng định dạng\",()=>pm.expect(!!(j.data.attachment_configs.length===1&&j.data.attachment_configs[0].item_name==='CCCD 2 mặt'&&j.data.attachment_configs[0].is_required===false&&j.data.attachment_configs[0].allowed_formats==='PDF,JPG,PNG'&&j.data.attachment_configs[0].max_size_mb===5)).to.eql(true));",
+                  "pm.test(\"Đính kèm đủ khóa\",()=>pm.expect(!!(j.data.attachment_configs.every(a=>[\"config_id\", \"item_name\", \"is_required\", \"allowed_formats\", \"max_size_mb\", \"display_order\"].every(k=>k in a)))).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-2.2 Thủ tục nhiều đính kèm",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/procedures/5",
+            "description": "Đính kèm 5, 6, 7 bắt buộc; 8 không bắt buộc"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200',()=>pm.response.to.have.status(200));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('success = true',()=>pm.expect(j.success).to.eql(true));",
+                  "pm.test(\"Đủ 4 đầu mục\",()=>pm.expect(!!(JSON.stringify(j.data.attachment_configs.map(a=>a.config_id))===JSON.stringify([5, 6, 7, 8]))).to.eql(true));",
+                  "pm.test(\"3 bắt buộc, 1 không\",()=>pm.expect(!!(JSON.stringify(j.data.attachment_configs.map(a=>a.is_required))===JSON.stringify([true,true,true,false]))).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-2.3 Thủ tục có lệ phí",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/procedures/3",
+            "description": "`fee_amount = 50000`, 2 cấp duyệt, field 305 tự điền điểm, `attachment_configs = []`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200',()=>pm.response.to.have.status(200));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('success = true',()=>pm.expect(j.success).to.eql(true));",
+                  "pm.test(\"Có phí 50000\",()=>pm.expect(!!(j.data.is_fee_required===true&&j.data.fee_amount===50000)).to.eql(true));",
+                  "pm.test(\"2 cấp duyệt\",()=>pm.expect(!!(j.data.approval_levels===2)).to.eql(true));",
+                  "pm.test(\"305 auto fill điểm\",()=>pm.expect(!!(j.data.form_fields.find(f=>f.field_id===305).auto_fill_field==='academic_ms.grade')).to.eql(true));",
+                  "pm.test(\"Không có đính kèm\",()=>pm.expect(!!(JSON.stringify(j.data.attachment_configs)===JSON.stringify([]))).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-2.4 Không tồn tại",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/procedures/999",
+            "description": "404 `NOT_FOUND`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404',()=>pm.response.to.have.status(404));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = NOT_FOUND',()=>pm.expect(j.error.code).to.eql('NOT_FOUND'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Không tìm thấy thủ tục.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-2.5 Thủ tục bị ẩn",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/procedures/7",
+            "description": "404 `PROCEDURE_INACTIVE`, không trả `form_fields`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404',()=>pm.response.to.have.status(404));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = PROCEDURE_INACTIVE',()=>pm.expect(j.error.code).to.eql('PROCEDURE_INACTIVE'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Thủ tục không khả dụng.\"));",
+                  "pm.test(\"Không có data\",()=>pm.expect(!!(!j.data)).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-2.6 Thủ tục của phòng ngừng hoạt động",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/procedures/8",
+            "description": "404 `PROCEDURE_INACTIVE`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404',()=>pm.response.to.have.status(404));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = PROCEDURE_INACTIVE',()=>pm.expect(j.error.code).to.eql('PROCEDURE_INACTIVE'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-2.7 Sắp xếp form_fields theo display_order",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/procedures/4",
+            "description": "Thứ tự 403, 401, 402 (không theo `field_id`)"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200',()=>pm.response.to.have.status(200));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('success = true',()=>pm.expect(j.success).to.eql(true));",
+                  "pm.test(\"Thứ tự 403,401,402\",()=>pm.expect(!!(JSON.stringify(j.data.form_fields.map(f=>f.field_id))===JSON.stringify([403, 401, 402]))).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-2.8 Sắp xếp attachment_configs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/procedures/2",
+            "description": "Thứ tự 4, 3"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200',()=>pm.response.to.have.status(200));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('success = true',()=>pm.expect(j.success).to.eql(true));",
+                  "pm.test(\"Thứ tự 4,3\",()=>pm.expect(!!(JSON.stringify(j.data.attachment_configs.map(a=>a.config_id))===JSON.stringify([4, 3]))).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-2.9 Không có field và đính kèm",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/procedures/6",
+            "description": "Hai mảng rỗng; `fee_amount = null`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200',()=>pm.response.to.have.status(200));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('success = true',()=>pm.expect(j.success).to.eql(true));",
+                  "pm.test(\"Mảng rỗng\",()=>pm.expect(!!(j.data.form_fields.length===0&&j.data.attachment_configs.length===0)).to.eql(true));",
+                  "pm.test(\"Không phí dù fee_amount > 0 trong DB\",()=>pm.expect(!!(j.data.fee_amount===null)).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-2.10 type_id không phải số",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/procedures/abc",
+            "description": "404, body JSON đúng format lỗi chung"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404',()=>pm.response.to.have.status(404));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-2.11 Cán bộ gọi API chỉ dành cho SV",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_staff}}"
+              }
+            ],
+            "url": "{{baseUrl}}/procedures/1",
+            "description": "403"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403',()=>pm.response.to.have.status(403));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Danh sách thông báo",
+      "item": [
+        {
+          "name": "TC-3.1 SV A có 2 thông báo",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications",
+            "description": "Thứ tự 4, 1; `unread_count = 1`; `request_id = null`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200',()=>pm.response.to.have.status(200));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('success = true',()=>pm.expect(j.success).to.eql(true));",
+                  "pm.test(\"Chỉ của SV A, mới nhất trước\",()=>pm.expect(!!(JSON.stringify(j.data.map(n=>n.notification_id))===JSON.stringify([4, 1]))).to.eql(true));",
+                  "pm.test(\"unread_count = 1\",()=>pm.expect(!!(j.unread_count===1)).to.eql(true));",
+                  "pm.test(\"Id 4 đã đọc\",()=>pm.expect(!!(j.data.find(n=>n.notification_id===4).is_read===true&&j.data.find(n=>n.notification_id===4).read_at!==null)).to.eql(true));",
+                  "pm.test(\"Id 1 chưa đọc\",()=>pm.expect(!!(j.data.find(n=>n.notification_id===1).is_read===false&&j.data.find(n=>n.notification_id===1).read_at===null)).to.eql(true));",
+                  "pm.test(\"Thông báo hệ thống request_id null\",()=>pm.expect(!!(j.data.every(n=>n.request_id===null&&n.request_code===null))).to.eql(true));",
+                  "pm.test(\"Đủ trường theo contract\",()=>pm.expect(!!(j.data.every(n=>[\"notification_id\", \"request_id\", \"request_code\", \"title\", \"message\", \"is_read\", \"sent_at\"].every(k=>k in n)))).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-3.2 Lọc chưa đọc",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications?is_read=false",
+            "description": "Chỉ id 1"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200',()=>pm.response.to.have.status(200));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('success = true',()=>pm.expect(j.success).to.eql(true));",
+                  "pm.test(\"Chỉ id 1\",()=>pm.expect(!!(JSON.stringify(j.data.map(n=>n.notification_id))===JSON.stringify([1]))).to.eql(true));",
+                  "pm.test(\"unread_count = 1\",()=>pm.expect(!!(j.unread_count===1)).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-3.3 Lọc đã đọc",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications?is_read=true",
+            "description": "Chỉ id 4; `unread_count` vẫn bằng 1"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200',()=>pm.response.to.have.status(200));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('success = true',()=>pm.expect(j.success).to.eql(true));",
+                  "pm.test(\"Chỉ id 4\",()=>pm.expect(!!(JSON.stringify(j.data.map(n=>n.notification_id))===JSON.stringify([4]))).to.eql(true));",
+                  "pm.test(\"unread_count vẫn = 1\",()=>pm.expect(!!(j.unread_count===1)).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-3.4 SV chỉ có 1 thông báo",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentC}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications",
+            "description": "Chỉ id 3"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200',()=>pm.response.to.have.status(200));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('success = true',()=>pm.expect(j.success).to.eql(true));",
+                  "pm.test(\"Chỉ id 3\",()=>pm.expect(!!(JSON.stringify(j.data.map(n=>n.notification_id))===JSON.stringify([3]))).to.eql(true));",
+                  "pm.test(\"unread_count = 1\",()=>pm.expect(!!(j.unread_count===1)).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-3.5 Không có thông báo",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_head}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications",
+            "description": "`data = []`, `unread_count = 0`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200',()=>pm.response.to.have.status(200));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('success = true',()=>pm.expect(j.success).to.eql(true));",
+                  "pm.test(\"data rỗng\",()=>pm.expect(!!(JSON.stringify(j.data)===JSON.stringify([]))).to.eql(true));",
+                  "pm.test(\"unread_count = 0\",()=>pm.expect(!!(j.unread_count===0)).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-3.7 Thông báo gắn với đơn",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentB}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications",
+            "description": "Id 5 có `request_code = REQ-20261030-001`; id 2 là `null`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200',()=>pm.response.to.have.status(200));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('success = true',()=>pm.expect(j.success).to.eql(true));",
+                  "pm.test(\"Id 5 có request\",()=>pm.expect(!!(typeof j.data.find(n=>n.notification_id===5).request_id==='number'&&j.data.find(n=>n.notification_id===5).request_code==='REQ-20261030-001')).to.eql(true));",
+                  "pm.test(\"Id 2 không có request\",()=>pm.expect(!!(j.data.find(n=>n.notification_id===2).request_id===null)).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-3.8 Cán bộ cũng xem được",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_staff}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications",
+            "description": "Chỉ id 7"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200',()=>pm.response.to.have.status(200));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('success = true',()=>pm.expect(j.success).to.eql(true));",
+                  "pm.test(\"Chỉ id 7\",()=>pm.expect(!!(JSON.stringify(j.data.map(n=>n.notification_id))===JSON.stringify([7]))).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-3.9 sent_at đúng giờ Việt Nam",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications",
+            "description": "Id 4 có `sent_at = 2026-10-30T09:00:00`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200',()=>pm.response.to.have.status(200));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('success = true',()=>pm.expect(j.success).to.eql(true));",
+                  "pm.test(\"sent_at id 4 = 09:00\",()=>pm.expect(!!(j.data.find(n=>n.notification_id===4).sent_at==='2026-10-30T09:00:00')).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-3.10 Mặc định page 1, limit 20",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentPaging}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications",
+            "description": "20 bản ghi, `pagination = {page:1, limit:20, total:25, total_pages:2}`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200',()=>pm.response.to.have.status(200));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('success = true',()=>pm.expect(j.success).to.eql(true));",
+                  "pm.test(\"20 bản ghi\",()=>pm.expect(!!(j.data.length===20)).to.eql(true));",
+                  "pm.test(\"Mới nhất là 125\",()=>pm.expect(!!(j.data[0].notification_id===125)).to.eql(true));",
+                  "pm.test(\"pagination đúng\",()=>pm.expect(!!(JSON.stringify(j.pagination)===JSON.stringify({'page': 1, 'limit': 20, 'total': 25, 'total_pages': 2}))).to.eql(true));",
+                  "pm.test(\"unread_count = 20\",()=>pm.expect(!!(j.unread_count===20)).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-3.11 Trang 2",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentPaging}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications?page=2",
+            "description": "5 bản ghi: 105 đến 101"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200',()=>pm.response.to.have.status(200));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('success = true',()=>pm.expect(j.success).to.eql(true));",
+                  "pm.test(\"5 bản ghi cuối\",()=>pm.expect(!!(JSON.stringify(j.data.map(n=>n.notification_id))===JSON.stringify([105, 104, 103, 102, 101]))).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-3.12 limit tùy chọn",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentPaging}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications?page=3&limit=10",
+            "description": "5 bản ghi, `total_pages = 3`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200',()=>pm.response.to.have.status(200));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('success = true',()=>pm.expect(j.success).to.eql(true));",
+                  "pm.test(\"5 bản ghi\",()=>pm.expect(!!(j.data.length===5)).to.eql(true));",
+                  "pm.test(\"pagination đúng\",()=>pm.expect(!!(JSON.stringify(j.pagination)===JSON.stringify({'page': 3, 'limit': 10, 'total': 25, 'total_pages': 3}))).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-3.13 Trang vượt quá",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentPaging}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications?page=99",
+            "description": "`data = []`, vẫn có `pagination`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200',()=>pm.response.to.have.status(200));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('success = true',()=>pm.expect(j.success).to.eql(true));",
+                  "pm.test(\"data rỗng\",()=>pm.expect(!!(JSON.stringify(j.data)===JSON.stringify([]))).to.eql(true));",
+                  "pm.test(\"Có pagination\",()=>pm.expect(!!(j.pagination&&j.pagination.total===25)).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-3.14 Phân trang kết hợp lọc",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentPaging}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications?is_read=false&limit=5",
+            "description": "5 bản ghi, `pagination.total = 20`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200',()=>pm.response.to.have.status(200));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('success = true',()=>pm.expect(j.success).to.eql(true));",
+                  "pm.test(\"5 bản ghi\",()=>pm.expect(!!(j.data.length===5)).to.eql(true));",
+                  "pm.test(\"total theo bộ lọc = 20\",()=>pm.expect(!!(j.pagination&&j.pagination.total===20)).to.eql(true));",
+                  "pm.test(\"unread_count = 20\",()=>pm.expect(!!(j.unread_count===20)).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-3.15a Tham số sai (is_read=abc)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications?is_read=abc",
+            "description": "400, `is_read` không phải boolean"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400',()=>pm.response.to.have.status(400));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-3.15b Tham số sai (page=abc)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications?page=abc",
+            "description": "400, `page` không phải số"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400',()=>pm.response.to.have.status(400));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-3.15c Tham số sai (page=0)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications?page=0",
+            "description": "400, `page` nhỏ hơn 1"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400',()=>pm.response.to.have.status(400));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-3.15d Tham số sai (limit=abc)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications?limit=abc",
+            "description": "400, `limit` không phải số"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400',()=>pm.response.to.have.status(400));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-3.15e Tham số sai (limit=0)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications?limit=0",
+            "description": "400, `limit` nhỏ hơn 1"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400',()=>pm.response.to.have.status(400));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Xác thực (ma trận)",
+      "item": [
+        {
+          "name": "TC-AUTH-P1a API 1: Không có header",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/procedures",
+            "description": "401 `UNAUTHORIZED`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401',()=>pm.response.to.have.status(401));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = UNAUTHORIZED',()=>pm.expect(j.error.code).to.eql('UNAUTHORIZED'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Chưa đăng nhập.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-AUTH-P1b API 1: Token rác",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_garbage}}"
+              }
+            ],
+            "url": "{{baseUrl}}/procedures",
+            "description": "401 `UNAUTHORIZED`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401',()=>pm.response.to.have.status(401));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = UNAUTHORIZED',()=>pm.expect(j.error.code).to.eql('UNAUTHORIZED'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Chưa đăng nhập.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-AUTH-P1c API 1: Token hết hạn",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_expired}}"
+              }
+            ],
+            "url": "{{baseUrl}}/procedures",
+            "description": "401 `UNAUTHORIZED`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401',()=>pm.response.to.have.status(401));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = UNAUTHORIZED',()=>pm.expect(j.error.code).to.eql('UNAUTHORIZED'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Chưa đăng nhập.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-AUTH-P1d API 1: Token bị sửa chữ ký",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_tampered}}"
+              }
+            ],
+            "url": "{{baseUrl}}/procedures",
+            "description": "401 `UNAUTHORIZED`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401',()=>pm.response.to.have.status(401));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = UNAUTHORIZED',()=>pm.expect(j.error.code).to.eql('UNAUTHORIZED'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Chưa đăng nhập.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-AUTH-P1e API 1: User không còn tồn tại",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_deletedUser}}"
+              }
+            ],
+            "url": "{{baseUrl}}/procedures",
+            "description": "401 `UNAUTHORIZED`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401',()=>pm.response.to.have.status(401));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = UNAUTHORIZED',()=>pm.expect(j.error.code).to.eql('UNAUTHORIZED'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Chưa đăng nhập.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-AUTH-P1f API 1: Tài khoản bị khóa",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_locked}}"
+              }
+            ],
+            "url": "{{baseUrl}}/procedures",
+            "description": "401 `UNAUTHORIZED`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401',()=>pm.response.to.have.status(401));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = UNAUTHORIZED',()=>pm.expect(j.error.code).to.eql('UNAUTHORIZED'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Chưa đăng nhập.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-AUTH-P1g API 1: Thiếu tiền tố Bearer",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/procedures",
+            "description": "401 `UNAUTHORIZED`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401',()=>pm.response.to.have.status(401));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = UNAUTHORIZED',()=>pm.expect(j.error.code).to.eql('UNAUTHORIZED'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Chưa đăng nhập.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-AUTH-P2a API 2: Không có header",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/procedures/1",
+            "description": "401 `UNAUTHORIZED`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401',()=>pm.response.to.have.status(401));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = UNAUTHORIZED',()=>pm.expect(j.error.code).to.eql('UNAUTHORIZED'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Chưa đăng nhập.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-AUTH-P2b API 2: Token rác",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_garbage}}"
+              }
+            ],
+            "url": "{{baseUrl}}/procedures/1",
+            "description": "401 `UNAUTHORIZED`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401',()=>pm.response.to.have.status(401));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = UNAUTHORIZED',()=>pm.expect(j.error.code).to.eql('UNAUTHORIZED'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Chưa đăng nhập.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-AUTH-P2c API 2: Token hết hạn",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_expired}}"
+              }
+            ],
+            "url": "{{baseUrl}}/procedures/1",
+            "description": "401 `UNAUTHORIZED`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401',()=>pm.response.to.have.status(401));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = UNAUTHORIZED',()=>pm.expect(j.error.code).to.eql('UNAUTHORIZED'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Chưa đăng nhập.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-AUTH-P2d API 2: Token bị sửa chữ ký",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_tampered}}"
+              }
+            ],
+            "url": "{{baseUrl}}/procedures/1",
+            "description": "401 `UNAUTHORIZED`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401',()=>pm.response.to.have.status(401));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = UNAUTHORIZED',()=>pm.expect(j.error.code).to.eql('UNAUTHORIZED'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Chưa đăng nhập.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-AUTH-P2e API 2: User không còn tồn tại",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_deletedUser}}"
+              }
+            ],
+            "url": "{{baseUrl}}/procedures/1",
+            "description": "401 `UNAUTHORIZED`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401',()=>pm.response.to.have.status(401));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = UNAUTHORIZED',()=>pm.expect(j.error.code).to.eql('UNAUTHORIZED'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Chưa đăng nhập.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-AUTH-P2f API 2: Tài khoản bị khóa",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_locked}}"
+              }
+            ],
+            "url": "{{baseUrl}}/procedures/1",
+            "description": "401 `UNAUTHORIZED`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401',()=>pm.response.to.have.status(401));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = UNAUTHORIZED',()=>pm.expect(j.error.code).to.eql('UNAUTHORIZED'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Chưa đăng nhập.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-AUTH-P2g API 2: Thiếu tiền tố Bearer",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/procedures/1",
+            "description": "401 `UNAUTHORIZED`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401',()=>pm.response.to.have.status(401));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = UNAUTHORIZED',()=>pm.expect(j.error.code).to.eql('UNAUTHORIZED'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Chưa đăng nhập.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-AUTH-N3a API 3: Không có header",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/notifications",
+            "description": "401 `UNAUTHORIZED`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401',()=>pm.response.to.have.status(401));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = UNAUTHORIZED',()=>pm.expect(j.error.code).to.eql('UNAUTHORIZED'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Chưa đăng nhập.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-AUTH-N3b API 3: Token rác",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_garbage}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications",
+            "description": "401 `UNAUTHORIZED`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401',()=>pm.response.to.have.status(401));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = UNAUTHORIZED',()=>pm.expect(j.error.code).to.eql('UNAUTHORIZED'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Chưa đăng nhập.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-AUTH-N3c API 3: Token hết hạn",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_expired}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications",
+            "description": "401 `UNAUTHORIZED`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401',()=>pm.response.to.have.status(401));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = UNAUTHORIZED',()=>pm.expect(j.error.code).to.eql('UNAUTHORIZED'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Chưa đăng nhập.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-AUTH-N3d API 3: Token bị sửa chữ ký",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_tampered}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications",
+            "description": "401 `UNAUTHORIZED`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401',()=>pm.response.to.have.status(401));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = UNAUTHORIZED',()=>pm.expect(j.error.code).to.eql('UNAUTHORIZED'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Chưa đăng nhập.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-AUTH-N3e API 3: User không còn tồn tại",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_deletedUser}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications",
+            "description": "401 `UNAUTHORIZED`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401',()=>pm.response.to.have.status(401));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = UNAUTHORIZED',()=>pm.expect(j.error.code).to.eql('UNAUTHORIZED'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Chưa đăng nhập.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-AUTH-N3f API 3: Tài khoản bị khóa",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_locked}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications",
+            "description": "401 `UNAUTHORIZED`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401',()=>pm.response.to.have.status(401));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = UNAUTHORIZED',()=>pm.expect(j.error.code).to.eql('UNAUTHORIZED'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Chưa đăng nhập.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-AUTH-N3g API 3: Thiếu tiền tố Bearer",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications",
+            "description": "401 `UNAUTHORIZED`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401',()=>pm.response.to.have.status(401));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = UNAUTHORIZED',()=>pm.expect(j.error.code).to.eql('UNAUTHORIZED'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Chưa đăng nhập.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-AUTH-N4a API 4: Không có header",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": "{{baseUrl}}/notifications/1/read",
+            "description": "401 `UNAUTHORIZED`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401',()=>pm.response.to.have.status(401));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = UNAUTHORIZED',()=>pm.expect(j.error.code).to.eql('UNAUTHORIZED'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Chưa đăng nhập.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-AUTH-N4b API 4: Token rác",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_garbage}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications/1/read",
+            "description": "401 `UNAUTHORIZED`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401',()=>pm.response.to.have.status(401));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = UNAUTHORIZED',()=>pm.expect(j.error.code).to.eql('UNAUTHORIZED'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Chưa đăng nhập.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-AUTH-N4c API 4: Token hết hạn",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_expired}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications/1/read",
+            "description": "401 `UNAUTHORIZED`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401',()=>pm.response.to.have.status(401));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = UNAUTHORIZED',()=>pm.expect(j.error.code).to.eql('UNAUTHORIZED'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Chưa đăng nhập.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-AUTH-N4d API 4: Token bị sửa chữ ký",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_tampered}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications/1/read",
+            "description": "401 `UNAUTHORIZED`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401',()=>pm.response.to.have.status(401));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = UNAUTHORIZED',()=>pm.expect(j.error.code).to.eql('UNAUTHORIZED'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Chưa đăng nhập.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-AUTH-N4e API 4: User không còn tồn tại",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_deletedUser}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications/1/read",
+            "description": "401 `UNAUTHORIZED`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401',()=>pm.response.to.have.status(401));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = UNAUTHORIZED',()=>pm.expect(j.error.code).to.eql('UNAUTHORIZED'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Chưa đăng nhập.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-AUTH-N4f API 4: Tài khoản bị khóa",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_locked}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications/1/read",
+            "description": "401 `UNAUTHORIZED`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401',()=>pm.response.to.have.status(401));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = UNAUTHORIZED',()=>pm.expect(j.error.code).to.eql('UNAUTHORIZED'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Chưa đăng nhập.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-AUTH-N4g API 4: Thiếu tiền tố Bearer",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications/1/read",
+            "description": "401 `UNAUTHORIZED`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401',()=>pm.response.to.have.status(401));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = UNAUTHORIZED',()=>pm.expect(j.error.code).to.eql('UNAUTHORIZED'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Chưa đăng nhập.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-AUTH-N5a API 5: Không có header",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": "{{baseUrl}}/notifications/read-all",
+            "description": "401 `UNAUTHORIZED`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401',()=>pm.response.to.have.status(401));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = UNAUTHORIZED',()=>pm.expect(j.error.code).to.eql('UNAUTHORIZED'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Chưa đăng nhập.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-AUTH-N5b API 5: Token rác",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_garbage}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications/read-all",
+            "description": "401 `UNAUTHORIZED`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401',()=>pm.response.to.have.status(401));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = UNAUTHORIZED',()=>pm.expect(j.error.code).to.eql('UNAUTHORIZED'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Chưa đăng nhập.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-AUTH-N5c API 5: Token hết hạn",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_expired}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications/read-all",
+            "description": "401 `UNAUTHORIZED`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401',()=>pm.response.to.have.status(401));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = UNAUTHORIZED',()=>pm.expect(j.error.code).to.eql('UNAUTHORIZED'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Chưa đăng nhập.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-AUTH-N5d API 5: Token bị sửa chữ ký",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_tampered}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications/read-all",
+            "description": "401 `UNAUTHORIZED`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401',()=>pm.response.to.have.status(401));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = UNAUTHORIZED',()=>pm.expect(j.error.code).to.eql('UNAUTHORIZED'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Chưa đăng nhập.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-AUTH-N5e API 5: User không còn tồn tại",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_deletedUser}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications/read-all",
+            "description": "401 `UNAUTHORIZED`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401',()=>pm.response.to.have.status(401));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = UNAUTHORIZED',()=>pm.expect(j.error.code).to.eql('UNAUTHORIZED'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Chưa đăng nhập.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-AUTH-N5f API 5: Tài khoản bị khóa",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_locked}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications/read-all",
+            "description": "401 `UNAUTHORIZED`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401',()=>pm.response.to.have.status(401));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = UNAUTHORIZED',()=>pm.expect(j.error.code).to.eql('UNAUTHORIZED'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Chưa đăng nhập.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-AUTH-N5g API 5: Thiếu tiền tố Bearer",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications/read-all",
+            "description": "401 `UNAUTHORIZED`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401',()=>pm.response.to.have.status(401));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = UNAUTHORIZED',()=>pm.expect(j.error.code).to.eql('UNAUTHORIZED'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Chưa đăng nhập.\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Đánh dấu đã đọc",
+      "item": [
+        {
+          "name": "TC-4.1 Đánh dấu đã đọc",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications/1/read",
+            "description": "200, \"Đã đánh dấu đọc.\""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200',()=>pm.response.to.have.status(200));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('success = true',()=>pm.expect(j.success).to.eql(true));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.message).to.eql(\"Đã đánh dấu đọc.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-4.1b Kiểm tra sau khi đánh dấu",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications",
+            "description": "Id 1 có `is_read = true`, `read_at` là giờ hiện tại, `unread_count = 0`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200',()=>pm.response.to.have.status(200));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('success = true',()=>pm.expect(j.success).to.eql(true));",
+                  "pm.test(\"Id 1 đã đọc\",()=>pm.expect(!!(j.data.find(n=>n.notification_id===1).is_read===true)).to.eql(true));",
+                  "pm.test(\"unread_count = 0\",()=>pm.expect(!!(j.unread_count===0)).to.eql(true));",
+                  "pm.test(\"read_at là thời điểm vừa đánh dấu\",()=>pm.expect(!!(Math.abs(new Date(j.data.find(n=>n.notification_id===1).read_at+'+07:00').getTime()-Date.now())<300000)).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-4.2 Thông báo của người khác",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications/2/read",
+            "description": "403 `FORBIDDEN`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403',()=>pm.response.to.have.status(403));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = FORBIDDEN',()=>pm.expect(j.error.code).to.eql('FORBIDDEN'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Bạn không có quyền thao tác thông báo này.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-4.2b Thông báo của người khác không đổi",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentB}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications",
+            "description": "Id 2 vẫn `is_read = false`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200',()=>pm.response.to.have.status(200));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('success = true',()=>pm.expect(j.success).to.eql(true));",
+                  "pm.test(\"Id 2 vẫn chưa đọc\",()=>pm.expect(!!(j.data.find(n=>n.notification_id===2).is_read===false)).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-4.3 Không tồn tại",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications/999/read",
+            "description": "404 `NOT_FOUND`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404',()=>pm.response.to.have.status(404));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});",
+                  "pm.test('error.code = NOT_FOUND',()=>pm.expect(j.error.code).to.eql('NOT_FOUND'));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.error.message).to.eql(\"Không tìm thấy thông báo.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-4.4 Đánh dấu lại thông báo đã đọc",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications/4/read",
+            "description": "200"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200',()=>pm.response.to.have.status(200));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('success = true',()=>pm.expect(j.success).to.eql(true));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.message).to.eql(\"Đã đánh dấu đọc.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-4.4b read_at giữ nguyên",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications",
+            "description": "`read_at` giữ nguyên (phút :15), `unread_count` không đổi"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200',()=>pm.response.to.have.status(200));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('success = true',()=>pm.expect(j.success).to.eql(true));",
+                  "pm.test(\"read_at id 4 không đổi\",()=>pm.expect(!!(j.data.find(n=>n.notification_id===4).is_read===true&&j.data.find(n=>n.notification_id===4).read_at.endsWith(':15:00'))).to.eql(true));",
+                  "pm.test(\"unread_count không đổi\",()=>pm.expect(!!(j.unread_count===0)).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-4.5 id không phải số",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications/abc/read",
+            "description": "404, body JSON đúng format lỗi chung"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404',()=>pm.response.to.have.status(404));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('Dung format loi chung',()=>{pm.expect(j.success).to.eql(false);pm.expect(j.error.code).to.be.a('string');pm.expect(j.error.message).to.be.a('string')});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-4.6 Sai method",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications/1/read",
+            "description": "405"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 405',()=>pm.response.to.have.status(405));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Đánh dấu tất cả",
+      "item": [
+        {
+          "name": "TC-5.1 Đánh dấu tất cả",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentB}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications/read-all",
+            "description": "200, \"Đã đánh dấu tất cả đã đọc.\""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200',()=>pm.response.to.have.status(200));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('success = true',()=>pm.expect(j.success).to.eql(true));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.message).to.eql(\"Đã đánh dấu tất cả đã đọc.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-5.1b Kiểm tra sau read-all",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentB}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications",
+            "description": "`unread_count = 0`; id 6 giữ `read_at` cũ"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200',()=>pm.response.to.have.status(200));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('success = true',()=>pm.expect(j.success).to.eql(true));",
+                  "pm.test(\"Tất cả đã đọc\",()=>pm.expect(!!(j.data.every(n=>n.is_read===true))).to.eql(true));",
+                  "pm.test(\"unread_count = 0\",()=>pm.expect(!!(j.unread_count===0)).to.eql(true));",
+                  "pm.test(\"Không ghi đè read_at cũ\",()=>pm.expect(!!(j.data.find(n=>n.notification_id===6).read_at.endsWith(':30:00'))).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-5.1c Người khác không bị ảnh hưởng",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentC}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications",
+            "description": "SV C vẫn `unread_count = 1`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200',()=>pm.response.to.have.status(200));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('success = true',()=>pm.expect(j.success).to.eql(true));",
+                  "pm.test(\"SV C vẫn 1 chưa đọc\",()=>pm.expect(!!(j.unread_count===1)).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-5.2 Không có thông báo nào",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_head}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications/read-all",
+            "description": "200"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200',()=>pm.response.to.have.status(200));",
+                  "let j=null;try{j=pm.response.json()}catch(e){}",
+                  "pm.test('Body la JSON',()=>pm.expect(j,'body khong phai JSON').to.be.an('object'));",
+                  "pm.test('success = true',()=>pm.expect(j.success).to.eql(true));",
+                  "pm.test(\"Message dung\",()=>pm.expect(j.message).to.eql(\"Đã đánh dấu tất cả đã đọc.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC-5.3 Sai method",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_studentA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications/read-all",
+            "description": "405"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 405',()=>pm.response.to.have.status(405));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

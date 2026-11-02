@@ -4,3 +4,4 @@ __pycache__/
 db.sqlite3
 venv/
 staticfiles/
+docs/testing/*.postman_environment.json

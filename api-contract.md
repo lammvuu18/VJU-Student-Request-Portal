@@ -57,6 +57,17 @@ Authorization: Bearer <access_token>
 | 422  | Vi phạm business rule |
 | 500  | Lỗi server |
 
+### Mã lỗi dùng chung
+| HTTP | error.code | Khi nào |
+|------|------------|---------|
+| 400 | INVALID_PARAM | Query param sai kiểu hoặc ngoài giá trị cho phép |
+| 401 | UNAUTHORIZED | Thiếu token, token sai, hết hạn, đã đăng xuất, hoặc tài khoản bị khóa |
+| 403 | FORBIDDEN | Không có quyền với tài nguyên hoặc vai trò không được phép |
+| 404 | NOT_FOUND | Không tìm thấy tài nguyên hoặc đường dẫn `/api/` không tồn tại |
+
+### Thời gian
+Mọi trường thời gian trả về theo giờ Việt Nam (Asia/Ho_Chi_Minh), định dạng `YYYY-MM-DDTHH:MM:SS`.
+
 ---
 
 ## 1. AUTHENTICATION — Xác thực
@@ -107,6 +118,15 @@ Frontend gửi token nhận từ Google OAuth lên backend. Backend xác thực 
 }
 ```
 
+**Các lỗi khác:**
+| HTTP | error.code | Khi nào |
+|------|------------|---------|
+| 400 | INVALID_TOKEN | Google token sai, hết hạn, hoặc không cấp cho ứng dụng này |
+| 403 | ACCOUNT_DISMISSED | Sinh viên có `academic_status = dismissed` |
+| 403 | ACCOUNT_LOCKED | Tài khoản bị khóa |
+
+Sinh viên có `academic_status` là `active`, `suspended` (bảo lưu) hoặc `graduated` (đã tốt nghiệp) đều được đăng nhập.
+
 ### 1.2 Lấy thông tin người dùng hiện tại
 
 ```
@@ -153,9 +173,91 @@ Vô hiệu hóa access token hiện tại.
 }
 ```
 
+### 1.4 Đăng nhập bằng Email và Mật khẩu
+
+```
+POST /api/auth/login
+```
+
+Dành cho Giảng viên, Cán bộ (Chuyên viên, Trưởng phòng), Hiệu trưởng và Quản trị viên (Admin).
+*Lưu ý theo quy định nghiệp vụ Jira*: Sinh viên chỉ có thể đăng nhập bằng mail VJU (@st.vju.ac.vn), không được dùng mật khẩu.
+
+**Request:**
+```json
+{
+  "email": "thuha@vju.ac.vn",
+  "password": "head123"
+}
+```
+
+**Response 200:**
+```json
+{
+  "success": true,
+  "data": {
+    "access_token": "eyJhbGciOiJIUzI1NiIs...",
+    "expires_in": 86400,
+    "user": {
+      "user_id": 5,
+      "email": "thuha@vju.ac.vn",
+      "full_name": "Trần Thu Hà",
+      "role": "dept_head",
+      "authority_level": 2,
+      "department_id": 2,
+      "department_name": "Phòng Đào tạo",
+      "redirect_url": "/dept-head"
+    }
+  },
+  "message": "Đăng nhập thành công."
+}
+```
+
+**Response 403 (Sinh viên cố đăng nhập mật khẩu):**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "STUDENT_PASSWORD_LOGIN_DENIED",
+    "message": "Sinh viên chỉ có thể đăng nhập bằng tài khoản Google VJU (@st.vju.ac.vn), không được dùng mật khẩu."
+  }
+}
+```
+
+**Response 401 (Sai email hoặc mật khẩu):**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "INVALID_CREDENTIALS",
+    "message": "Email hoặc mật khẩu không chính xác."
+  }
+}
+```
+
+**Response 409 (Sai quá nhiều lần):** sai 5 lần trong 15 phút thì email đó bị khóa đăng nhập 15 phút, kể cả khi nhập đúng mật khẩu.
+```json
+{
+  "success": false,
+  "error": {
+    "code": "RATE_LIMIT_EXCEEDED",
+    "message": "Đăng nhập sai quá 5 lần. Vui lòng thử lại sau 15 phút."
+  }
+}
+```
+
+**Các lỗi khác:**
+| HTTP | error.code | Khi nào |
+|------|------------|---------|
+| 400 | INVALID_JSON | Body không phải JSON object |
+| 400 | MISSING_CREDENTIALS | Thiếu email hoặc mật khẩu |
+| 403 | ACCOUNT_LOCKED | Tài khoản bị khóa |
+
+
 ---
 
-## 2. PROCEDURES — Danh mục thủ tục (Public)
+## 2. PROCEDURES — Danh mục thủ tục (Sinh viên)
+
+Yêu cầu đăng nhập bằng tài khoản sinh viên. Vai trò khác nhận 403 `FORBIDDEN`.
 
 ### 2.1 Lấy danh sách thủ tục (nhóm theo phòng ban)
 
@@ -168,7 +270,9 @@ SV mở trang chủ Portal, thấy danh sách thủ tục nhóm theo phòng ban.
 **Query params:**
 | Param | Kiểu | Mô tả |
 |-------|------|-------|
-| department_id | int (optional) | Lọc theo phòng ban |
+| department_id | int (optional) | Lọc theo phòng ban. Sai kiểu trả 400 `INVALID_PARAM` |
+| search | string (optional) | Tìm theo tên hoặc mô tả thủ tục |
+| q | string (optional) | Tên khác của `search`, chỉ dùng khi không có `search` |
 
 **Response 200:**
 ```json
@@ -234,6 +338,7 @@ SV chọn 1 thủ tục → hệ thống trả về cấu trúc e-form động (
     "type_id": 1,
     "name": "Giấy xác nhận sinh viên",
     "description": "Xin cấp giấy xác nhận đang là sinh viên VJU",
+    "department_name": "Phòng Công tác Sinh viên",
     "sla_total_days": 1,
     "approval_levels": 1,
     "is_fee_required": false,
@@ -275,6 +380,12 @@ SV chọn 1 thủ tục → hệ thống trả về cấu trúc e-form động (
   }
 }
 ```
+
+**Các lỗi khác:**
+| HTTP | error.code | Khi nào |
+|------|------------|---------|
+| 404 | NOT_FOUND | Thủ tục không tồn tại |
+| 404 | PROCEDURE_INACTIVE | Thủ tục đã ẩn hoặc thuộc phòng ban ngừng hoạt động |
 
 ---
 
@@ -798,9 +909,11 @@ Lấy thông báo in-app của user hiện tại. Hiển thị trên icon chuôn
 **Query params:**
 | Param | Kiểu | Mô tả |
 |-------|------|-------|
-| is_read | boolean (optional) | Lọc đã đọc/chưa đọc |
-| page | int (default: 1) | |
-| limit | int (default: 20) | |
+| is_read | boolean (optional) | Lọc đã đọc/chưa đọc. Chỉ nhận `true`, `false` |
+| page | int (default: 1) | Số nguyên dương |
+| limit | int (default: 20) | Số nguyên dương, tối đa 100 (lớn hơn sẽ tính là 100) |
+
+Tham số sai trả 400 `INVALID_PARAM`. `unread_count` là tổng số chưa đọc của user, không phụ thuộc bộ lọc.
 
 **Response 200:**
 ```json
@@ -814,11 +927,17 @@ Lấy thông báo in-app của user hiện tại. Hiển thị trên icon chuôn
       "title": "Yêu cầu đã được duyệt",
       "message": "Yêu cầu Giấy xác nhận sinh viên đã được duyệt. Vui lòng kiểm tra kết quả.",
       "is_read": false,
-      "sent_at": "2026-10-29T09:00:00"
+      "sent_at": "2026-10-29T09:00:00",
+      "read_at": null
     }
   ],
   "unread_count": 3,
-  "pagination": { ... }
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 3,
+    "total_pages": 1
+  }
 }
 ```
 
@@ -835,6 +954,12 @@ PUT /api/notifications/:notification_id/read
   "message": "Đã đánh dấu đọc."
 }
 ```
+
+**Các lỗi khác:**
+| HTTP | error.code | Khi nào |
+|------|------------|---------|
+| 403 | FORBIDDEN | Thông báo thuộc người dùng khác |
+| 404 | NOT_FOUND | Thông báo không tồn tại |
 
 ### 8.3 Đánh dấu tất cả đã đọc
 
@@ -1638,3 +1763,4 @@ HT xem PDF trước khi quyết định ký số.
 | 55 | GET | /api/admin/dashboard | Admin | Dashboard thống kê |
 | 56 | GET | /api/attachments/:id/download | SV/Staff | Tải file đính kèm |
 | 57 | GET | /api/results/:id/preview | HT | Xem trước PDF |
+| 58 | POST | /api/auth/login | CV/TP/HT/Admin | Đăng nhập bằng email và mật khẩu |
