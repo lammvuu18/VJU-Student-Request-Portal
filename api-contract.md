@@ -1018,10 +1018,13 @@ TP thấy đơn "Chờ phân công" trong phòng mình. CV thấy đơn được
 **Query params:**
 | Param | Kiểu | Mô tả |
 |-------|------|-------|
+| scope | string (default: `open`) | `open`: đơn đang xử lý. `closed`: đơn đã kết thúc (Đã xử lý, Từ chối, Đã hủy). `all`: cả hai. Giá trị khác trả 400 `INVALID_PARAM` |
 | internal_status | string (optional) | Lọc theo trạng thái nội bộ |
 | type_id | int (optional) | Lọc theo loại thủ tục |
 | page | int (default: 1) | |
 | limit | int (default: 20) | |
+
+`summary` luôn tính trên đơn đang xử lý, không phụ thuộc `scope`. Mỗi đơn có thêm `status` và `is_closed`. Đơn đã kết thúc trả `sla_remaining_hours = null`, `is_overdue = false`.
 
 **Response 200:**
 ```json

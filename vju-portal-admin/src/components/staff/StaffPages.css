@@ -369,6 +369,11 @@ textarea.form-input {
   color: #AA2327;
 }
 
+.staff-badge-status--gray {
+  background: #F0F0F0;
+  color: #4B5563;
+}
+
 /* Filter bar & dropdowns */
 .staff-filters-bar {
   align-self: stretch;

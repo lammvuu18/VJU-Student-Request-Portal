@@ -22,6 +22,9 @@ from .services import (
 from .views import _get_authenticated_user, _json_error, _read_json_object
 
 INBOX_TERMINAL_STATUSES = {"Đã xử lý", "Từ chối", "Đã hủy", "Chờ thanh toán"}
+# Đơn đã kết thúc, cán bộ xem lại qua scope=closed. "Chờ thanh toán" chưa tới tay cán bộ nên không thuộc nhóm nào
+INBOX_CLOSED_STATUSES = {"Đã xử lý", "Từ chối", "Đã hủy"}
+INBOX_SCOPES = ("open", "closed", "all")
 
 
 def _active_department_id(req: Request):
@@ -47,6 +50,8 @@ def _parse_iso_datetime(value: str):
 def staff_inbox_view(request):
     """
     API 1.5: GET /api/staff/inbox — TP / CV xem hộp thư đơn cần xử lý
+    scope=open (mặc định): đơn đang xử lý; scope=closed: đơn đã kết thúc; scope=all: cả hai.
+    summary luôn tính trên đơn đang xử lý.
     """
     user = _get_authenticated_user(request)
     if not user:
@@ -60,19 +65,23 @@ def staff_inbox_view(request):
         return _json_error("INVALID_PARAM", "page và limit phải là số nguyên dương.", status=400)
     limit = min(limit, MAX_LIMIT)
 
+    scope = request.GET.get("scope", "open").strip() or "open"
+    if scope not in INBOX_SCOPES:
+        return _json_error("INVALID_PARAM", "scope phải là open, closed hoặc all.", status=400)
+
     dept_filter = Q(transferred_to_dept_id=user.department_id) | Q(
         transferred_to_dept__isnull=True,
         procedure_type__department_id=user.department_id,
     )
 
-    base_qs = (
+    scoped_qs = (
         Request.objects.filter(dept_filter, is_draft=False)
-        .exclude(status__in=INBOX_TERMINAL_STATUSES)
         .select_related("procedure_type", "user", "user__student_registry", "assigned_staff")
     )
-
     if user.role == "staff":
-        base_qs = base_qs.filter(assigned_staff=user)
+        scoped_qs = scoped_qs.filter(assigned_staff=user)
+
+    base_qs = scoped_qs.exclude(status__in=INBOX_TERMINAL_STATUSES)
 
     now = timezone.now()
 
@@ -87,7 +96,12 @@ def staff_inbox_view(request):
         elif is_due_today:
             due_today_count += 1
 
-    filtered_qs = base_qs
+    if scope == "closed":
+        filtered_qs = scoped_qs.filter(status__in=INBOX_CLOSED_STATUSES)
+    elif scope == "all":
+        filtered_qs = scoped_qs.exclude(status="Chờ thanh toán")
+    else:
+        filtered_qs = base_qs
     internal_status_param = request.GET.get("internal_status", "").strip()
     if internal_status_param:
         filtered_qs = filtered_qs.filter(internal_status=internal_status_param)
@@ -107,14 +121,18 @@ def staff_inbox_view(request):
     data = []
     for r in page_items:
         reg = r.user.student_registry
-        rem_hours, is_overdue, _ = compute_sla_metrics(r, now=now)
+        is_closed = r.status in INBOX_CLOSED_STATUSES
+        # Đơn đã kết thúc không còn tính SLA
+        rem_hours, is_overdue, _ = (None, False, False) if is_closed else compute_sla_metrics(r, now=now)
         data.append({
             "request_id": r.request_id,
             "request_code": r.request_code,
             "type_name": r.procedure_type.name,
             "student_name": reg.full_name if reg else r.user.full_name,
             "mssv": reg.mssv if reg else (r.form_data or {}).get("mssv"),
+            "status": r.status,
             "internal_status": r.internal_status,
+            "is_closed": is_closed,
             "assigned_staff": {
                 "user_id": r.assigned_staff.user_id,
                 "full_name": r.assigned_staff.full_name,

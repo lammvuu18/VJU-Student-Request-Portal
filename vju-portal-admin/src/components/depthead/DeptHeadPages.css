@@ -808,6 +808,16 @@
   color: #168039;
 }
 
+.depthead-badge-status--red {
+  background: #FCE8E8;
+  color: #AA2327;
+}
+
+.depthead-badge-status--gray {
+  background: #F0F0F0;
+  color: #4B5563;
+}
+
 .depthead-assignee-select-btn {
   flex: 1 1 0;
   padding: 4px 8px;

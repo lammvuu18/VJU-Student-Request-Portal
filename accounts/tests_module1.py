@@ -413,6 +413,39 @@ class Module1TestCase(TestCase):
         self.assertLess(overdue_inbox["data"][0]["sla_remaining_hours"], 0)
         self.assertEqual(overdue_inbox["summary"]["overdue"], 1)
 
+    def test_1_5_inbox_scope_closed_and_all(self):
+        req_id = self.submit_request(user=self.sv_a).json()["data"]["request_id"]
+        self.assertEqual(self.client.put(f"/api/requests/{req_id}/cancel", **self.auth(self.sv_a)).status_code, 200)
+
+        # Mặc định (open): đơn đã hủy không còn trong hộp thư
+        res_open = self.client.get("/api/staff/inbox", **self.auth(self.tp_pctsv)).json()
+        self.assertEqual(res_open["data"], [])
+        self.assertEqual(res_open["summary"]["total_pending"], 0)
+
+        # closed: thấy đơn đã hủy, không tính SLA; summary vẫn chỉ đếm đơn đang mở
+        res_closed = self.client.get("/api/staff/inbox?scope=closed", **self.auth(self.tp_pctsv)).json()
+        self.assertEqual([x["request_id"] for x in res_closed["data"]], [req_id])
+        item = res_closed["data"][0]
+        self.assertEqual(item["status"], "Đã hủy")
+        self.assertTrue(item["is_closed"])
+        self.assertFalse(item["is_overdue"])
+        self.assertIsNone(item["sla_remaining_hours"])
+        self.assertEqual(res_closed["summary"]["total_pending"], 0)
+
+        # all: gồm cả đơn đang mở và đã kết thúc
+        open_id = self.submit_request(user=self.sv_b).json()["data"]["request_id"]
+        res_all = self.client.get("/api/staff/inbox?scope=all", **self.auth(self.tp_pctsv)).json()
+        self.assertEqual(sorted(x["request_id"] for x in res_all["data"]), sorted([req_id, open_id]))
+
+        # CV chưa được phân công thì không thấy đơn đã kết thúc của phòng
+        res_cv = self.client.get("/api/staff/inbox?scope=closed", **self.auth(self.cv1_pctsv)).json()
+        self.assertEqual(res_cv["data"], [])
+
+        # scope sai -> 400
+        bad = self.client.get("/api/staff/inbox?scope=foo", **self.auth(self.tp_pctsv))
+        self.assertEqual(bad.status_code, 400)
+        self.assertEqual(bad.json()["error"]["code"], "INVALID_PARAM")
+
     # ==================== API 1.8, 1.16, 1.17, 1.18, 1.19: Approve, Download, Feedback, Verify, Revoke ====================
 
     def test_1_8_and_1_13_to_1_19_approve_download_feedback_verify_and_revoke(self):
