@@ -20,12 +20,6 @@ export const CLOSED_STATUS = {
 export const INBOX_STATUS_LABELS = Object.values(INBOX_STATUS).map(s => s.label);
 export const CLOSED_STATUS_LABELS = Object.values(CLOSED_STATUS).map(s => s.label);
 
-// Tab trên màn danh sách: đơn đang xử lý / đơn đã kết thúc
-export const INBOX_SCOPE_TABS = [
-  { key: 'open', label: 'Đang xử lý' },
-  { key: 'closed', label: 'Đã kết thúc' },
-];
-
 export const mapInboxItem = (item) => {
   const meta = item.is_closed
     ? (CLOSED_STATUS[item.status] || { label: item.status, theme: 'gray' })

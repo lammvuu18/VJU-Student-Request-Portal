@@ -1,22 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import SegmentedTabs from '../common/SegmentedTabs';
-import { useInbox, INBOX_STATUS_LABELS, CLOSED_STATUS_LABELS, INBOX_SCOPE_TABS } from './useInbox';
+import { useInbox, INBOX_STATUS_LABELS, CLOSED_STATUS_LABELS } from './useInbox';
 import './StaffPages.css';
 
-const STATUS_OPTIONS_BY_SCOPE = {
-  open: ['Tất cả', ...INBOX_STATUS_LABELS, 'Quá hạn'],
-  closed: ['Tất cả', ...CLOSED_STATUS_LABELS],
-};
+// Một bảng chung cho đơn đang xử lý và đã kết thúc, lọc qua trạng thái
+const statusOptions = ['Tất cả', ...INBOX_STATUS_LABELS, 'Quá hạn', ...CLOSED_STATUS_LABELS];
 const timeRangeOptions = ['Tất cả', '7 ngày qua', '30 ngày qua'];
 const TIME_RANGE_DAYS = { '7 ngày qua': 7, '30 ngày qua': 30 };
 
 
 function StaffRequestList() {
   const navigate = useNavigate();
-  const [scope, setScope] = useState('open');
-  const { items: requests, loading, error } = useInbox(scope);
-  const statusOptions = STATUS_OPTIONS_BY_SCOPE[scope];
+  const { items: requests, loading, error } = useInbox('all');
   const procedureOptions = ['Tất cả', ...Array.from(new Set(requests.map(r => r.procedure)))];
   const [filterProcedure, setFilterProcedure] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -101,16 +96,7 @@ function StaffRequestList() {
       <div className="staff-table-card">
         {/* Card Title */}
         <h2 className="staff-card-title">Danh sách công việc</h2>
-        <div style={{ height: 12 }} />
-        <SegmentedTabs
-          tabs={INBOX_SCOPE_TABS}
-          activeTab={scope}
-          onTabChange={(key) => {
-            setScope(key);
-            setFilterStatus('');
-            setCurrentPage(1);
-          }}
-        />
+
         <div style={{ height: 16 }} />
 
         {/* Filter Bar */}

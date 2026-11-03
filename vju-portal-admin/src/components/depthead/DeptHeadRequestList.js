@@ -1,8 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
-import SegmentedTabs from '../common/SegmentedTabs';
-import { useInbox, INBOX_STATUS_LABELS, CLOSED_STATUS_LABELS, INBOX_SCOPE_TABS } from '../staff/useInbox';
+import { useInbox, INBOX_STATUS_LABELS, CLOSED_STATUS_LABELS } from '../staff/useInbox';
 import './DeptHeadPages.css';
 
 const WAITING_ASSIGN = 'Chờ phân công';
@@ -20,11 +19,9 @@ const slaText = (hours) => {
 function DeptHeadRequestList() {
   const navigate = useNavigate();
 
-  const [scope, setScope] = useState('open');
-  const { items, loading, error, reload } = useInbox(scope);
-  const statusFilterOptions = scope === 'closed'
-    ? ['', ...CLOSED_STATUS_LABELS]
-    : ['', ...INBOX_STATUS_LABELS, 'Quá hạn'];
+  // Một bảng chung cho đơn đang xử lý và đã kết thúc, lọc qua trạng thái
+  const { items, loading, error, reload } = useInbox('all');
+  const statusFilterOptions = ['', ...INBOX_STATUS_LABELS, 'Quá hạn', ...CLOSED_STATUS_LABELS];
   const [members, setMembers] = useState([]);
   const requests = items.map(r => ({
     ...r,
@@ -229,17 +226,7 @@ function DeptHeadRequestList() {
       {/* Section: Danh sách yêu cầu Card */}
       <div className="depthead-reqlist-card">
         <h2 className="depthead-section-heading">Danh sách yêu cầu</h2>
-        <div style={{ alignSelf: 'stretch', height: 12 }} />
-        <SegmentedTabs
-          tabs={INBOX_SCOPE_TABS}
-          activeTab={scope}
-          onTabChange={(key) => {
-            setScope(key);
-            setFilterStatus('');
-            setSelectedSpecialist('');
-            setCurrentPage(1);
-          }}
-        />
+
         <div style={{ alignSelf: 'stretch', height: 14 }} />
 
         {/* Filter Controls Bar */}
