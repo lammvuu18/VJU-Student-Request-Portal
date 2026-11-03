@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Modal from './Modal';
 import Button from './Button';
 import { users } from '../../data/mockData';
-import { loginWithRole, logout, getCurrentUser, getSavedRole, ROLE_ACCOUNTS, normalizeRole } from '../../services/api';
+import api, { loginWithRole, logout, getCurrentUser, getSavedRole, ROLE_ACCOUNTS, normalizeRole } from '../../services/api';
 import './Header.css';
 
 const initialNotifications = [
@@ -49,6 +49,40 @@ const initialNotifications = [
   },
 ];
 
+const mapBackendNotification = (item) => {
+  const title = item.title || '';
+  const msg = item.message || '';
+  const combined = (title + ' ' + msg).toLowerCase();
+
+  let type = 'processing';
+  if (combined.includes('thanh toán') || combined.includes('học phí') || combined.includes('tiền')) {
+    type = 'payment';
+  } else if (combined.includes('bổ sung')) {
+    type = 'supplement';
+  } else if (combined.includes('hoàn thành') || combined.includes('đã duyệt') || combined.includes('thành công')) {
+    type = 'completed';
+  } else if (combined.includes('từ chối')) {
+    type = 'rejected';
+  }
+
+  let timeDisplay = 'Vừa xong';
+  if (item.sent_at) {
+    try {
+      const d = new Date(item.sent_at);
+      timeDisplay = d.toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
+    } catch (e) {}
+  }
+
+  return {
+    id: item.notification_id,
+    title: item.title,
+    time: timeDisplay,
+    unread: !item.is_read,
+    type,
+    target_url: item.request_code ? `/student/request/${item.request_code}` : (item.request_id ? `/student/request/${item.request_id}` : null),
+  };
+};
+
 function Header({ userName = 'User' }) {
   const navigate = useNavigate();
   const [showNotif, setShowNotif] = useState(false);
@@ -63,6 +97,23 @@ function Header({ userName = 'User' }) {
   const [currentPass, setCurrentPass] = useState('');
   const [newPass, setNewPass] = useState('');
   const [confirmPass, setConfirmPass] = useState('');
+
+  // Đồng bộ danh sách thông báo từ Backend API
+  const fetchNotifications = async () => {
+    try {
+      const res = await api.notifications.getAll();
+      if (res && res.data && Array.isArray(res.data) && res.data.length > 0) {
+        const mapped = res.data.map(mapBackendNotification);
+        setNotifications(mapped);
+      }
+    } catch (err) {
+      console.warn('Backend notification not available, using fallback:', err.message);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
 
   // Determine active profile info
   const currentRole = normalizeRole(getSavedRole());
@@ -98,14 +149,20 @@ function Header({ userName = 'User' }) {
     setTimeout(() => setToastMessage(''), 3000);
   };
 
-  const handleMarkAllRead = () => {
+  const handleMarkAllRead = async () => {
     setNotifications(prev => prev.map(n => ({ ...n, unread: false })));
+    try {
+      await api.notifications.markAllAsRead();
+    } catch (e) {}
     showToast('Đã đánh dấu tất cả thông báo là đã đọc');
   };
 
-  const handleNotificationClick = (id) => {
+  const handleNotificationClick = async (id) => {
     const item = notifications.find(n => n.id === id);
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, unread: false } : n));
+    try {
+      await api.notifications.markAsRead(id);
+    } catch (e) {}
     if (item && item.target_url) {
       setShowNotif(false);
       navigate(item.target_url);

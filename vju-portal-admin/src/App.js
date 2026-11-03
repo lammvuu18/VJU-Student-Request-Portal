@@ -13,6 +13,8 @@ import { getAuthToken, getSavedRole, ROLE_ACCOUNTS, normalizeRole } from './serv
 
 // Auth
 import LoginPage from './components/auth/LoginPage';
+import GoogleCallback from './components/auth/GoogleCallback';
+import GoogleChooserPage from './components/auth/GoogleChooserPage';
 
 // Student pages
 import StudentDashboard from './components/student/StudentDashboard';
@@ -96,8 +98,10 @@ function App() {
           }
         />
 
-        {/* Login */}
+        {/* Login & Google OAuth routes */}
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/auth/callback" element={<GoogleCallback />} />
+        <Route path="/auth/google-select" element={<GoogleChooserPage />} />
 
         {/* Student Routes */}
         <Route
