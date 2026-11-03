@@ -448,9 +448,11 @@ const appendAttachments = (formData, attachments = []) => {
 };
 
 // Bỏ tham số rỗng hoặc 'all' trước khi đưa lên query string
+// 'all' ở bộ lọc nghĩa là không lọc nên bỏ đi; riêng scope=all là giá trị thật backend cần nhận
 const toQueryString = (params = {}) => {
   const clean = Object.fromEntries(
-    Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '' && v !== 'all')
+    Object.entries(params).filter(([k, v]) =>
+      v !== undefined && v !== null && v !== '' && (v !== 'all' || k === 'scope'))
   );
   const qs = new URLSearchParams(clean).toString();
   return qs ? `?${qs}` : '';
