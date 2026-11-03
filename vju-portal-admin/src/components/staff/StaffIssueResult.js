@@ -12,6 +12,92 @@ const LOCATION_OPTIONS = [
   'Phòng Công tác Sinh viên (P.205 Nhà B)',
 ];
 
+// Ngày theo giờ máy (không dùng toISOString vì lệch ngày trước 7h sáng giờ Việt Nam)
+const toIsoDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const isoToVn = (iso) => (iso ? iso.split('-').reverse().join('/') : '');
+
+// "dd/mm/yyyy" hợp lệ thì trả "yyyy-mm-dd", ngược lại trả ''
+const vnToIso = (text) => {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(text);
+  if (!m) return '';
+  const [, dd, mm, yyyy] = m;
+  const d = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+  if (d.getDate() !== Number(dd) || d.getMonth() !== Number(mm) - 1) return '';
+  return `${yyyy}-${mm}-${dd}`;
+};
+
+// Tự chèn dấu "/" khi gõ: 10112026 -> 10/11/2026
+const maskVnDate = (raw) => {
+  const digits = raw.replace(/\D/g, '').slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+};
+
+/**
+ * Ô ngày hiển thị dd/mm/yyyy (input type="date" của trình duyệt hiển thị theo ngôn ngữ máy, không ép được định dạng).
+ * Gõ tay hoặc bấm biểu tượng lịch để mở bộ chọn ngày của trình duyệt. value/onChange dùng dạng yyyy-mm-dd.
+ */
+function VnDateInput({ value, min, onChange, style }) {
+  const [text, setText] = useState(isoToVn(value));
+  const pickerRef = useRef(null);
+
+  useEffect(() => { setText(isoToVn(value)); }, [value]);
+
+  const handleText = (e) => {
+    const masked = maskVnDate(e.target.value);
+    setText(masked);
+    onChange(vnToIso(masked));
+  };
+
+  const openPicker = () => {
+    const el = pickerRef.current;
+    if (!el) return;
+    if (typeof el.showPicker === 'function') el.showPicker();
+    else el.focus();
+  };
+
+  return (
+    <div style={{ position: 'relative', marginTop: 6 }}>
+      <input
+        type="text"
+        inputMode="numeric"
+        placeholder="dd/mm/yyyy"
+        style={{ ...style, paddingRight: 40 }}
+        value={text}
+        onChange={handleText}
+      />
+      <button
+        type="button"
+        onClick={openPicker}
+        aria-label="Chọn ngày"
+        style={{
+          position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
+          border: 'none', background: 'none', cursor: 'pointer', padding: 6, display: 'flex',
+        }}
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2" />
+          <line x1="16" y1="2" x2="16" y2="6" />
+          <line x1="8" y1="2" x2="8" y2="6" />
+          <line x1="3" y1="10" x2="21" y2="10" />
+        </svg>
+      </button>
+      {/* Bộ chọn ngày gốc, ẩn đi và chỉ mở qua nút lịch */}
+      <input
+        ref={pickerRef}
+        type="date"
+        min={min}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        tabIndex={-1}
+        aria-hidden="true"
+        style={{ position: 'absolute', right: 0, bottom: 0, width: 1, height: 1, opacity: 0, pointerEvents: 'none', border: 0 }}
+      />
+    </div>
+  );
+}
+
 const inputStyle = {
   width: '100%', padding: '10px 12px', border: '1px solid #E2E5EA', borderRadius: 8,
   fontSize: 14, fontFamily: 'Inter, sans-serif', boxSizing: 'border-box',
@@ -75,7 +161,11 @@ function StaffIssueResult({ basePath = '/staff' }) {
   const handleAssignPickup = async (e) => {
     e.preventDefault();
     if (!pickupDay) {
-      showToast('Vui lòng chọn ngày nhận.', true);
+      showToast('Vui lòng nhập ngày nhận hợp lệ (dd/mm/yyyy).', true);
+      return;
+    }
+    if (pickupDay < toIsoDate(new Date())) {
+      showToast('Ngày nhận không được trước hôm nay.', true);
       return;
     }
     if (timeTo <= timeFrom) {
@@ -130,7 +220,7 @@ function StaffIssueResult({ basePath = '/staff' }) {
 
   const student = request.student || {};
   const isApproved = request.internal_status === APPROVED;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toIsoDate(new Date());
 
   return (
     <div className="staff-detail-container">
@@ -186,7 +276,11 @@ function StaffIssueResult({ basePath = '/staff' }) {
             ))}
             <div className="staff-detail-row">
               <div className="staff-detail-label">Trạng thái</div>
-              <span style={statusStyle(request.internal_status)}>{request.internal_status}</span>
+              <div className="staff-detail-value" style={{ minWidth: 0 }}>
+                <span style={{ ...statusStyle(request.internal_status), whiteSpace: 'normal', lineHeight: 1.4 }}>
+                  {request.internal_status}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -214,10 +308,10 @@ function StaffIssueResult({ basePath = '/staff' }) {
                     {LOCATION_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                   </select>
                 </label>
-                <label style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>
                   Ngày nhận
-                  <input type="date" min={today} style={{ ...inputStyle, marginTop: 6 }} value={pickupDay} onChange={(e) => setPickupDay(e.target.value)} required />
-                </label>
+                  <VnDateInput value={pickupDay} min={today} onChange={setPickupDay} style={inputStyle} />
+                </div>
                 <div style={{ display: 'flex', gap: 12 }}>
                   <label style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#374151' }}>
                     Từ
@@ -232,7 +326,7 @@ function StaffIssueResult({ basePath = '/staff' }) {
                   Người liên hệ
                   <input type="text" style={{ ...inputStyle, marginTop: 6 }} value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} />
                 </label>
-                <button type="submit" className="staff-btn-action-outline" disabled={busy}>
+                <button type="submit" className="staff-btn-action-primary" disabled={busy}>
                   {result.pickup_date ? 'Cập nhật lịch hẹn' : 'Gửi lịch hẹn cho sinh viên'}
                 </button>
               </form>
