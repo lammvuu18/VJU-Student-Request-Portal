@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api, { fetchFileUrl, getCurrentUser } from '../../services/api';
-import { formatDateTime, statusStyle } from '../../utils/format';
+import { formatDateTime, STATUS_COLORS } from '../../utils/format';
 import './StaffPages.css';
 
 const APPROVED = 'Đã duyệt — Đang chuẩn bị kết quả';
@@ -277,7 +277,8 @@ function StaffIssueResult({ basePath = '/staff' }) {
             <div className="staff-detail-row">
               <div className="staff-detail-label">Trạng thái</div>
               <div className="staff-detail-value" style={{ minWidth: 0 }}>
-                <span style={{ ...statusStyle(request.internal_status), whiteSpace: 'normal', lineHeight: 1.4 }}>
+                {/* Chỉ tô màu chữ theo trạng thái, không dùng nền badge */}
+                <span style={{ color: (STATUS_COLORS[request.internal_status] || {}).color || '#1F2937', fontWeight: 600 }}>
                   {request.internal_status}
                 </span>
               </div>
