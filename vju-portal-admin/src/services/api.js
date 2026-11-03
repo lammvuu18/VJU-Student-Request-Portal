@@ -10,13 +10,20 @@ import * as mock from '../data/mockData';
 export const BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api';
 export const USE_MOCK = process.env.REACT_APP_USE_MOCK === 'true';
 
+// Phiên đăng nhập lưu theo từng tab (sessionStorage). localStorage dùng chung mọi tab nên
+// đăng nhập vai trò khác ở tab mới sẽ ghi đè token của tab đang mở.
+const authStorage = window.sessionStorage;
+
+// Xóa phiên cũ còn sót trong localStorage từ bản trước
+['vju_token', 'vju_role', 'vju_user'].forEach((key) => window.localStorage.removeItem(key));
+
 // Helper to store & read JWT
-export const getAuthToken = () => localStorage.getItem('vju_token') || '';
+export const getAuthToken = () => authStorage.getItem('vju_token') || '';
 export const setAuthToken = (token) => {
   if (token) {
-    localStorage.setItem('vju_token', token);
+    authStorage.setItem('vju_token', token);
   } else {
-    localStorage.removeItem('vju_token');
+    authStorage.removeItem('vju_token');
   }
 };
 
@@ -26,8 +33,8 @@ export const normalizeRole = (r) => {
   return r;
 };
 
-export const getSavedRole = () => normalizeRole(localStorage.getItem('vju_role'));
-export const setSavedRole = (role) => localStorage.setItem('vju_role', normalizeRole(role));
+export const getSavedRole = () => normalizeRole(authStorage.getItem('vju_role'));
+export const setSavedRole = (role) => authStorage.setItem('vju_role', normalizeRole(role));
 
 // 5 Dedicated Accounts corresponding to 5 Roles
 export const ROLE_ACCOUNTS = {
@@ -134,18 +141,18 @@ export const loginWithRole = (roleKey) => {
   const token = `mock-jwt-${account.role}-${Date.now()}`;
   setAuthToken(token);
   setSavedRole(account.role);
-  localStorage.setItem('vju_user', JSON.stringify(account.userObj));
+  authStorage.setItem('vju_user', JSON.stringify(account.userObj));
   return account;
 };
 
 export const logout = () => {
-  localStorage.removeItem('vju_token');
-  localStorage.removeItem('vju_role');
-  localStorage.removeItem('vju_user');
+  authStorage.removeItem('vju_token');
+  authStorage.removeItem('vju_role');
+  authStorage.removeItem('vju_user');
 };
 
 export const getCurrentUser = () => {
-  const raw = localStorage.getItem('vju_user');
+  const raw = authStorage.getItem('vju_user');
   if (raw) {
     try {
       return JSON.parse(raw);
@@ -299,7 +306,7 @@ export const authApi = {
     if (res && res.data) {
       if (res.data.access_token) setAuthToken(res.data.access_token);
       if (res.data.user) {
-        localStorage.setItem('vju_user', JSON.stringify(res.data.user));
+        authStorage.setItem('vju_user', JSON.stringify(res.data.user));
         if (res.data.user.role) setSavedRole(res.data.user.role);
       }
     }
@@ -341,7 +348,7 @@ export const authApi = {
     if (res && res.data) {
       if (res.data.access_token) setAuthToken(res.data.access_token);
       if (res.data.user) {
-        localStorage.setItem('vju_user', JSON.stringify(res.data.user));
+        authStorage.setItem('vju_user', JSON.stringify(res.data.user));
         if (res.data.user.role) setSavedRole(res.data.user.role);
       }
     }
@@ -358,7 +365,7 @@ export const authApi = {
       };
     });
     if (res && res.data) {
-      localStorage.setItem('vju_user', JSON.stringify(res.data));
+      authStorage.setItem('vju_user', JSON.stringify(res.data));
     }
     return res;
   },
