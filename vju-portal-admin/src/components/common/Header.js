@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Modal from './Modal';
-import Button from './Button';
 import { users } from '../../data/mockData';
-import api, { loginWithRole, getCurrentUser, getSavedRole, ROLE_ACCOUNTS, normalizeRole, USE_MOCK } from '../../services/api';
+import api, { logout, getCurrentUser, getSavedRole, normalizeRole, USE_MOCK } from '../../services/api';
 import './Header.css';
 
 const initialNotifications = [
@@ -97,14 +95,7 @@ function Header({ userName = 'User' }) {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [notifications, setNotifications] = useState(USE_MOCK ? initialNotifications : []);
   const [notifFilter, setNotifFilter] = useState('all');
-  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
-
-  // Password modal states
-  const [currentPass, setCurrentPass] = useState('');
-  const [newPass, setNewPass] = useState('');
-  const [confirmPass, setConfirmPass] = useState('');
 
   // Đồng bộ danh sách thông báo từ Backend API
   const fetchNotifications = async () => {
@@ -125,32 +116,16 @@ function Header({ userName = 'User' }) {
   // Determine active profile info
   const currentRole = normalizeRole(getSavedRole());
   const activeUser = getCurrentUser() || users[currentRole] || users.admin;
-  let profile = {
-    name: activeUser.full_name || activeUser.name || userName,
-    email: activeUser.email || `${currentRole}@vju.ac.vn`,
-    role: (ROLE_ACCOUNTS[currentRole] && ROLE_ACCOUNTS[currentRole].roleName) || 'Người dùng',
-    department: activeUser.department_name || activeUser.department || '',
-    phone: activeUser.phone || '',
-  };
+  const profileName = activeUser.full_name || activeUser.name || userName;
 
-  const handleSwitchRole = (roleKey) => {
+  const handleLogout = () => {
     setShowUserMenu(false);
-    const acc = loginWithRole(roleKey);
-    navigate(acc.homePath);
+    // Gửi yêu cầu thu hồi token (đã đọc token trước khi xóa) nhưng không chờ,
+    // để người dùng về ngay màn hình đăng nhập kể cả khi backend đang khởi động
+    api.auth.logout().catch(() => {});
+    logout();
+    navigate('/login', { replace: true });
   };
-
-  const handleLogout = async () => {
-    setShowUserMenu(false);
-    // authApi.logout thu hồi token phía backend rồi xóa phiên ở trình duyệt
-    try {
-      await api.auth.logout();
-    } catch (e) {}
-    navigate('/login');
-  };
-
-  const initials = profile.name
-    ? profile.name.split(' ').map(w => w[0]).filter(Boolean).slice(-2).join('').toUpperCase()
-    : 'U';
 
   const unreadCount = notifications.filter(n => n.unread).length;
 
@@ -234,19 +209,6 @@ function Header({ userName = 'User' }) {
     return null;
   };
 
-  const handlePasswordSubmit = (e) => {
-    e.preventDefault();
-    if (newPass !== confirmPass) {
-      alert('Mật khẩu mới và xác nhận mật khẩu không khớp!');
-      return;
-    }
-    setIsPasswordModalOpen(false);
-    setCurrentPass('');
-    setNewPass('');
-    setConfirmPass('');
-    showToast('Đổi mật khẩu thành công!');
-  };
-
   return (
     <>
       <header className="app-header">
@@ -295,9 +257,9 @@ function Header({ userName = 'User' }) {
                 <circle cx="12" cy="10" r="3" />
               </svg>
             </div>
-            <span className="header-user-name">{profile.name}</span>
-            <svg width="10" height="6" viewBox="0 0 10 6" fill="none">
-              <path d="M1 1L5 5L9 1" stroke="#202630" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <span className="header-user-name">{profileName}</span>
+            <svg className="header-user-chevron" width="12" height="7" viewBox="0 0 10 6" fill="none">
+              <path d="M1 1L5 5L9 1" stroke="#6B7280" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
 
@@ -359,107 +321,21 @@ function Header({ userName = 'User' }) {
             </div>
           )}
 
-          {/* User Menu Dropdown */}
+          {/* User Menu Dropdown: chỉ còn Đăng xuất */}
           {showUserMenu && (
             <div className="dropdown-menu-wrapper user-dropdown">
-              <div className="user-profile-summary">
-                <div className="user-summary-avatar">{initials}</div>
-                <div>
-                  <div className="user-summary-name">{profile.name}</div>
-                  <div className="user-summary-role">{profile.role || 'Người dùng'}</div>
-                </div>
-              </div>
-
-              <div className="user-menu-list">
-                <button
-                  type="button"
-                  className="user-menu-item"
-                  onClick={() => {
-                    setShowUserMenu(false);
-                    setIsProfileModalOpen(true);
-                  }}
-                >
-                  <span className="user-menu-icon">👤</span>
-                  <span>Xem hồ sơ cá nhân</span>
-                </button>
-
-                <button
-                  type="button"
-                  className="user-menu-item"
-                  onClick={() => {
-                    setShowUserMenu(false);
-                    setIsPasswordModalOpen(true);
-                  }}
-                >
-                  <span className="user-menu-icon">🔒</span>
-                  <span>Đổi mật khẩu</span>
-                </button>
-
-                {USE_MOCK && (<>
-                <div className="user-menu-divider" />
-
-                <div style={{ padding: '6px 16px 4px', fontSize: 11, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase' }}>
-                  Chuyển vai trò (Demo)
-                </div>
-
-                <button
-                  type="button"
-                  className="user-menu-item"
-                  onClick={() => handleSwitchRole('admin')}
-                >
-                  <span className="user-menu-icon">⚙️</span>
-                  <span>Quản trị (Admin)</span>
-                  <span className="user-role-badge">Admin</span>
-                </button>
-
-                <button
-                  type="button"
-                  className="user-menu-item"
-                  onClick={() => handleSwitchRole('student')}
-                >
-                  <span className="user-menu-icon">🧑‍🎓</span>
-                  <span>Sinh viên</span>
-                </button>
-
-                <button
-                  type="button"
-                  className="user-menu-item"
-                  onClick={() => handleSwitchRole('deptHead')}
-                >
-                  <span className="user-menu-icon">👔</span>
-                  <span>Trưởng phòng</span>
-                </button>
-
-                <button
-                  type="button"
-                  className="user-menu-item"
-                  onClick={() => handleSwitchRole('staff')}
-                >
-                  <span className="user-menu-icon">💼</span>
-                  <span>Chuyên viên</span>
-                </button>
-
-                <button
-                  type="button"
-                  className="user-menu-item"
-                  onClick={() => handleSwitchRole('principal')}
-                >
-                  <span className="user-menu-icon">🎓</span>
-                  <span>Hiệu trưởng</span>
-                </button>
-                </>)}
-
-                <div className="user-menu-divider" />
-
-                <button
-                  type="button"
-                  className="user-menu-item danger"
-                  onClick={handleLogout}
-                >
-                  <span className="user-menu-icon">🚪</span>
-                  <span>Đăng xuất</span>
-                </button>
-              </div>
+              <button
+                type="button"
+                className="user-menu-logout"
+                onClick={handleLogout}
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3" />
+                  <line x1="10" y1="12" x2="20" y2="12" />
+                  <polyline points="16 8 20 12 16 16" />
+                </svg>
+                <span>Đăng xuất</span>
+              </button>
             </div>
           )}
         </div>
@@ -500,143 +376,6 @@ function Header({ userName = 'User' }) {
         </div>
       )}
 
-      {/* Profile Detail Modal */}
-      <Modal
-        isOpen={isProfileModalOpen}
-        onClose={() => setIsProfileModalOpen(false)}
-        title="Thông tin hồ sơ cá nhân"
-        subtitle={`Chi tiết tài khoản của ${profile.name}`}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20, padding: 16, background: '#F9FAFB', borderRadius: 10 }}>
-          <div style={{
-            width: 56,
-            height: 56,
-            borderRadius: '50%',
-            background: '#EFF6FF',
-            color: '#2563EB',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 22,
-            fontWeight: 700,
-            border: '2px solid #BFDBFE'
-          }}>
-            {initials}
-          </div>
-          <div>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: '#111827', margin: 0 }}>{profile.name}</h3>
-            <p style={{ fontSize: 13, color: '#6B7280', margin: '4px 0 0 0' }}>{profile.role || 'Cán bộ VJU'}</p>
-          </div>
-        </div>
-
-        <table className="info-table" style={{ width: '100%', marginBottom: 20 }}>
-          <tbody>
-            <tr>
-              <th style={{ width: '35%' }}>Họ và tên</th>
-              <td><strong>{profile.name}</strong></td>
-            </tr>
-            <tr>
-              <th>Email</th>
-              <td>{profile.email || 'admin@vju.ac.vn'}</td>
-            </tr>
-            {profile.mssv && (
-              <tr>
-                <th>Mã số sinh viên</th>
-                <td>{profile.mssv}</td>
-              </tr>
-            )}
-            {profile.lop && (
-              <tr>
-                <th>Lớp hành chính</th>
-                <td>{profile.lop}</td>
-              </tr>
-            )}
-            {profile.nganh && (
-              <tr>
-                <th>Ngành đào tạo</th>
-                <td>{profile.nganh}</td>
-              </tr>
-            )}
-            {profile.department && (
-              <tr>
-                <th>Phòng ban</th>
-                <td>{profile.department}</td>
-              </tr>
-            )}
-            <tr>
-              <th>Số điện thoại</th>
-              <td>{profile.phone || '024 7306 6001'}</td>
-            </tr>
-            <tr>
-              <th>Trạng thái tài khoản</th>
-              <td>
-                <span style={{ color: '#059669', fontWeight: 600, background: '#ECFDF5', padding: '2px 8px', borderRadius: 4, fontSize: 12 }}>
-                  ● Đang hoạt động
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-
-        <div className="modal-footer">
-          <Button variant="secondary" onClick={() => setIsProfileModalOpen(false)}>Đóng</Button>
-          <Button variant="primary" onClick={() => {
-            setIsProfileModalOpen(false);
-            showToast('Đã lưu thông tin hồ sơ');
-          }}>
-            Chỉnh sửa thông tin
-          </Button>
-        </div>
-      </Modal>
-
-      {/* Change Password Modal */}
-      <Modal
-        isOpen={isPasswordModalOpen}
-        onClose={() => setIsPasswordModalOpen(false)}
-        title="Đổi mật khẩu tài khoản"
-        subtitle="Vui lòng nhập mật khẩu hiện tại và mật khẩu mới để bảo mật"
-      >
-        <form onSubmit={handlePasswordSubmit}>
-          <div className="modal-field">
-            <label>Mật khẩu hiện tại <span style={{ color: '#DC2626' }}>*</span></label>
-            <input
-              type="password"
-              placeholder="Nhập mật khẩu hiện tại..."
-              value={currentPass}
-              onChange={(e) => setCurrentPass(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="modal-field">
-            <label>Mật khẩu mới <span style={{ color: '#DC2626' }}>*</span></label>
-            <input
-              type="password"
-              placeholder="Tối thiểu 6 ký tự..."
-              value={newPass}
-              onChange={(e) => setNewPass(e.target.value)}
-              required
-              minLength={6}
-            />
-          </div>
-
-          <div className="modal-field">
-            <label>Xác nhận mật khẩu mới <span style={{ color: '#DC2626' }}>*</span></label>
-            <input
-              type="password"
-              placeholder="Nhập lại mật khẩu mới..."
-              value={confirmPass}
-              onChange={(e) => setConfirmPass(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="modal-footer" style={{ marginTop: 24 }}>
-            <Button variant="secondary" type="button" onClick={() => setIsPasswordModalOpen(false)}>Hủy</Button>
-            <Button variant="primary" type="submit">Cập nhật mật khẩu</Button>
-          </div>
-        </form>
-      </Modal>
     </>
   );
 }

@@ -87,17 +87,35 @@
 .header-user {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
+  height: 72px;
   cursor: pointer;
-  padding: 6px 10px;
-  border-radius: 8px;
+  padding: 0 24px;
+  border-radius: 2px;
   transition: background var(--transition);
   user-select: none;
 }
 
-.header-user:hover,
+.header-user:hover {
+  background: #F3F3F3;
+}
+
 .header-user.active {
-  background: #F5F6F8;
+  background: #EBEBEB;
+}
+
+.header-user .header-avatar-circle svg {
+  width: 30px;
+  height: 30px;
+}
+
+.header-user-chevron {
+  margin-left: 6px;
+  transition: transform 0.2s ease;
+}
+
+.header-user.active .header-user-chevron {
+  transform: rotate(180deg);
 }
 
 .header-avatar {
@@ -118,9 +136,9 @@
 }
 
 .header-user-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: #202630;
+  font-size: 16px;
+  font-weight: 500;
+  color: #1F2937;
   font-family: 'Inter', sans-serif;
 }
 
@@ -298,8 +316,39 @@
 }
 
 /* ===== User Profile Dropdown ===== */
+/* Menu tài khoản: thẻ trắng bo góc, chỉ có mục Đăng xuất */
 .user-dropdown {
-  width: 280px;
+  width: 300px;
+  top: calc(100% + 22px);
+  border: none;
+  border-radius: 16px;
+  box-shadow: 0 8px 28px rgba(17, 24, 39, 0.10), 0 2px 6px rgba(17, 24, 39, 0.05);
+  padding: 8px 0;
+}
+
+.user-menu-logout {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  width: 100%;
+  padding: 16px 28px;
+  background: none;
+  border: none;
+  color: #AA2327;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.user-menu-logout:hover {
+  background: #FDF2F2;
+}
+
+.user-menu-logout svg {
+  flex-shrink: 0;
 }
 
 .user-profile-summary {
