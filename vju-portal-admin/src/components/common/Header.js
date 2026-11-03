@@ -341,17 +341,6 @@ function Header({ userName = 'User' }) {
         </div>
       </header>
 
-      {/* Click Outside Overlay */}
-      {(showNotif || showUserMenu) && (
-        <div
-          className="dropdown-overlay"
-          onClick={() => {
-            setShowNotif(false);
-            setShowUserMenu(false);
-          }}
-        />
-      )}
-
       {/* Toast Notification */}
       {toastMessage && (
         <div style={{

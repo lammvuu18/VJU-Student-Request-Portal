@@ -104,11 +104,6 @@
   background: #EBEBEB;
 }
 
-.header-user .header-avatar-circle svg {
-  width: 30px;
-  height: 30px;
-}
-
 .header-user-chevron {
   margin-left: 6px;
   transition: transform 0.2s ease;
@@ -343,8 +338,10 @@
   transition: background 0.15s ease;
 }
 
-.user-menu-logout:hover {
-  background: #FDF2F2;
+.user-menu-logout:hover,
+.user-menu-logout:focus-visible {
+  background: #F3F4F6;
+  outline: none;
 }
 
 .user-menu-logout svg {
