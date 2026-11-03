@@ -89,7 +89,8 @@ function LoginPage() {
     if (googleClientId) {
       // Nếu đã cấu hình Google Cloud Client ID: Chuyển hướng trực tiếp sang Google OAuth
       const redirectUri = window.location.origin + '/auth/callback';
-      const googleOAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token%20id_token&scope=email%20profile%20openid&nonce=${Date.now()}`;
+      // prompt=select_account: luôn hiện màn hình chọn tài khoản Google, tránh tự vào bằng tài khoản cũ trên máy dùng chung
+      const googleOAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token%20id_token&scope=email%20profile%20openid&prompt=select_account&nonce=${Date.now()}`;
       window.location.href = googleOAuthUrl;
     } else {
       // Nếu chưa có Google Cloud Client ID (chế độ dev): Chuyển hướng sang Google Account Chooser
