@@ -1035,6 +1035,7 @@ TP thấy đơn "Chờ phân công" trong phòng mình. CV thấy đơn được
       "student_name": "Phạm Văn E",
       "mssv": "21CS005",
       "internal_status": "Chờ phân công",
+      "assigned_staff": null,
       "sla_deadline": "2026-11-04T10:00:00",
       "sla_remaining_hours": 96,
       "is_overdue": false,

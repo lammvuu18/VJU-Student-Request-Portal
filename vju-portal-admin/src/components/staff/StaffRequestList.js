@@ -1,142 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useInbox, INBOX_STATUS_LABELS } from './useInbox';
 import './StaffPages.css';
 
-const initialRequests = [
-  {
-    code: 'VJU-2026-0842',
-    procedure: 'Cấp bảng điểm',
-    student: 'Nguyễn M. Anh',
-    assignedDate: '26/10/2026',
-    deadline: '28/10/2026',
-    status: 'Đang thẩm định',
-    statusTheme: 'blue',
-    isOverdueRow: false,
-  },
-  {
-    code: 'VJU-2026-0835',
-    procedure: 'Phúc khảo',
-    student: 'Lê Thị Cúc',
-    assignedDate: '25/10/2026',
-    deadline: '30/10/2026',
-    status: 'Đang thẩm định',
-    statusTheme: 'blue',
-    isOverdueRow: false,
-  },
-  {
-    code: 'VJU-2026-0830',
-    procedure: 'Cấp bảng điểm',
-    student: 'Phạm Đ. Dũng',
-    assignedDate: '24/10/2026',
-    deadline: '28/10/2026',
-    status: 'Chờ bổ sung',
-    statusTheme: 'yellow',
-    isOverdueRow: false,
-  },
-  {
-    code: 'VJU-2026-0828',
-    procedure: 'Bảo lưu KQ',
-    student: 'Ngô Thị Em',
-    assignedDate: '23/10/2026',
-    deadline: '26/10/2026',
-    status: 'Đang thẩm định',
-    statusTheme: 'blue',
-    isOverdueRow: false,
-  },
-  {
-    code: 'VJU-2026-0820',
-    procedure: 'Cấp bảng điểm',
-    student: 'Đỗ T. Giang',
-    assignedDate: '18/10/2026',
-    deadline: '28/10/2026',
-    status: 'Quá hạn',
-    statusTheme: 'red',
-    isOverdueRow: true,
-  },
-  {
-    code: 'VJU-2026-0818',
-    procedure: 'Phúc khảo',
-    student: 'Vũ Văn Hải',
-    assignedDate: '17/10/2026',
-    deadline: '30/10/2026',
-    status: 'Quá hạn',
-    statusTheme: 'red',
-    isOverdueRow: true,
-  },
-  {
-    code: 'VJU-2026-0815',
-    procedure: 'Xác nhận SV',
-    student: 'Mai T. Hương',
-    assignedDate: '22/10/2026',
-    deadline: '23/10/2026',
-    status: 'Hoàn thành',
-    statusTheme: 'green',
-    isOverdueRow: false,
-  },
-  {
-    code: 'VJU-2026-0810',
-    procedure: 'Cấp bảng điểm',
-    student: 'Trần V. Khoa',
-    assignedDate: '21/10/2026',
-    deadline: '28/10/2026',
-    status: 'Hoàn thành',
-    statusTheme: 'green',
-    isOverdueRow: false,
-  },
-  {
-    code: 'VJU-2026-0805',
-    procedure: 'Phúc khảo',
-    student: 'Lý T. Lan',
-    assignedDate: '20/10/2026',
-    deadline: '30/10/2026',
-    status: 'Đang thẩm định',
-    statusTheme: 'blue',
-    isOverdueRow: false,
-  },
-];
+const statusOptions = ['Tất cả', ...INBOX_STATUS_LABELS, 'Quá hạn'];
+const timeRangeOptions = ['Tất cả', '7 ngày qua', '30 ngày qua'];
+const TIME_RANGE_DAYS = { '7 ngày qua': 7, '30 ngày qua': 30 };
 
-const extraProcsList = ['Cấp bảng điểm', 'Phúc khảo', 'Xác nhận SV', 'Bảo lưu KQ', 'Miễn giảm HP', 'Cấp lại thẻ SV'];
-const extraStudentsList = [
-  'Bùi Thị Hạnh', 'Đặng Minh Khôi', 'Đinh Thị Lan', 'Dương Văn Nam',
-  'Lý Thị Oanh', 'Mai Văn Phong', 'Phan Thị Quỳnh', 'Trịnh Văn Sang',
-  'Võ Thị Tâm', 'Lương Văn Uyên', 'Cao Thị Vân', 'Hồ Văn Xuân'
-];
-const extraStatusesList = [
-  { status: 'Đang thẩm định', theme: 'blue', isOverdue: false },
-  { status: 'Chờ bổ sung', theme: 'yellow', isOverdue: false },
-  { status: 'Hoàn thành', theme: 'green', isOverdue: false },
-  { status: 'Quá hạn', theme: 'red', isOverdue: true },
-  { status: 'Đang thẩm định', theme: 'blue', isOverdue: false },
-];
-
-if (initialRequests.length < 50) {
-  for (let i = initialRequests.length; i < 50; i++) {
-    const p = extraProcsList[i % extraProcsList.length];
-    const s = extraStudentsList[i % extraStudentsList.length];
-    const st = extraStatusesList[i % extraStatusesList.length];
-    const day = String((i % 28) + 1).padStart(2, '0');
-    const dDay = String(((i + 4) % 28) + 1).padStart(2, '0');
-    const num = String(800 - (i - 9) * 3).padStart(4, '0');
-    initialRequests.push({
-      code: `VJU-2026-${num}`,
-      procedure: p,
-      student: s,
-      assignedDate: `${day}/10/2026`,
-      deadline: `${dDay}/10/2026`,
-      status: st.status,
-      statusTheme: st.theme,
-      isOverdueRow: st.isOverdue,
-    });
-  }
-}
-
-const procedureOptions = ['Tất cả', 'Cấp bảng điểm', 'Phúc khảo', 'Bảo lưu KQ', 'Xác nhận SV'];
-const statusOptions = ['Tất cả', 'Đang thẩm định', 'Chờ bổ sung', 'Quá hạn', 'Hoàn thành'];
-const timeRangeOptions = ['Tất cả', '7 ngày qua', '30 ngày qua', 'Tháng này'];
 
 function StaffRequestList() {
   const navigate = useNavigate();
-  const [requests] = useState(initialRequests);
+  const { items: requests, loading, error } = useInbox();
+  const procedureOptions = ['Tất cả', ...Array.from(new Set(requests.map(r => r.procedure)))];
   const [filterProcedure, setFilterProcedure] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterTimeRange, setFilterTimeRange] = useState('');
@@ -175,12 +50,17 @@ function StaffRequestList() {
     if (filterStatus && filterStatus !== 'Tất cả' && r.status !== filterStatus) {
       return false;
     }
+    if (filterTimeRange && TIME_RANGE_DAYS[filterTimeRange]) {
+      const since = Date.now() - TIME_RANGE_DAYS[filterTimeRange] * 86400000;
+      if (new Date(r.createdAt).getTime() < since) return false;
+    }
     if (searchTerm.trim()) {
       const q = searchTerm.toLowerCase();
       const match =
         r.code.toLowerCase().includes(q) ||
         r.procedure.toLowerCase().includes(q) ||
-        r.student.toLowerCase().includes(q) ||
+        (r.student || '').toLowerCase().includes(q) ||
+        (r.mssv || '').toLowerCase().includes(q) ||
         r.status.toLowerCase().includes(q);
       if (!match) return false;
     }
@@ -355,7 +235,7 @@ function StaffRequestList() {
             <div className="staff-th-cell">Mã yêu cầu</div>
             <div className="staff-th-cell">Thủ tục</div>
             <div className="staff-th-cell">Sinh viên</div>
-            <div className="staff-th-cell">Phân công</div>
+            <div className="staff-th-cell">Ngày gửi</div>
             <div className="staff-th-cell">Deadline</div>
             <div className="staff-th-cell">Trạng thái</div>
             <div className="staff-th-cell">Thao tác</div>
@@ -365,7 +245,7 @@ function StaffRequestList() {
 
           {/* Table Data Rows */}
           {paginatedRequests.map((req) => (
-            <React.Fragment key={req.code}>
+            <React.Fragment key={req.id}>
               <div
                 className={`staff-tr-row ${req.isOverdueRow ? 'staff-tr-row--overdue' : ''}`}
               >
@@ -383,7 +263,7 @@ function StaffRequestList() {
                   <button
                     type="button"
                     className="btn-staff-detail-red"
-                    onClick={() => navigate(`/staff/request/${req.code}`)}
+                    onClick={() => navigate(`/staff/request/${req.id}`)}
                   >
                     Xem chi tiết
                   </button>
@@ -395,7 +275,7 @@ function StaffRequestList() {
 
           {paginatedRequests.length === 0 && (
             <div style={{ padding: '24px 8px', textAlign: 'center', color: '#6B7280', fontSize: 13 }}>
-              Không có yêu cầu nào phù hợp với bộ lọc.
+              {loading ? 'Đang tải hộp thư...' : (error || 'Không có yêu cầu nào phù hợp với bộ lọc.')}
             </div>
           )}
         </div>

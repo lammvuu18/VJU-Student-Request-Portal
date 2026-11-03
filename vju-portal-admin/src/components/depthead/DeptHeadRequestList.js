@@ -1,166 +1,32 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import api from '../../services/api';
+import { useInbox, INBOX_STATUS_LABELS } from '../staff/useInbox';
 import './DeptHeadPages.css';
 
-// 9 Requests matching Figma exact spec
-const initialRequests = [
-  {
-    code: 'VJU-2026-0842',
-    procedure: 'Cấp bảng điểm',
-    student: 'Nguyễn M. Anh',
-    receivedDate: '21/10/2026',
-    sla: '3 ngày',
-    status: 'Chờ phân công',
-    statusTheme: 'yellow',
-    assignee: '',
-    isUrgent: true,
-  },
-  {
-    code: 'VJU-2026-0839',
-    procedure: 'Xác nhận SV',
-    student: 'Trần V. Bình',
-    receivedDate: '20/10/2026',
-    sla: '2 ngày',
-    status: 'Đang xử lý',
-    statusTheme: 'blue',
-    assignee: 'Nguyễn Văn A',
-    isUrgent: false,
-  },
-  {
-    code: 'VJU-2026-0835',
-    procedure: 'Phúc khảo',
-    student: 'Lê Thị Cúc',
-    receivedDate: '19/10/2026',
-    sla: '7 ngày',
-    status: 'Chờ xét duyệt',
-    statusTheme: 'yellow',
-    assignee: 'Nguyễn Văn A',
-    isUrgent: true,
-  },
-  {
-    code: 'VJU-2026-0830',
-    procedure: 'Cấp bảng điểm',
-    student: 'Phạm Đ. Dũng',
-    receivedDate: '18/10/2026',
-    sla: '3 ngày',
-    status: 'Đang xử lý',
-    statusTheme: 'blue',
-    assignee: 'Trần Thị B',
-    isUrgent: false,
-  },
-  {
-    code: 'VJU-2026-0828',
-    procedure: 'Bảo lưu KQ',
-    student: 'Ngô Thị Em',
-    receivedDate: '17/10/2026',
-    sla: '5 ngày',
-    status: 'Chờ phân công',
-    statusTheme: 'yellow',
-    assignee: '',
-    isUrgent: true,
-  },
-  {
-    code: 'VJU-2026-0825',
-    procedure: 'Xác nhận SV',
-    student: 'Hoàng V. Phúc',
-    receivedDate: '16/10/2026',
-    sla: '2 ngày',
-    status: 'Đang xử lý',
-    statusTheme: 'blue',
-    assignee: 'Lê Văn C',
-    isUrgent: false,
-  },
-  {
-    code: 'VJU-2026-0820',
-    procedure: 'Cấp bảng điểm',
-    student: 'Đỗ T. Giang',
-    receivedDate: '15/10/2026',
-    sla: '3 ngày',
-    status: 'Hoàn thành',
-    statusTheme: 'green',
-    assignee: 'Nguyễn Văn A',
-    isUrgent: false,
-  },
-  {
-    code: 'VJU-2026-0818',
-    procedure: 'Phúc khảo',
-    student: 'Vũ Văn Hải',
-    receivedDate: '14/10/2026',
-    sla: '7 ngày',
-    status: 'Chờ xét duyệt',
-    statusTheme: 'yellow',
-    assignee: 'Trần Thị B',
-    isUrgent: true,
-  },
-  {
-    code: 'VJU-2026-0815',
-    procedure: 'Xác nhận SV',
-    student: 'Mai T. Hương',
-    receivedDate: '13/10/2026',
-    sla: '2 ngày',
-    status: 'Đang xử lý',
-    statusTheme: 'blue',
-    assignee: 'Lê Văn C',
-    isUrgent: false,
-  },
-];
+const WAITING_ASSIGN = 'Chờ phân công';
+const UNASSIGNED_KEY = 'unassigned';
 
-const extraProcedures = ['Cấp bảng điểm', 'Xác nhận SV', 'Phúc khảo', 'Bảo lưu KQ', 'Miễn giảm HP', 'Cấp lại thẻ SV'];
-const extraStudents = [
-  'Bùi Thị Hạnh', 'Đặng Minh Khôi', 'Đinh Thị Lan', 'Dương Văn Nam',
-  'Lý Thị Oanh', 'Mai Văn Phong', 'Phan Thị Quỳnh', 'Trịnh Văn Sang',
-  'Võ Thị Tâm', 'Lương Văn Uyên', 'Cao Thị Vân', 'Hồ Văn Xuân',
-  'Tạ Quang Huy', 'Dương Thúy Nga', 'Trần Bảo Ngọc', 'Phan Văn Phú'
-];
-const extraSpecialists = ['Nguyễn Văn A', 'Trần Thị B', 'Lê Văn C', '', 'Nguyễn Văn A', 'Trần Thị B', ''];
-const extraSLAs = ['2 ngày', '3 ngày', '5 ngày', '7 ngày'];
+// SLA còn lại hiển thị theo ngày/giờ
+const slaText = (hours) => {
+  if (hours === null || hours === undefined) return '—';
+  if (hours < 0) return `Quá ${Math.ceil(-hours / 24)} ngày`;
+  if (hours < 24) return `${Math.round(hours)} giờ`;
+  return `${Math.ceil(hours / 24)} ngày`;
+};
 
-if (initialRequests.length < 50) {
-  for (let i = initialRequests.length; i < 50; i++) {
-    const proc = extraProcedures[i % extraProcedures.length];
-    const student = extraStudents[i % extraStudents.length];
-    const assignee = extraSpecialists[i % extraSpecialists.length];
-    const sla = extraSLAs[i % extraSLAs.length];
-    const day = String((i % 28) + 1).padStart(2, '0');
-    const receivedDate = `${day}/10/2026`;
-    const num = String(810 - (i - 9) * 3).padStart(4, '0');
-
-    let status = 'Đang xử lý';
-    let statusTheme = 'blue';
-    let isUrgent = false;
-
-    if (!assignee) {
-      status = 'Chờ phân công';
-      statusTheme = 'yellow';
-      isUrgent = true;
-    } else if (i % 5 === 0) {
-      status = 'Hoàn thành';
-      statusTheme = 'green';
-      isUrgent = false;
-    } else if (i % 4 === 0) {
-      status = 'Chờ xét duyệt';
-      statusTheme = 'yellow';
-      isUrgent = true;
-    }
-
-    initialRequests.push({
-      code: `VJU-2026-${num}`,
-      procedure: proc,
-      student,
-      receivedDate,
-      sla,
-      status,
-      statusTheme,
-      assignee,
-      isUrgent,
-    });
-  }
-}
 
 function DeptHeadRequestList() {
   const navigate = useNavigate();
 
-  const [requests, setRequests] = useState(initialRequests);
+  const { items, loading, error, reload } = useInbox();
+  const [members, setMembers] = useState([]);
+  const requests = items.map(r => ({
+    ...r,
+    receivedDate: r.assignedDate,
+    sla: slaText(r.slaRemainingHours),
+    isUrgent: r.isOverdueRow || r.internalStatus === WAITING_ASSIGN,
+  }));
   const [selectedSpecialist, setSelectedSpecialist] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterProcedure, setFilterProcedure] = useState('');
@@ -181,6 +47,19 @@ function DeptHeadRequestList() {
   const [assigneeMenuPos, setAssigneeMenuPos] = useState({ top: 0, left: 0 });
 
   const containerRef = useRef(null);
+
+  const loadMembers = () => {
+    api.staff.getDepartmentMembers()
+      .then(res => setMembers(res.data || []))
+      .catch(() => {});
+  };
+
+  useEffect(() => { loadMembers(); }, []);
+
+  const showToast = (msg) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(''), 3500);
+  };
 
   // Close menus when clicking outside
   useEffect(() => {
@@ -209,17 +88,17 @@ function DeptHeadRequestList() {
     };
   }, []);
 
-  // Specialist list for assignment
-  const specialists = ['Nguyễn Văn A', 'Trần Thị B', 'Lê Văn C'];
-
-  // Calculate specialist counts
-  const countA = requests.filter(r => r.assignee === 'Nguyễn Văn A' && r.status !== 'Chờ phân công').length;
-  const countB = requests.filter(r => r.assignee === 'Trần Thị B' && r.status !== 'Chờ phân công').length;
-  const countC = requests.filter(r => r.assignee === 'Lê Văn C' && r.status !== 'Chờ phân công').length;
-  const countUnassigned = requests.filter(r => !r.assignee || r.status === 'Chờ phân công').length;
+  const countUnassigned = requests.filter(r => !r.assigneeId).length;
+  const procedureOptions = ['', ...Array.from(new Set(requests.map(r => r.procedure)))];
 
   const handleOpenAssigneeMenu = (e, rowCode) => {
     e.stopPropagation();
+    const row = requests.find(r => r.id === rowCode);
+    // Backend chỉ cho phân công đơn đang chờ, không hỗ trợ đổi người phụ trách
+    if (!row || row.internalStatus !== WAITING_ASSIGN) {
+      showToast('Chỉ phân công được hồ sơ đang ở trạng thái "Chờ phân công".');
+      return;
+    }
     if (activeAssigneeRow === rowCode) {
       setActiveAssigneeRow(null);
       return;
@@ -235,21 +114,16 @@ function DeptHeadRequestList() {
     setActiveAssigneeRow(rowCode);
   };
 
-  const handleSelectAssignee = (rowCode, staffName) => {
-    setRequests(prev => prev.map(r => {
-      if (r.code === rowCode) {
-        return {
-          ...r,
-          assignee: staffName,
-          status: staffName && r.status === 'Chờ phân công' ? 'Đang xử lý' : r.status,
-          statusTheme: staffName && r.status === 'Chờ phân công' ? 'blue' : r.statusTheme,
-        };
-      }
-      return r;
-    }));
+  const handleSelectAssignee = async (rowId, member) => {
     setActiveAssigneeRow(null);
-    setToastMsg(staffName ? `Đã phân công hồ sơ ${rowCode} cho ${staffName}` : `Đã bỏ phân công hồ sơ ${rowCode}`);
-    setTimeout(() => setToastMsg(''), 3500);
+    try {
+      const res = await api.staff.assign(rowId, member.user_id);
+      showToast(res.message || `Đã phân công cho ${member.full_name}`);
+      reload();
+      loadMembers();
+    } catch (err) {
+      showToast(err.message);
+    }
   };
 
   const handleSelectSpecialist = (spec) => {
@@ -260,8 +134,8 @@ function DeptHeadRequestList() {
   // Filter & sort requests
   const filteredRequests = requests.filter(r => {
     if (selectedSpecialist) {
-      if (selectedSpecialist === 'Chưa phân công' && (r.assignee && r.status !== 'Chờ phân công')) return false;
-      if (selectedSpecialist !== 'Chưa phân công' && (r.status === 'Chờ phân công' || r.assignee !== selectedSpecialist)) return false;
+      if (selectedSpecialist === UNASSIGNED_KEY && r.assigneeId) return false;
+      if (selectedSpecialist !== UNASSIGNED_KEY && r.assigneeId !== selectedSpecialist) return false;
     }
     if (filterStatus && r.status !== filterStatus) return false;
     if (filterProcedure && r.procedure !== filterProcedure) return false;
@@ -270,7 +144,8 @@ function DeptHeadRequestList() {
       return (
         r.code.toLowerCase().includes(q) ||
         r.procedure.toLowerCase().includes(q) ||
-        r.student.toLowerCase().includes(q) ||
+        (r.student || '').toLowerCase().includes(q) ||
+        (r.mssv || '').toLowerCase().includes(q) ||
         (r.assignee && r.assignee.toLowerCase().includes(q))
       );
     }
@@ -278,10 +153,8 @@ function DeptHeadRequestList() {
   });
 
   const sortedRequests = [...filteredRequests].sort((a, b) => {
-    if (sortDate === 'oldest') {
-      return a.code.localeCompare(b.code);
-    }
-    return b.code.localeCompare(a.code);
+    const diff = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    return sortDate === 'oldest' ? diff : -diff;
   });
 
   const totalPages = Math.max(1, Math.ceil(sortedRequests.length / pageSize));
@@ -324,40 +197,22 @@ function DeptHeadRequestList() {
         <h2 className="depthead-section-heading">Số hồ sơ của từng chuyên viên</h2>
 
         <div className="depthead-specialists-cards-row">
-          {/* Nguyễn Văn A */}
-          <div
-            className={`depthead-spec-card ${selectedSpecialist === 'Nguyễn Văn A' ? 'depthead-spec-card--active' : ''}`}
-            onClick={() => handleSelectSpecialist('Nguyễn Văn A')}
-            title="Bấm để lọc danh sách theo chuyên viên này"
-          >
-            <div className="depthead-spec-num">{String(countA).padStart(2, '0')}</div>
-            <div className="depthead-spec-name">Nguyễn Văn A</div>
-          </div>
-
-          {/* Trần Thị B */}
-          <div
-            className={`depthead-spec-card ${selectedSpecialist === 'Trần Thị B' ? 'depthead-spec-card--active' : ''}`}
-            onClick={() => handleSelectSpecialist('Trần Thị B')}
-            title="Bấm để lọc danh sách theo chuyên viên này"
-          >
-            <div className="depthead-spec-num">{String(countB).padStart(2, '0')}</div>
-            <div className="depthead-spec-name">Trần Thị B</div>
-          </div>
-
-          {/* Lê Văn C */}
-          <div
-            className={`depthead-spec-card ${selectedSpecialist === 'Lê Văn C' ? 'depthead-spec-card--active' : ''}`}
-            onClick={() => handleSelectSpecialist('Lê Văn C')}
-            title="Bấm để lọc danh sách theo chuyên viên này"
-          >
-            <div className="depthead-spec-num">{String(countC).padStart(2, '0')}</div>
-            <div className="depthead-spec-name">Lê Văn C</div>
-          </div>
+          {members.map((m) => (
+            <div
+              key={m.user_id}
+              className={`depthead-spec-card ${selectedSpecialist === m.user_id ? 'depthead-spec-card--active' : ''}`}
+              onClick={() => handleSelectSpecialist(m.user_id)}
+              title={`Đang xử lý ${m.current_workload} hồ sơ. Bấm để lọc theo chuyên viên này`}
+            >
+              <div className="depthead-spec-num">{String(requests.filter(r => r.assigneeId === m.user_id).length).padStart(2, '0')}</div>
+              <div className="depthead-spec-name">{m.full_name}</div>
+            </div>
+          ))}
 
           {/* Chưa phân công */}
           <div
-            className={`depthead-spec-card ${selectedSpecialist === 'Chưa phân công' ? 'depthead-spec-card--active' : ''}`}
-            onClick={() => handleSelectSpecialist('Chưa phân công')}
+            className={`depthead-spec-card ${selectedSpecialist === UNASSIGNED_KEY ? 'depthead-spec-card--active' : ''}`}
+            onClick={() => handleSelectSpecialist(UNASSIGNED_KEY)}
             title="Bấm để lọc hồ sơ chưa phân công"
           >
             <div className="depthead-spec-num">{String(countUnassigned).padStart(2, '0')}</div>
@@ -388,7 +243,7 @@ function DeptHeadRequestList() {
             </div>
             {openStatusDropdown && (
               <div className="depthead-filter-dropdown-menu">
-                {['', 'Chờ phân công', 'Đang xử lý', 'Chờ xét duyệt', 'Hoàn thành'].map((st) => (
+                {['', ...INBOX_STATUS_LABELS, 'Quá hạn'].map((st) => (
                   <div
                     key={st}
                     className={`depthead-filter-dropdown-item ${filterStatus === st ? 'active' : ''}`}
@@ -420,7 +275,7 @@ function DeptHeadRequestList() {
             </div>
             {openProcedureDropdown && (
               <div className="depthead-filter-dropdown-menu">
-                {['', 'Cấp bảng điểm', 'Xác nhận SV', 'Phúc khảo', 'Bảo lưu KQ'].map((proc) => (
+                {procedureOptions.map((proc) => (
                   <div
                     key={proc}
                     className={`depthead-filter-dropdown-item ${filterProcedure === proc ? 'active' : ''}`}
@@ -509,13 +364,13 @@ function DeptHeadRequestList() {
           {/* Empty State */}
           {paginatedRequests.length === 0 && (
             <div style={{ padding: '36px 0', textAlign: 'center', width: '100%', color: '#6B7280', fontSize: 13 }}>
-              Không tìm thấy yêu cầu nào phù hợp
+              {loading ? 'Đang tải hộp thư...' : (error || 'Không tìm thấy yêu cầu nào phù hợp')}
             </div>
           )}
 
           {/* Data Rows */}
           {paginatedRequests.map((row) => (
-            <React.Fragment key={row.code}>
+            <React.Fragment key={row.id}>
               <div className={`depthead-tr-row ${row.isUrgent ? 'depthead-tr-row--urgent' : ''}`}>
                 <div className="depthead-td-cell" style={{ fontWeight: 500 }}>{row.code}</div>
                 <div className="depthead-td-cell">{row.procedure}</div>
@@ -533,12 +388,12 @@ function DeptHeadRequestList() {
                 {/* Assignee Selector Button */}
                 <div className="depthead-td-cell">
                   <div
-                    className={`depthead-assignee-select-btn ${!row.assignee || row.status === 'Chờ phân công' ? 'depthead-assignee-select-btn--empty' : ''}`}
-                    onClick={(e) => handleOpenAssigneeMenu(e, row.code)}
-                    title="Bấm để phân công hoặc đổi chuyên viên phụ trách"
+                    className={`depthead-assignee-select-btn ${!row.assignee ? 'depthead-assignee-select-btn--empty' : ''}`}
+                    onClick={(e) => handleOpenAssigneeMenu(e, row.id)}
+                    title={row.internalStatus === WAITING_ASSIGN ? 'Bấm để phân công chuyên viên' : 'Hồ sơ đã được phân công'}
                   >
-                    <span>{row.status === 'Chờ phân công' || !row.assignee ? 'Chưa có ai' : row.assignee}</span>
-                    <span>▾</span>
+                    <span>{row.assignee || 'Chưa có ai'}</span>
+                    {row.internalStatus === WAITING_ASSIGN && <span>▾</span>}
                   </div>
                 </div>
 
@@ -547,7 +402,7 @@ function DeptHeadRequestList() {
                   <button
                     type="button"
                     className="btn-depthead-view-detail"
-                    onClick={() => navigate(`/dept-head/request/${row.code}`)}
+                    onClick={() => navigate(`/dept-head/request/${row.id}`)}
                   >
                     Xem chi tiết
                   </button>
@@ -660,26 +515,18 @@ function DeptHeadRequestList() {
               left: assigneeMenuPos.left,
             }}
           >
-            {specialists.map((spec) => {
-              const currentReq = requests.find(r => r.code === activeAssigneeRow);
-              const isSelected = currentReq?.assignee === spec && currentReq?.status !== 'Chờ phân công';
-              return (
-                <div
-                  key={spec}
-                  className={`depthead-assignee-item ${isSelected ? 'depthead-assignee-item--selected' : ''}`}
-                  onClick={() => handleSelectAssignee(activeAssigneeRow, spec)}
-                >
-                  {spec}
-                </div>
-              );
-            })}
-            <div
-              className={`depthead-assignee-item ${(!requests.find(r => r.code === activeAssigneeRow)?.assignee || requests.find(r => r.code === activeAssigneeRow)?.status === 'Chờ phân công') ? 'depthead-assignee-item--selected' : ''}`}
-              style={{ color: '#9CA3AF' }}
-              onClick={() => handleSelectAssignee(activeAssigneeRow, '')}
-            >
-              Chưa có ai
-            </div>
+            {members.length === 0 && (
+              <div className="depthead-assignee-item" style={{ color: '#9CA3AF' }}>Phòng chưa có chuyên viên</div>
+            )}
+            {members.map((m) => (
+              <div
+                key={m.user_id}
+                className="depthead-assignee-item"
+                onClick={() => handleSelectAssignee(activeAssigneeRow, m)}
+              >
+                {m.full_name} ({m.current_workload})
+              </div>
+            ))}
           </div>
         )}
       </div>

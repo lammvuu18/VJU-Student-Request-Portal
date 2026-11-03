@@ -6,9 +6,9 @@ function SupplementSuccess() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const requestCode = location.state?.requestCode || 'VJU-2026-0842';
-  const procedureName = location.state?.procedureName || 'Cấp bảng điểm';
-  const submissionDate = location.state?.submissionDate || '21/10/2026';
+  const requestCode = location.state?.requestCode || '—';
+  const procedureName = location.state?.procedureName || '—';
+  const submissionDate = location.state?.submissionDate || '—';
   const status = location.state?.status || 'Đang xử lý';
 
   const getStatusPillClass = (st) => {
@@ -86,7 +86,7 @@ function SupplementSuccess() {
             <button
               type="button"
               className="btn-supplement-view-detail"
-              onClick={() => navigate(`/student/request/${requestCode}`)}
+              onClick={() => navigate(location.state?.requestId ? `/student/request/${location.state.requestId}` : '/student/dashboard')}
             >
               <span>Xem chi tiết →</span>
             </button>

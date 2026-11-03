@@ -1,94 +1,37 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getCurrentUser } from '../../services/api';
+import { useInbox } from './useInbox';
 import './StaffPages.css';
 
-const initialRequests = [
-  {
-    code: 'VJU-2026-0842',
-    procedure: 'Cấp bảng điểm',
-    student: 'Nguyễn M. Anh',
-    status: 'Đang thẩm định',
-    statusTheme: 'blue',
-    deadline: '28/10/2026',
-    overdue: '—',
-    isOverdueRow: false,
-  },
-  {
-    code: 'VJU-2026-0835',
-    procedure: 'Phúc khảo',
-    student: 'Lê Thị Cúc',
-    status: 'Đang thẩm định',
-    statusTheme: 'blue',
-    deadline: '27/10/2026',
-    overdue: '—',
-    isOverdueRow: false,
-  },
-  {
-    code: 'VJU-2026-0830',
-    procedure: 'Cấp bảng điểm',
-    student: 'Phạm Đ. Dũng',
-    status: 'Chờ bổ sung',
-    statusTheme: 'yellow',
-    deadline: '29/10/2026',
-    overdue: '—',
-    isOverdueRow: false,
-  },
-  {
-    code: 'VJU-2026-0820',
-    procedure: 'Cấp bảng điểm',
-    student: 'Đỗ T. Giang',
-    status: 'Đang thẩm định',
-    statusTheme: 'blue',
-    deadline: '24/10/2026',
-    overdue: '2 ngày',
-    isOverdueRow: true,
-  },
-  {
-    code: 'VJU-2026-0818',
-    procedure: 'Phúc khảo',
-    student: 'Vũ Văn Hải',
-    status: 'Đang thẩm định',
-    statusTheme: 'blue',
-    deadline: '25/10/2026',
-    overdue: '1 ngày',
-    isOverdueRow: true,
-  },
-];
+const pad2 = (n) => String(n).padStart(2, '0');
 
-const extraStaffRequests = [
-  { code: 'VJU-2026-0812', procedure: 'Xác nhận SV', student: 'Mai T. Hương', status: 'Đang thẩm định', statusTheme: 'blue', deadline: '30/10/2026', overdue: '—', isOverdueRow: false },
-  { code: 'VJU-2026-0808', procedure: 'Cấp bảng điểm', student: 'Trần V. Khoa', status: 'Chờ bổ sung', statusTheme: 'yellow', deadline: '31/10/2026', overdue: '—', isOverdueRow: false },
-  { code: 'VJU-2026-0805', procedure: 'Miễn giảm HP', student: 'Bùi Thị Hạnh', status: 'Đang thẩm định', statusTheme: 'blue', deadline: '01/11/2026', overdue: '—', isOverdueRow: false },
-  { code: 'VJU-2026-0801', procedure: 'Bảo lưu KQHT', student: 'Đặng Minh Khôi', status: 'Đang thẩm định', statusTheme: 'blue', deadline: '02/11/2026', overdue: '—', isOverdueRow: false },
-  { code: 'VJU-2026-0798', procedure: 'Phúc khảo', student: 'Đinh Thị Lan', status: 'Chờ bổ sung', statusTheme: 'yellow', deadline: '03/11/2026', overdue: '—', isOverdueRow: false },
-  { code: 'VJU-2026-0795', procedure: 'Cấp lại thẻ SV', student: 'Dương Văn Nam', status: 'Đang thẩm định', statusTheme: 'blue', deadline: '04/11/2026', overdue: '—', isOverdueRow: false },
-  { code: 'VJU-2026-0790', procedure: 'Cấp bảng điểm', student: 'Lý Thị Oanh', status: 'Đang thẩm định', statusTheme: 'blue', deadline: '05/11/2026', overdue: '—', isOverdueRow: false },
-  { code: 'VJU-2026-0785', procedure: 'Xác nhận SV', student: 'Mai Văn Phong', status: 'Chờ bổ sung', statusTheme: 'yellow', deadline: '06/11/2026', overdue: '—', isOverdueRow: false },
-  { code: 'VJU-2026-0780', procedure: 'Hoàn trả HP', student: 'Phan Thị Quỳnh', status: 'Đang thẩm định', statusTheme: 'blue', deadline: '07/11/2026', overdue: '—', isOverdueRow: false },
-  { code: 'VJU-2026-0775', procedure: 'Cấp giấy giới thiệu', student: 'Trịnh Văn Sang', status: 'Đang thẩm định', statusTheme: 'blue', deadline: '08/11/2026', overdue: '—', isOverdueRow: false },
-  { code: 'VJU-2026-0770', procedure: 'Cấp bảng điểm', student: 'Võ Thị Tâm', status: 'Đang thẩm định', statusTheme: 'blue', deadline: '09/11/2026', overdue: '—', isOverdueRow: false },
-  { code: 'VJU-2026-0765', procedure: 'Phúc khảo', student: 'Lương Văn Uyên', status: 'Đang thẩm định', statusTheme: 'blue', deadline: '10/11/2026', overdue: '—', isOverdueRow: false },
-  { code: 'VJU-2026-0760', procedure: 'Miễn giảm HP', student: 'Cao Thị Vân', status: 'Chờ bổ sung', statusTheme: 'yellow', deadline: '11/11/2026', overdue: '—', isOverdueRow: false },
-  { code: 'VJU-2026-0755', procedure: 'Bảo lưu KQHT', student: 'Hồ Văn Xuân', status: 'Đang thẩm định', statusTheme: 'blue', deadline: '12/11/2026', overdue: '—', isOverdueRow: false },
-  { code: 'VJU-2026-0750', procedure: 'Cấp lại thẻ SV', student: 'Nguyễn Quốc Anh', status: 'Đang thẩm định', statusTheme: 'blue', deadline: '13/11/2026', overdue: '—', isOverdueRow: false },
-];
+// Số ngày đã quá hạn từ sla_remaining_hours (âm khi quá hạn)
+const overdueText = (row) => {
+  if (!row.isOverdueRow || row.slaRemainingHours === null || row.slaRemainingHours === undefined) return '—';
+  const days = Math.max(1, Math.ceil(Math.abs(row.slaRemainingHours) / 24));
+  return `${days} ngày`;
+};
 
-if (initialRequests.length < 20) {
-  initialRequests.push(...extraStaffRequests);
-}
 
 function StaffOverview() {
   const navigate = useNavigate();
 
-  // 4 stat cards data (Figma Spec)
+  const { items, summary, loading, error } = useInbox();
+  const user = getCurrentUser() || {};
+  const firstName = (user.full_name || user.name || '').trim().split(' ').slice(-1)[0] || 'bạn';
+
   const statCards = [
-    { num: '15', label: 'Đã được giao', isOverdue: false },
-    { num: '08', label: 'Đang thẩm định', isOverdue: false },
-    { num: '04', label: 'Chờ bổ sung', isOverdue: false },
-    { num: '02', label: 'Quá hạn', isOverdue: true },
+    { num: pad2(summary.total_pending), label: 'Đã được giao', isOverdue: false },
+    { num: pad2(items.filter(r => r.internalStatus === 'CV đang thẩm định').length), label: 'Đang thẩm định', isOverdue: false },
+    { num: pad2(items.filter(r => r.internalStatus === 'Cần bổ sung').length), label: 'Chờ bổ sung', isOverdue: false },
+    { num: pad2(summary.overdue), label: 'Quá hạn', isOverdue: true },
   ];
 
-  const [requestsList] = useState(initialRequests);
+  // Hồ sơ sắp đến hạn: sắp theo thời gian SLA còn lại tăng dần
+  const requestsList = [...items]
+    .map(r => ({ ...r, overdue: overdueText(r) }))
+    .sort((a, b) => (a.slaRemainingHours ?? Infinity) - (b.slaRemainingHours ?? Infinity));
   const [currentPage, setCurrentPage] = useState(1);
   const [jumpPage, setJumpPage] = useState('');
   const pageSize = 5; // 5 hồ sơ mỗi trang khớp hoàn hảo với chiều cao card ban đầu
@@ -115,7 +58,7 @@ function StaffOverview() {
   return (
     <div className="staff-overview-container">
       {/* Page Title */}
-      <h1 className="staff-overview-title">Tổng quan công việc của Nam</h1>
+      <h1 className="staff-overview-title">Tổng quan công việc của {firstName}</h1>
 
       {/* 4 Stat Cards Row */}
       <div className="staff-stat-cards-row">
@@ -193,7 +136,7 @@ function StaffOverview() {
                   <button
                     type="button"
                     className="btn-staff-detail-red"
-                    onClick={() => navigate(`/staff/request/${row.code}`)}
+                    onClick={() => navigate(`/staff/request/${row.id}`)}
                   >
                     Xem chi tiết
                   </button>
@@ -203,6 +146,12 @@ function StaffOverview() {
               <div className="staff-table-divider" style={{ minWidth: 820 }} />
             </React.Fragment>
           ))}
+
+          {paginatedRequests.length === 0 && (
+            <div style={{ padding: '24px 8px', textAlign: 'center', color: '#6B7280', fontSize: 13 }}>
+              {loading ? 'Đang tải hộp thư...' : (error || 'Chưa có hồ sơ nào được giao.')}
+            </div>
+          )}
         </div>
 
         <div style={{ height: 12, width: '100%' }} />

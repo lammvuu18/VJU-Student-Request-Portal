@@ -1,13 +1,14 @@
 // =============================================================================
 // VJU PORTAL API CLIENT SERVICE
-// Conforming to Specification: d:\VJU_EF\api-contract.md
-// Base URL: http://localhost:8080/api
-// Supports automatic fallback to mock data when backend server is offline.
+// Theo đặc tả api-contract.md ở thư mục gốc repo
+// Base URL: REACT_APP_API_BASE_URL, mặc định http://localhost:8000/api
+// Đặt REACT_APP_USE_MOCK=true để dùng dữ liệu mock khi chưa chạy backend.
 // =============================================================================
 
 import * as mock from '../data/mockData';
 
-const BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080/api';
+export const BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api';
+export const USE_MOCK = process.env.REACT_APP_USE_MOCK === 'true';
 
 // Helper to store & read JWT
 export const getAuthToken = () => localStorage.getItem('vju_token') || '';
@@ -155,56 +156,110 @@ export const getCurrentUser = () => {
   return acc.userObj;
 };
 
-/**
- * Core fetch wrapper with timeout, Authorization header, and fallback to mock data
- */
-async function apiFetch(endpoint, options = {}, mockFallbackFn = null) {
-  const url = `${BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
-  const token = getAuthToken();
+// Render free tier có thể mất gần 1 phút để khởi động lại backend sau khi ngủ
+const REQUEST_TIMEOUT_MS = 60000;
 
+// Đường dẫn backend trả về dạng /api/..., ghép với gốc của BASE_URL
+const toAbsoluteUrl = (endpoint) => {
+  if (/^https?:\/\//.test(endpoint)) return endpoint;
+  if (endpoint.startsWith('/api/')) return BASE_URL.replace(/\/api\/?$/, '') + endpoint;
+  return `${BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+};
+
+const handleUnauthorized = (endpoint) => {
+  // Token hết hạn hoặc bị thu hồi: xóa phiên và quay về trang đăng nhập
+  if (endpoint.startsWith('/auth/')) return;
+  logout();
+  if (window.location.pathname !== '/login') {
+    window.location.href = '/login?error=' + encodeURIComponent('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+  }
+};
+
+async function sendRequest(endpoint, options = {}) {
+  const token = getAuthToken();
   const headers = {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(options.headers || {}),
   };
 
-  // If body is FormData, delete Content-Type so browser sets boundary
-  if (options.body instanceof FormData) {
+  // FormData cần trình duyệt tự đặt Content-Type kèm boundary; GET không cần Content-Type
+  if (options.body instanceof FormData || !options.body) {
     delete headers['Content-Type'];
   }
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000); // 4s timeout for local backend
-
-    const res = await fetch(url, {
-      ...options,
-      headers,
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
-
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      const err = new Error(json.error?.message || json.message || `API request failed with status ${res.status}`);
-      err.status = res.status;
-      err.code = json.error?.code;
-      throw err;
-    }
-    return json;
+    return await fetch(toAbsoluteUrl(endpoint), { ...options, headers, signal: controller.signal });
   } catch (err) {
-    // If backend gave a real HTTP error response (e.g. 400, 401, 403, 404, 409), rethrow it so UI can display proper message
-    if (err.status) {
-      throw err;
-    }
-    // If backend is offline or network error/timeout, use contract mock fallback
-    if (mockFallbackFn) {
-      console.info(`[API Service Fallback] Backend at ${BASE_URL} not responding. Using mock data for "${endpoint}".`);
+    const networkErr = new Error(
+      err.name === 'AbortError'
+        ? 'Máy chủ phản hồi quá lâu. Vui lòng thử lại.'
+        : `Không kết nối được máy chủ (${BASE_URL}).`
+    );
+    networkErr.isNetworkError = true;
+    throw networkErr;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function buildHttpError(res, endpoint) {
+  const json = await res.json().catch(() => ({}));
+  const err = new Error(json.error?.message || json.message || `Yêu cầu thất bại (mã ${res.status}).`);
+  err.status = res.status;
+  err.code = json.error?.code;
+  if (res.status === 401) handleUnauthorized(endpoint);
+  return err;
+}
+
+/**
+ * Gọi API backend. Dữ liệu mock chỉ dùng khi bật REACT_APP_USE_MOCK=true và backend không kết nối được.
+ */
+async function apiFetch(endpoint, options = {}, mockFallbackFn = null) {
+  let res;
+  try {
+    res = await sendRequest(endpoint, options);
+  } catch (err) {
+    if (USE_MOCK && mockFallbackFn) {
+      console.info(`[API mock] Backend ${BASE_URL} không phản hồi, dùng dữ liệu mock cho "${endpoint}".`);
       return mockFallbackFn();
     }
     throw err;
   }
+
+  if (!res.ok) throw await buildHttpError(res, endpoint);
+  return res.json().catch(() => ({}));
+}
+
+/**
+ * Tải file cần token về dạng object URL (dùng cho iframe xem trước). Người gọi tự revokeObjectURL.
+ */
+export async function fetchFileUrl(endpoint) {
+  const res = await sendRequest(endpoint, { method: 'GET' });
+  if (!res.ok) throw await buildHttpError(res, endpoint);
+  return URL.createObjectURL(await res.blob());
+}
+
+/**
+ * Tải file cần token (PDF kết quả, file đính kèm) rồi lưu về máy hoặc mở tab mới.
+ * Backend không expose Content-Disposition qua CORS nên tên file lấy từ fileName truyền vào.
+ */
+export async function downloadFile(endpoint, fileName = 'tai-lieu', { openInNewTab = false } = {}) {
+  const url = await fetchFileUrl(endpoint);
+
+  if (openInNewTab) {
+    window.open(url, '_blank', 'noopener');
+  } else {
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
 // =============================================================================
@@ -375,109 +430,62 @@ export const procedureApi = {
 // =============================================================================
 // 3. STUDENT REQUESTS API (Contract Section 3)
 // =============================================================================
+
+// Ghép file đính kèm theo định dạng multipart backend yêu cầu:
+// attachments[i][config_id], attachments[i][file]
+const appendAttachments = (formData, attachments = []) => {
+  attachments.forEach((item, idx) => {
+    formData.append(`attachments[${idx}][config_id]`, String(item.config_id));
+    formData.append(`attachments[${idx}][file]`, item.file);
+  });
+};
+
+// Bỏ tham số rỗng hoặc 'all' trước khi đưa lên query string
+const toQueryString = (params = {}) => {
+  const clean = Object.fromEntries(
+    Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '' && v !== 'all')
+  );
+  const qs = new URLSearchParams(clean).toString();
+  return qs ? `?${qs}` : '';
+};
+
 export const requestApi = {
-  getMyRequests: async (params = {}) => {
-    const qs = new URLSearchParams(params).toString();
-    const endpoint = `/requests/my${qs ? `?${qs}` : ''}`;
+  // params: { page, limit, status, type_id }
+  getMyRequests: async (params = {}) => apiFetch(`/requests${toQueryString(params)}`, { method: 'GET' }),
 
-    return apiFetch(endpoint, { method: 'GET' }, () => {
-      let list = [...mock.allRequests];
-      if (params.status && params.status !== 'all') {
-        list = list.filter(r => r.status === params.status || r.internal_status === params.status);
-      }
-      return {
-        success: true,
-        data: list,
-        pagination: {
-          current_page: parseInt(params.page || 1),
-          total_pages: Math.ceil(list.length / (params.limit || 10)),
-          total_items: list.length,
-        },
-      };
-    });
+  /**
+   * payload: { type_id, form_data: {...}, attachments: [{ config_id, file }] }
+   */
+  create: async ({ type_id, form_data, attachments = [] }) => {
+    const body = new FormData();
+    body.append('type_id', String(type_id));
+    body.append('form_data', JSON.stringify(form_data || {}));
+    appendAttachments(body, attachments);
+    return apiFetch('/requests', { method: 'POST', body });
   },
 
-  create: async (payload) => {
-    return apiFetch('/requests', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }, () => {
-      const reqId = Date.now();
-      const code = `REQ-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${String(Math.floor(Math.random() * 900 + 100))}`;
-      const proc = mock.procedures.find(p => p.type_id === payload.type_id || p.id === payload.type_id) || mock.procedures[0];
+  getDetail: async (id) => apiFetch(`/requests/${id}`, { method: 'GET' }),
 
-      return {
-        success: true,
-        data: {
-          request_id: reqId,
-          request_code: code,
-          status: proc.is_fee_required ? 'Chờ thanh toán' : 'Đã gửi',
-          internal_status: proc.is_fee_required ? 'Chờ thanh toán' : 'Chờ phân công',
-          sla_deadline: new Date(Date.now() + proc.sla_total_days * 86400000).toISOString(),
-          is_fee_required: proc.is_fee_required,
-          fee_amount: proc.fee_amount || 0,
-        },
-        message: 'Tạo yêu cầu thành công',
-      };
-    });
+  cancel: async (id) => apiFetch(`/requests/${id}/cancel`, { method: 'PUT' }),
+
+  // attachments: [{ config_id, file }]
+  supplement: async (id, attachments = []) => {
+    const body = new FormData();
+    appendAttachments(body, attachments);
+    return apiFetch(`/requests/${id}/supplements`, { method: 'POST', body });
   },
 
-  getDetail: async (id) => {
-    return apiFetch(`/requests/${id}`, { method: 'GET' }, () => {
-      const req = mock.allRequests.find(r => r.id === id || String(r.request_id) === String(id) || r.request_code === id) || mock.allRequests[0];
-      return {
-        success: true,
-        data: req,
-      };
-    });
-  },
+  getTimeline: async (id) => apiFetch(`/requests/${id}/timeline`, { method: 'GET' }),
 
-  cancel: async (id, reason = '') => {
-    return apiFetch(`/requests/${id}/cancel`, {
-      method: 'POST',
-      body: JSON.stringify({ reason }),
-    }, () => ({
-      success: true,
-      message: 'Hủy yêu cầu thành công',
-      data: {
-        request_id: id,
-        status: 'Đã hủy',
-      },
-    }));
-  },
-
-  supplement: async (id, payload) => {
-    return apiFetch(`/requests/${id}/supplement`, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }, () => ({
-      success: true,
-      message: 'Nộp bổ sung hồ sơ thành công',
-      data: {
-        request_id: id,
-        status: 'Đang xử lý',
-        internal_status: 'CV đang thẩm định',
-      },
-    }));
-  },
-
-  getTimeline: async (id) => {
-    return apiFetch(`/requests/${id}/timeline`, { method: 'GET' }, () => {
-      const req = mock.allRequests.find(r => r.id === id || String(r.request_id) === String(id)) || mock.allRequests[0];
-      return {
-        success: true,
-        data: [
-          { action: 'Nộp yêu cầu', actor_name: req.student || 'Sinh viên', created_at: req.created_at || '2026-10-28T10:00:00', note: 'Khởi tạo hồ sơ trực tuyến' },
-          { action: 'Tiếp nhận hồ sơ', actor_name: req.assignee || 'Chuyên viên', created_at: req.date || '2026-10-29T08:30:00', note: 'Đã nhận hồ sơ và kiểm tra thông tin' },
-          { action: 'Cập nhật trạng thái', actor_name: 'Hệ thống VJU', created_at: req.date || '2026-10-29T15:00:00', note: `Trạng thái: ${req.status}` },
-        ],
-      };
-    });
-  },
+  // payload: { star_rating, speed_score, attitude_score, convenience_score, comment_text }
+  feedback: async (id, payload) => apiFetch(`/requests/${id}/feedback`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  }),
 };
 
 // =============================================================================
-// 4. PAYMENTS API (Contract Section 4)
+// 4. PAYMENTS API (Contract Section 4) — backend chưa có, chỉ chạy ở chế độ mock
 // =============================================================================
 export const paymentApi = {
   create: async (payload) => {
@@ -496,67 +504,35 @@ export const paymentApi = {
       },
     }));
   },
-
-  getStatus: async (orderId) => {
-    return apiFetch(`/payments/${orderId}/status`, { method: 'GET' }, () => ({
-      success: true,
-      data: {
-        order_id: orderId,
-        payment_status: 'SUCCESS',
-        paid_at: new Date().toISOString(),
-        payment_method: 'VNPay',
-      },
-    }));
-  },
 };
 
 // =============================================================================
-// 5. RESULTS API (Contract Section 5)
+// 5. RESULTS & ATTACHMENTS (Contract Section 5) — cần token nên tải qua fetch
 // =============================================================================
 export const resultApi = {
-  download: (requestId) => {
-    return `${BASE_URL}/results/${requestId}/download`;
-  },
-  preview: (requestId) => {
-    return `${BASE_URL}/results/${requestId}/preview`;
-  },
+  // pdfDownloadUrl là result.pdf_download_url trong chi tiết đơn (/api/results/:id/download)
+  download: (pdfDownloadUrl, fileName) => downloadFile(pdfDownloadUrl, fileName || 'ket-qua.pdf'),
+  preview: (pdfDownloadUrl) => downloadFile(pdfDownloadUrl, 'ket-qua.pdf', { openInNewTab: true }),
+};
+
+export const attachmentApi = {
+  // downloadUrl là attachments[i].download_url trong chi tiết đơn
+  download: (downloadUrl, fileName) => downloadFile(downloadUrl, fileName),
+  preview: (downloadUrl, fileName) => downloadFile(downloadUrl, fileName, { openInNewTab: true }),
 };
 
 // =============================================================================
 // 6. FEEDBACK API (Contract Section 6)
 // =============================================================================
 export const feedbackApi = {
-  submit: async (payload) => {
-    return apiFetch('/feedback', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }, () => ({
-      success: true,
-      message: 'Gửi đánh giá thành công. Cảm ơn bạn đã đóng góp ý kiến!',
-    }));
-  },
+  submit: async (requestId, payload) => requestApi.feedback(requestId, payload),
 };
 
 // =============================================================================
-// 7. VERIFICATION API (Contract Section 7)
+// 7. VERIFICATION API (Contract Section 7) — public, không cần token
 // =============================================================================
 export const verifyApi = {
-  verifyDocument: async (code) => {
-    return apiFetch(`/verify/${code}`, { method: 'GET' }, () => ({
-      success: true,
-      data: {
-        is_valid: true,
-        verification_code: code,
-        document_type: 'Giấy xác nhận sinh viên',
-        request_code: 'REQ-20261030-001',
-        student_name: 'Nguyễn Quốc Anh',
-        mssv: '21CS001',
-        issued_at: '2026-10-29T15:00:00',
-        signed_by: 'PGS.TS Nguyễn Văn Bình - Hiệu trưởng',
-        cert_serial: '5401:0023:A9F1:4832:B120:7761',
-      },
-    }));
-  },
+  verifyDocument: async (code) => apiFetch(`/verify/${encodeURIComponent(code)}`, { method: 'GET' }),
 };
 
 // =============================================================================
@@ -617,203 +593,48 @@ export const notificationApi = {
 
 // =============================================================================
 // 9. STAFF & DEPARTMENT HEAD API (Contract Section 9)
+// Quy trình 1 cấp: TP phân công → CV duyệt / từ chối / yêu cầu bổ sung → hẹn nhận bản cứng → bàn giao
 // =============================================================================
+const putJson = (endpoint, payload = {}) => apiFetch(endpoint, {
+  method: 'PUT',
+  body: JSON.stringify(payload),
+});
+
 export const staffApi = {
-  getInbox: async (params = {}) => {
-    const qs = new URLSearchParams(params).toString();
-    return apiFetch(`/staff/inbox${qs ? `?${qs}` : ''}`, { method: 'GET' }, () => {
-      let list = [...mock.allRequests];
-      if (params.status && params.status !== 'all') {
-        list = list.filter(r => r.internal_status === params.status || r.status === params.status);
-      }
-      if (params.keyword) {
-        const kw = params.keyword.toLowerCase();
-        list = list.filter(r =>
-          r.id.toLowerCase().includes(kw) ||
-          r.student.toLowerCase().includes(kw) ||
-          r.mssv.toLowerCase().includes(kw) ||
-          r.procedure.toLowerCase().includes(kw)
-        );
-      }
-      return {
-        success: true,
-        data: list,
-        pagination: {
-          current_page: parseInt(params.page || 1),
-          total_pages: Math.ceil(list.length / 10),
-          total_items: list.length,
-        },
-      };
-    });
-  },
+  // params: { page, limit, internal_status, type_id }
+  getInbox: async (params = {}) => apiFetch(`/staff/inbox${toQueryString(params)}`, { method: 'GET' }),
 
-  assign: async (requestId, payload) => {
-    return apiFetch(`/staff/requests/${requestId}/assign`, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }, () => ({
-      success: true,
-      message: 'Phân công chuyên viên thành công',
-      data: {
-        request_id: requestId,
-        assigned_to_user_id: payload.assigned_to_user_id,
-        internal_status: 'CV đang thẩm định',
-      },
-    }));
-  },
+  getDepartmentMembers: async () => apiFetch('/staff/department-members', { method: 'GET' }),
 
-  getDepartmentMembers: async () => {
-    return apiFetch('/staff/department-members', { method: 'GET' }, () => ({
-      success: true,
-      data: mock.staff,
-    }));
-  },
+  getRejectionReasons: async () => apiFetch('/rejection-reasons', { method: 'GET' }),
 
-  approve: async (requestId, payload = {}) => {
-    return apiFetch(`/staff/requests/${requestId}/approve`, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }, () => ({
-      success: true,
-      message: 'Chuyên viên đã thẩm định và duyệt hồ sơ',
-      data: {
-        request_id: requestId,
-        internal_status: 'Đã duyệt — Đang chuẩn bị kết quả',
-        status: 'Đã duyệt',
-      },
-    }));
-  },
+  // TP phân công chuyên viên
+  assign: async (requestId, assignedStaffId) =>
+    putJson(`/staff/requests/${requestId}/assign`, { assigned_staff_id: assignedStaffId }),
 
-  submitToHead: async (requestId, payload) => {
-    return apiFetch(`/staff/requests/${requestId}/submit-to-head`, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }, () => ({
-      success: true,
-      message: 'Đã trình hồ sơ lên Trưởng phòng phê duyệt',
-      data: {
-        request_id: requestId,
-        internal_status: 'Chờ TP phê duyệt',
-      },
-    }));
-  },
+  // CV duyệt, backend sinh PDF kết quả
+  approve: async (requestId, note = '') =>
+    putJson(`/staff/requests/${requestId}/approve`, note ? { note } : {}),
 
-  reject: async (requestId, payload) => {
-    return apiFetch(`/staff/requests/${requestId}/reject`, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }, () => ({
-      success: true,
-      message: 'Đã từ chối yêu cầu',
-      data: {
-        request_id: requestId,
-        status: 'Từ chối',
-        internal_status: 'Từ chối',
-      },
-    }));
-  },
+  // Gửi reason_id, hoặc note ít nhất 20 ký tự khi không chọn lý do có sẵn
+  reject: async (requestId, { reason_id = null, note = '' } = {}) =>
+    putJson(`/staff/requests/${requestId}/reject`, {
+      ...(reason_id ? { reason_id } : {}),
+      ...(note ? { note } : {}),
+    }),
 
-  requestSupplement: async (requestId, payload) => {
-    return apiFetch(`/staff/requests/${requestId}/request-supplement`, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }, () => ({
-      success: true,
-      message: 'Đã gửi yêu cầu bổ sung minh chứng cho sinh viên',
-      data: {
-        request_id: requestId,
-        status: 'Cần bổ sung',
-        internal_status: 'Cần bổ sung',
-      },
-    }));
-  },
+  requestSupplement: async (requestId, note) =>
+    putJson(`/staff/requests/${requestId}/request-supplement`, { note }),
 
-  transferDepartment: async (requestId, payload) => {
-    return apiFetch(`/staff/requests/${requestId}/transfer-department`, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }, () => ({
-      success: true,
-      message: 'Chuyển tiếp hồ sơ sang phòng ban khác thành công',
-      data: {
-        request_id: requestId,
-        department_id: payload.target_department_id,
-        internal_status: 'Chờ phân công',
-      },
-    }));
-  },
+  // payload: { pickup_date: ISO datetime, pickup_location, pickup_note }
+  assignPickup: async (requestId, payload) =>
+    putJson(`/staff/requests/${requestId}/assign-pickup`, payload),
 
-  deptHeadApprove: async (requestId, payload = {}) => {
-    return apiFetch(`/staff/requests/${requestId}/head-approve`, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }, () => ({
-      success: true,
-      message: 'Trưởng phòng đã phê duyệt hồ sơ thành công',
-      data: {
-        request_id: requestId,
-        internal_status: 'Đã duyệt — Đang chuẩn bị kết quả',
-        status: 'Đã duyệt',
-      },
-    }));
-  },
+  confirmHandover: async (requestId) =>
+    putJson(`/staff/requests/${requestId}/confirm-handover`),
 
-  submitToPrincipal: async (requestId, payload = {}) => {
-    return apiFetch(`/staff/requests/${requestId}/submit-to-principal`, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }, () => ({
-      success: true,
-      message: 'Đã trình văn bản lên Hiệu trưởng ký số',
-      data: {
-        request_id: requestId,
-        internal_status: 'Chờ HT ký số',
-      },
-    }));
-  },
-
-  returnToStaff: async (requestId, payload) => {
-    return apiFetch(`/staff/requests/${requestId}/return-to-staff`, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }, () => ({
-      success: true,
-      message: 'Đã trả lại hồ sơ cho chuyên viên bổ sung, hoàn thiện',
-      data: {
-        request_id: requestId,
-        internal_status: 'CV đang thẩm định',
-      },
-    }));
-  },
-
-  assignPickup: async (requestId, payload) => {
-    return apiFetch(`/staff/requests/${requestId}/assign-pickup`, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }, () => ({
-      success: true,
-      message: 'Đã tạo lịch hẹn nhận kết quả và phát hành bản điện tử',
-      data: {
-        request_id: requestId,
-        internal_status: 'Đã duyệt — Đang chuẩn bị kết quả',
-      },
-    }));
-  },
-
-  confirmHandover: async (requestId, payload) => {
-    return apiFetch(`/staff/requests/${requestId}/handover`, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }, () => ({
-      success: true,
-      message: 'Xác nhận trao trả hồ sơ cho sinh viên thành công',
-      data: {
-        request_id: requestId,
-        status: 'Đã xử lý',
-        internal_status: 'Đã xử lý',
-      },
-    }));
-  },
+  revoke: async (requestId, note = '') =>
+    putJson(`/staff/requests/${requestId}/revoke`, note ? { note } : {}),
 };
 
 // =============================================================================
@@ -1004,6 +825,7 @@ const api = {
   requests: requestApi,
   payments: paymentApi,
   results: resultApi,
+  attachments: attachmentApi,
   feedback: feedbackApi,
   verify: verifyApi,
   notifications: notificationApi,

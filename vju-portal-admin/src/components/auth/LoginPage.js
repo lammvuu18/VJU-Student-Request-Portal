@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { authApi, loginWithRole, findAccountByEmail, ROLE_ACCOUNTS } from '../../services/api';
+import { authApi, loginWithRole, findAccountByEmail, ROLE_ACCOUNTS, USE_MOCK } from '../../services/api';
 import './LoginPage.css';
 
 function LoginPage() {
@@ -45,16 +45,16 @@ function LoginPage() {
         return;
       }
     } catch (err) {
-      // Lỗi nghiệp vụ từ backend
-      if (err.status) {
+      // Lỗi nghiệp vụ từ backend, hoặc không kết nối được khi không bật chế độ mock
+      if (err.status || !USE_MOCK) {
         setErrorMsg(err.message || 'Đăng nhập không thành công.');
         setLoading(false);
         return;
       }
-      console.warn('Backend not reachable, falling back to mock login:', err.message);
+      console.warn('Backend không kết nối được, đăng nhập bằng tài khoản mock:', err.message);
     }
 
-    // Fallback mock nếu backend offline
+    // Chỉ chạy khi REACT_APP_USE_MOCK=true và backend offline
     const matchedAccount = findAccountByEmail(email);
     if (matchedAccount) {
       const acc = loginWithRole(matchedAccount.role);

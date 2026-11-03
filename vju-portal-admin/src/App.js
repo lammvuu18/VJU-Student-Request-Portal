@@ -15,6 +15,7 @@ import { getAuthToken, getSavedRole, ROLE_ACCOUNTS, normalizeRole } from './serv
 import LoginPage from './components/auth/LoginPage';
 import GoogleCallback from './components/auth/GoogleCallback';
 import GoogleChooserPage from './components/auth/GoogleChooserPage';
+import VerifyDocumentPage from './components/auth/VerifyDocumentPage';
 
 // Student pages
 import StudentDashboard from './components/student/StudentDashboard';
@@ -103,6 +104,9 @@ function App() {
         <Route path="/auth/callback" element={<GoogleCallback />} />
         <Route path="/auth/google-select" element={<GoogleChooserPage />} />
 
+        {/* Cổng xác minh công khai, mã QR trên PDF kết quả trỏ về đây */}
+        <Route path="/verify/:code" element={<VerifyDocumentPage />} />
+
         {/* Student Routes */}
         <Route
           path="/student"
@@ -154,7 +158,9 @@ function App() {
           <Route path="request/reject-modal" element={<DeptHeadRequestDetail defaultOpenReject={true} />} />
           <Route path="request/rejected" element={<DeptHeadRequestDetail defaultStatus="Từ chối" defaultToast="Đã từ chối yêu cầu VJU-2026-0840" />} />
           <Route path="request/c4d" element={<DeptHeadRequestDetail defaultStatus="Từ chối" defaultToast="Đã từ chối yêu cầu VJU-2026-0840" />} />
-          <Route path="request/:id" element={<DeptHeadRequestDetail />} />
+          {/* Quy trình 1 cấp: TP dùng chung màn hình chi tiết với CV, khác nút thao tác theo vai trò */}
+          <Route path="request/:id" element={<StaffRequestDetail basePath="/dept-head" />} />
+          <Route path="request/:id/issue" element={<StaffIssueResult basePath="/dept-head" />} />
           <Route path="statistics" element={<DeptHeadStatistics />} />
         </Route>
 

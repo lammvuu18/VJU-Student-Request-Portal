@@ -1,1368 +1,259 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { allRequests } from '../../data/mockData';
-import { staffApi } from '../../services/api';
+import api, { fetchFileUrl, getCurrentUser } from '../../services/api';
+import { formatDateTime, statusStyle } from '../../utils/format';
 import './StaffPages.css';
 
-function StaffIssueResult() {
+const APPROVED = 'Đã duyệt — Đang chuẩn bị kết quả';
+
+const LOCATION_OPTIONS = [
+  'Văn phòng Một cửa (P.102 Nhà A)',
+  'Phòng Đào tạo (P.301 Nhà A)',
+  'Phòng Công tác Sinh viên (P.205 Nhà B)',
+];
+
+const inputStyle = {
+  width: '100%', padding: '10px 12px', border: '1px solid #E2E5EA', borderRadius: 8,
+  fontSize: 14, fontFamily: 'Inter, sans-serif', boxSizing: 'border-box',
+};
+
+/**
+ * Cấp kết quả bản cứng: hẹn lịch nhận (assign-pickup) rồi xác nhận đã bàn giao (confirm-handover).
+ * Chỉ áp dụng cho đơn chọn "Bản cứng" hoặc "Cả hai" và đã được duyệt.
+ */
+function StaffIssueResult({ basePath = '/staff' }) {
   const navigate = useNavigate();
   const { id } = useParams();
+  const user = getCurrentUser() || {};
 
-  // Find request in mock data or fallback to Figma default VJU-2026-0840
-  const foundReq = (allRequests || []).find(
-    (r) => r.id === id || r.request_code === id || String(r.request_id) === String(id)
-  );
+  const [request, setRequest] = useState(null);
+  const [loadError, setLoadError] = useState('');
+  const [previewUrl, setPreviewUrl] = useState('');
+  const previewUrlRef = useRef('');
+  const [busy, setBusy] = useState(false);
+  const [toast, setToast] = useState(null);
 
-  const requestCode = id || foundReq?.request_code || foundReq?.id || 'VJU-2026-0840';
-  const procedure = foundReq?.procedure || foundReq?.type_name || 'Cấp bảng điểm';
-  const student = foundReq?.student || 'Nguyễn Minh Anh';
-  const mssv = foundReq?.mssv || '23110150';
-  const quantity = foundReq?.quantity || foundReq?.form_data?.quantity || '01';
-  const language = foundReq?.language || foundReq?.form_data?.language || 'Tiếng Việt';
-
-  // State
-  const [zoom, setZoom] = useState(100);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages] = useState(2);
-  const [location, setLocation] = useState('Văn phòng Một cửa (P.102 Nhà A)');
-  const [pickupDate, setPickupDate] = useState('28/10/2026');
+  const [pickupDay, setPickupDay] = useState('');
   const [timeFrom, setTimeFrom] = useState('08:00');
   const [timeTo, setTimeTo] = useState('11:30');
-  const [contactPerson, setContactPerson] = useState('Lê Hoàng Nam');
-  const [toastMsg, setToastMsg] = useState('');
-  const [isSuccess, setIsSuccess] = useState(false);
+  const [location, setLocation] = useState(LOCATION_OPTIONS[0]);
+  const [contactPerson, setContactPerson] = useState(user.full_name || '');
 
-  // Dropdown open states
-  const [openLocationDropdown, setOpenLocationDropdown] = useState(false);
-  const [openDateDropdown, setOpenDateDropdown] = useState(false);
-
-  const locationOptions = [
-    'Văn phòng Một cửa (P.102 Nhà A)',
-    'Bàn tiếp nhận số 1 — Phòng Đào tạo (P.301 Nhà A)',
-    'Phòng Công tác Sinh viên (P.205 Nhà B)',
-    'Trung tâm Thông tin Thư viện VJU',
-  ];
-
-  const dateOptions = [
-    '28/10/2026',
-    '29/10/2026',
-    '30/10/2026',
-    '31/10/2026',
-    '02/11/2026',
-  ];
-
-  const handleZoomIn = () => {
-    if (zoom < 150) setZoom(prev => prev + 10);
+  const showToast = (message, isError = false) => {
+    setToast({ message, isError });
+    setTimeout(() => setToast(null), 4500);
   };
 
-  const handleZoomOut = () => {
-    if (zoom > 70) setZoom(prev => prev - 10);
-  };
-
-  const showToast = (msg) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(''), 4500);
-  };
-
-  const handleDownloadPDF = () => {
-    showToast(`Đang tải tệp PDF kết quả cho hồ sơ ${requestCode}...`);
-  };
-
-  const handleConfirmIssue = async () => {
+  const load = useCallback(async () => {
     try {
-      if (staffApi && staffApi.assignPickup) {
-        await staffApi.assignPickup(requestCode, {
-          location,
-          pickup_date: pickupDate,
-          time_from: timeFrom,
-          time_to: timeTo,
-          contact_person: contactPerson,
-        }).catch(() => {});
-      }
-    } catch {}
+      const res = await api.requests.getDetail(id);
+      setRequest(res.data);
+    } catch (err) {
+      setLoadError(err.message || 'Không tải được hồ sơ.');
+    }
+  }, [id]);
 
-    setIsSuccess(true);
-    showToast(`Đã cấp kết quả thành công cho sinh viên ${student}`);
+  useEffect(() => {
+    load();
+    return () => { if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current); };
+  }, [load]);
+
+  const result = request?.result;
+
+  // Tải PDF kết quả để xem trước khi bàn giao
+  useEffect(() => {
+    if (!result?.pdf_download_url) return;
+    fetchFileUrl(result.pdf_download_url)
+      .then((url) => {
+        if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+        previewUrlRef.current = url;
+        setPreviewUrl(url);
+      })
+      .catch(() => {});
+  }, [result?.pdf_download_url]);
+
+  const handleAssignPickup = async (e) => {
+    e.preventDefault();
+    if (!pickupDay) {
+      showToast('Vui lòng chọn ngày nhận.', true);
+      return;
+    }
+    if (timeTo <= timeFrom) {
+      showToast('Giờ kết thúc phải sau giờ bắt đầu.', true);
+      return;
+    }
+    setBusy(true);
+    try {
+      // Backend lưu một thời điểm hẹn, khung giờ và người liên hệ đưa vào ghi chú
+      const pickupDate = new Date(`${pickupDay}T${timeFrom}:00`).toISOString();
+      const pickupNote = `Khung giờ ${timeFrom}–${timeTo}${contactPerson ? `. Liên hệ: ${contactPerson}` : ''}`;
+      const res = await api.staff.assignPickup(request.request_id, {
+        pickup_date: pickupDate,
+        pickup_location: location,
+        pickup_note: pickupNote,
+      });
+      showToast(res.message || 'Đã hẹn lịch nhận bản cứng.');
+      await load();
+    } catch (err) {
+      showToast(err.message, true);
+    } finally {
+      setBusy(false);
+    }
   };
+
+  const handleConfirmHandover = async () => {
+    setBusy(true);
+    try {
+      const res = await api.staff.confirmHandover(request.request_id);
+      showToast(res.message || 'Đã xác nhận bàn giao bản cứng.');
+      await load();
+    } catch (err) {
+      showToast(err.message, true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const backToDetail = () => navigate(`${basePath}/request/${id}`);
+
+  if (loadError || !request) {
+    return (
+      <div className="staff-detail-container">
+        <div className="staff-detail-topbar">
+          <h1 className="staff-detail-title">Cấp kết quả cho sinh viên</h1>
+          <button type="button" className="staff-detail-btn-back" onClick={backToDetail}>← Chi tiết hồ sơ</button>
+        </div>
+        <p style={{ color: loadError ? '#B91C1C' : '#6B7280' }}>{loadError || 'Đang tải hồ sơ...'}</p>
+      </div>
+    );
+  }
+
+  const student = request.student || {};
+  const isApproved = request.internal_status === APPROVED;
+  const today = new Date().toISOString().slice(0, 10);
 
   return (
-    <div className="staff-detail-container" style={{ position: 'relative' }}>
-      {/* Toast Notification (Figma spec) */}
-      {toastMsg && (
-        <div className="depthead-toast-card">
-          <div className="depthead-toast-icon-circle">
-            <span className="depthead-toast-icon-check">✓</span>
+    <div className="staff-detail-container">
+      {toast && (
+        <div className="depthead-toast-card" style={toast.isError ? { background: '#FEF2F2', borderColor: '#FCA5A5' } : undefined}>
+          <div className="depthead-toast-icon-circle" style={toast.isError ? { background: '#B91C1C' } : undefined}>
+            <span className="depthead-toast-icon-check">{toast.isError ? '!' : '✓'}</span>
           </div>
-          <span className="depthead-toast-text">{toastMsg}</span>
+          <span className="depthead-toast-text" style={toast.isError ? { color: '#B91C1C' } : undefined}>{toast.message}</span>
         </div>
       )}
 
-      {/* Top Header Row */}
-      <div
-        style={{
-          alignSelf: 'stretch',
-          overflow: 'hidden',
-          justifyContent: 'flex-start',
-          alignItems: 'center',
-          gap: 8,
-          display: 'inline-flex',
-        }}
-      >
-        <div
-          style={{
-            flex: '1 1 0',
-            color: '#1F2937',
-            fontSize: 28,
-            fontFamily: 'Inter',
-            fontWeight: '600',
-            wordWrap: 'break-word',
-          }}
-        >
-          Cấp kết quả cho sinh viên
-        </div>
-        <button
-          type="button"
-          onClick={() => navigate(`/staff/request/${requestCode}`)}
-          style={{
-            paddingLeft: 14,
-            paddingRight: 14,
-            paddingTop: 8,
-            paddingBottom: 8,
-            background: 'white',
-            overflow: 'hidden',
-            borderRadius: 8,
-            border: '1px #E2E5EA solid',
-            justifyContent: 'flex-start',
-            alignItems: 'flex-start',
-            display: 'flex',
-            cursor: 'pointer',
-            transition: 'all 0.15s ease',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = '#D1D5DB';
-            e.currentTarget.style.background = '#F9FAFB';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = '#E2E5EA';
-            e.currentTarget.style.background = 'white';
-          }}
-        >
-          <div
-            style={{
-              color: '#6B7280',
-              fontSize: 13,
-              fontFamily: 'Inter',
-              fontWeight: '500',
-              wordWrap: 'break-word',
-            }}
-          >
-            ← Quay lại
-          </div>
-        </button>
+      <div className="staff-detail-topbar">
+        <h1 className="staff-detail-title">Cấp kết quả cho sinh viên</h1>
+        <button type="button" className="staff-detail-btn-back" onClick={backToDetail}>← Chi tiết hồ sơ</button>
       </div>
 
-      {/* Main 2-Column Split: gap 20px */}
-      <div
-        style={{
-          alignSelf: 'stretch',
-          overflow: 'visible',
-          justifyContent: 'flex-start',
-          alignItems: 'flex-start',
-          gap: 20,
-          display: 'inline-flex',
-        }}
-      >
-        {/* Left Column: PDF Preview (width: 660px) */}
-        <div
-          style={{
-            width: 660,
-            overflow: 'hidden',
-            flexDirection: 'column',
-            justifyContent: 'flex-start',
-            alignItems: 'center',
-            gap: 12,
-            display: 'inline-flex',
-            flexShrink: 0,
-          }}
-        >
-          {/* PDF Toolbar */}
-          <div
-            style={{
-              alignSelf: 'stretch',
-              paddingLeft: 12,
-              paddingRight: 12,
-              paddingTop: 6,
-              paddingBottom: 6,
-              background: 'white',
-              overflow: 'hidden',
-              borderRadius: 8,
-              border: '1px #E2E5EA solid',
-              justifyContent: 'flex-start',
-              alignItems: 'center',
-              gap: 12,
-              display: 'inline-flex',
-              boxSizing: 'border-box',
-            }}
-          >
-            <button
-              type="button"
-              onClick={handleZoomOut}
-              style={{
-                border: 'none',
-                background: 'transparent',
-                color: '#6B7280',
-                fontSize: 16,
-                fontFamily: 'Inter',
-                fontWeight: '500',
-                cursor: 'pointer',
-                padding: '2px 6px',
-                borderRadius: 4,
-              }}
-              title="Thu nhỏ"
-            >
-              −
-            </button>
-            <div
-              style={{
-                color: '#1F2937',
-                fontSize: 12,
-                fontFamily: 'Inter',
-                fontWeight: '400',
-                wordWrap: 'break-word',
-                minWidth: 36,
-                textAlign: 'center',
-              }}
-            >
-              {zoom}%
-            </div>
-            <button
-              type="button"
-              onClick={handleZoomIn}
-              style={{
-                border: 'none',
-                background: 'transparent',
-                color: '#6B7280',
-                fontSize: 16,
-                fontFamily: 'Inter',
-                fontWeight: '500',
-                cursor: 'pointer',
-                padding: '2px 6px',
-                borderRadius: 4,
-              }}
-              title="Phóng to"
-            >
-              +
-            </button>
-            <div style={{ flex: '1 1 0' }} />
-            <div
-              style={{
-                color: '#6B7280',
-                fontSize: 12,
-                fontFamily: 'Inter',
-                fontWeight: '400',
-                wordWrap: 'break-word',
-              }}
-            >
-              Trang {currentPage} / {totalPages}
-            </div>
-          </div>
-
-          {/* PDF Document Viewport */}
-          <div
-            style={{
-              alignSelf: 'stretch',
-              padding: 16,
-              position: 'relative',
-              background: 'white',
-              overflow: 'hidden',
-              borderRadius: 8,
-              border: '1px #E2E5EA solid',
-              flexDirection: 'column',
-              justifyContent: 'flex-start',
-              alignItems: 'center',
-              display: 'flex',
-              boxSizing: 'border-box',
-            }}
-          >
-            {/* A4 Document sheet (560 x 792) */}
-            <div
-              style={{
-                width: 560,
-                height: 792,
-                paddingLeft: 36,
-                paddingRight: 36,
-                paddingTop: 28,
-                paddingBottom: 28,
-                background: 'white',
-                overflow: 'hidden',
-                border: '0.50px #E2E5EA solid',
-                flexDirection: 'column',
-                justifyContent: 'flex-start',
-                alignItems: 'center',
-                gap: 8,
-                display: 'flex',
-                boxSizing: 'border-box',
-                transform: `scale(${zoom / 100})`,
-                transformOrigin: 'top center',
-                transition: 'transform 0.15s ease',
-              }}
-            >
-              <div
-                style={{
-                  textAlign: 'center',
-                  color: '#1F2937',
-                  fontSize: 11,
-                  fontFamily: 'Inter',
-                  fontWeight: '600',
-                  lineHeight: '16px',
-                  wordWrap: 'break-word',
-                }}
-              >
-                ĐẠI HỌC QUỐC GIA HÀ NỘI<br />TRƯỜNG ĐẠI HỌC VIỆT NHẬT
-              </div>
-              <div style={{ width: 160, height: 1, background: '#1F2937' }} />
-              <div
-                style={{
-                  textAlign: 'center',
-                  color: '#1F2937',
-                  fontSize: 16,
-                  fontFamily: 'Inter',
-                  fontWeight: '600',
-                  wordWrap: 'break-word',
-                  marginTop: 4,
-                }}
-              >
-                BẢNG ĐIỂM
-              </div>
-              <div
-                style={{
-                  textAlign: 'center',
-                  color: '#6B7280',
-                  fontSize: 10,
-                  fontFamily: 'Inter',
-                  fontWeight: '400',
-                  wordWrap: 'break-word',
-                }}
-              >
-                (Academic Transcript)
-              </div>
-              <div style={{ width: 10, height: 6 }} />
-              <div
-                style={{
-                  alignSelf: 'stretch',
-                  color: '#1F2937',
-                  fontSize: 10,
-                  fontFamily: 'Inter',
-                  fontWeight: '400',
-                  wordWrap: 'break-word',
-                }}
-              >
-                Họ và tên: {student}
-              </div>
-              <div
-                style={{
-                  alignSelf: 'stretch',
-                  color: '#1F2937',
-                  fontSize: 10,
-                  fontFamily: 'Inter',
-                  fontWeight: '400',
-                  wordWrap: 'break-word',
-                }}
-              >
-                MSSV: {mssv}
-              </div>
-              <div
-                style={{
-                  alignSelf: 'stretch',
-                  color: '#1F2937',
-                  fontSize: 10,
-                  fontFamily: 'Inter',
-                  fontWeight: '400',
-                  wordWrap: 'break-word',
-                }}
-              >
-                Ngành: Khoa học máy tính
-              </div>
-              <div style={{ width: 10, height: 4 }} />
-              <div
-                style={{
-                  textAlign: 'center',
-                  color: '#6B7280',
-                  fontSize: 10,
-                  fontFamily: 'Inter',
-                  fontWeight: '400',
-                  wordWrap: 'break-word',
-                }}
-              >
-                · · ·
-              </div>
-              <div style={{ width: 10, flex: '1 1 0' }} />
-              
-              {/* Digital signature stamp area */}
-              <div
-                style={{
-                  alignSelf: 'stretch',
-                  overflow: 'hidden',
-                  justifyContent: 'flex-start',
-                  alignItems: 'flex-start',
-                  display: 'inline-flex',
-                }}
-              >
-                <div style={{ flex: '1 1 0' }} />
-                <div
-                  style={{
-                    overflow: 'hidden',
-                    flexDirection: 'column',
-                    justifyContent: 'flex-start',
-                    alignItems: 'center',
-                    gap: 3,
-                    display: 'inline-flex',
-                  }}
-                >
-                  <div
-                    style={{
-                      color: '#6B7280',
-                      fontSize: 7,
-                      fontFamily: 'Inter',
-                      fontWeight: '400',
-                      wordWrap: 'break-word',
-                    }}
-                  >
-                    Ký số 26/10/2026
-                  </div>
-                  <div
-                    style={{
-                      width: 44,
-                      height: 44,
-                      background: '#F0F0F0',
-                      borderRadius: 3,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      border: '1px dashed #D1D5DB',
-                    }}
-                    title="Dấu ký số xác thực điện tử VJU"
-                  >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="#AA2327" strokeWidth="1.5" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Scrollbar Mock */}
-            <div
-              style={{
-                width: 6,
-                height: 794,
-                left: 646,
-                top: 16,
-                position: 'absolute',
-                background: '#F0F0F0',
-                borderRadius: 3,
-              }}
-            />
-            <div
-              style={{
-                width: 6,
-                height: 200,
-                left: 646,
-                top: 16,
-                position: 'absolute',
-                background: '#BEC2C8',
-                borderRadius: 3,
-              }}
-            />
-          </div>
-
-          {/* Tải PDF Button */}
-          <button
-            type="button"
-            onClick={handleDownloadPDF}
-            style={{
-              paddingLeft: 20,
-              paddingRight: 20,
-              paddingTop: 10,
-              paddingBottom: 10,
-              background: '#AA2327',
-              overflow: 'hidden',
-              borderRadius: 8,
-              border: 'none',
-              justifyContent: 'flex-start',
-              alignItems: 'flex-start',
-              display: 'inline-flex',
-              cursor: 'pointer',
-              transition: 'background 0.15s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#931E22';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = '#AA2327';
-            }}
-          >
-            <div
-              style={{
-                color: 'white',
-                fontSize: 13,
-                fontFamily: 'Inter',
-                fontWeight: '600',
-                wordWrap: 'break-word',
-              }}
-            >
-              Tải PDF ↓
-            </div>
-          </button>
+      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        {/* Xem trước PDF kết quả */}
+        <div className="staff-detail-card" style={{ flex: '1 1 520px', minWidth: 320 }}>
+          <h2 className="staff-detail-section-title">Kết quả {result ? `(${result.verification_code})` : ''}</h2>
+          <div style={{ height: 12 }} />
+          {result ? (
+            previewUrl ? (
+              <iframe title="Kết quả" src={previewUrl} style={{ width: '100%', height: 640, border: '1px solid #E2E5EA', borderRadius: 8 }} />
+            ) : (
+              <p style={{ color: '#6B7280', fontSize: 14 }}>Đang tải PDF kết quả...</p>
+            )
+          ) : (
+            <p style={{ color: '#6B7280', fontSize: 14 }}>Hồ sơ chưa có kết quả. Cần phê duyệt trước khi cấp kết quả.</p>
+          )}
         </div>
 
-        {/* Right Column: Info & Pickup Configuration (flex: 1) */}
-        <div
-          style={{
-            flex: '1 1 0',
-            overflow: 'visible',
-            flexDirection: 'column',
-            justifyContent: 'flex-start',
-            alignItems: 'flex-start',
-            gap: 16,
-            display: 'inline-flex',
-          }}
-        >
-          {/* Card 1: Thông tin kết quả */}
-          <div
-            style={{
-              alignSelf: 'stretch',
-              paddingTop: 16,
-              paddingBottom: 12,
-              paddingLeft: 20,
-              paddingRight: 20,
-              background: 'white',
-              overflow: 'hidden',
-              borderRadius: 12,
-              border: '1px #E2E5EA solid',
-              flexDirection: 'column',
-              justifyContent: 'flex-start',
-              alignItems: 'flex-start',
-              display: 'flex',
-              boxSizing: 'border-box',
-            }}
-          >
-            <div
-              style={{
-                alignSelf: 'stretch',
-                color: '#1F2937',
-                fontSize: 15,
-                fontFamily: 'Inter',
-                fontWeight: '600',
-                wordWrap: 'break-word',
-              }}
-            >
-              Thông tin kết quả
-            </div>
-
-            {/* Mã yêu cầu */}
-            <div
-              style={{
-                alignSelf: 'stretch',
-                paddingTop: 10,
-                paddingBottom: 10,
-                overflow: 'hidden',
-                flexDirection: 'column',
-                justifyContent: 'flex-start',
-                alignItems: 'flex-start',
-                gap: 2,
-                display: 'flex',
-              }}
-            >
-              <div
-                style={{
-                  alignSelf: 'stretch',
-                  color: '#6B7280',
-                  fontSize: 11,
-                  fontFamily: 'Inter',
-                  fontWeight: '400',
-                  wordWrap: 'break-word',
-                }}
-              >
-                Mã yêu cầu
-              </div>
-              <div
-                style={{
-                  alignSelf: 'stretch',
-                  color: '#1F2937',
-                  fontSize: 12,
-                  fontFamily: 'Inter',
-                  fontWeight: '500',
-                  wordWrap: 'break-word',
-                }}
-              >
-                {requestCode}
-              </div>
-            </div>
-            <div style={{ alignSelf: 'stretch', height: 1, background: '#E2E5EA' }} />
-
-            {/* Thủ tục */}
-            <div
-              style={{
-                alignSelf: 'stretch',
-                paddingTop: 10,
-                paddingBottom: 10,
-                overflow: 'hidden',
-                flexDirection: 'column',
-                justifyContent: 'flex-start',
-                alignItems: 'flex-start',
-                gap: 2,
-                display: 'flex',
-              }}
-            >
-              <div
-                style={{
-                  alignSelf: 'stretch',
-                  color: '#6B7280',
-                  fontSize: 11,
-                  fontFamily: 'Inter',
-                  fontWeight: '400',
-                  wordWrap: 'break-word',
-                }}
-              >
-                Thủ tục
-              </div>
-              <div
-                style={{
-                  alignSelf: 'stretch',
-                  color: '#1F2937',
-                  fontSize: 12,
-                  fontFamily: 'Inter',
-                  fontWeight: '500',
-                  wordWrap: 'break-word',
-                }}
-              >
-                {procedure}
-              </div>
-            </div>
-            <div style={{ alignSelf: 'stretch', height: 1, background: '#E2E5EA' }} />
-
-            {/* Sinh viên */}
-            <div
-              style={{
-                alignSelf: 'stretch',
-                paddingTop: 10,
-                paddingBottom: 10,
-                overflow: 'hidden',
-                flexDirection: 'column',
-                justifyContent: 'flex-start',
-                alignItems: 'flex-start',
-                gap: 2,
-                display: 'flex',
-              }}
-            >
-              <div
-                style={{
-                  alignSelf: 'stretch',
-                  color: '#6B7280',
-                  fontSize: 11,
-                  fontFamily: 'Inter',
-                  fontWeight: '400',
-                  wordWrap: 'break-word',
-                }}
-              >
-                Sinh viên
-              </div>
-              <div
-                style={{
-                  alignSelf: 'stretch',
-                  color: '#1F2937',
-                  fontSize: 12,
-                  fontFamily: 'Inter',
-                  fontWeight: '500',
-                  wordWrap: 'break-word',
-                }}
-              >
-                {student}
-              </div>
-            </div>
-            <div style={{ alignSelf: 'stretch', height: 1, background: '#E2E5EA' }} />
-
-            {/* Template */}
-            <div
-              style={{
-                alignSelf: 'stretch',
-                paddingTop: 10,
-                paddingBottom: 10,
-                overflow: 'hidden',
-                flexDirection: 'column',
-                justifyContent: 'flex-start',
-                alignItems: 'flex-start',
-                gap: 2,
-                display: 'flex',
-              }}
-            >
-              <div
-                style={{
-                  alignSelf: 'stretch',
-                  color: '#6B7280',
-                  fontSize: 11,
-                  fontFamily: 'Inter',
-                  fontWeight: '400',
-                  wordWrap: 'break-word',
-                }}
-              >
-                Template
-              </div>
-              <div
-                style={{
-                  alignSelf: 'stretch',
-                  color: '#1F2937',
-                  fontSize: 12,
-                  fontFamily: 'Inter',
-                  fontWeight: '500',
-                  wordWrap: 'break-word',
-                }}
-              >
-                Bảng điểm chính quy v2.1
-              </div>
-            </div>
-            <div style={{ alignSelf: 'stretch', height: 1, background: '#E2E5EA' }} />
-
-            {/* Hình thức nhận */}
-            <div
-              style={{
-                alignSelf: 'stretch',
-                paddingTop: 10,
-                paddingBottom: 10,
-                overflow: 'hidden',
-                flexDirection: 'column',
-                justifyContent: 'flex-start',
-                alignItems: 'flex-start',
-                gap: 2,
-                display: 'flex',
-              }}
-            >
-              <div
-                style={{
-                  alignSelf: 'stretch',
-                  color: '#6B7280',
-                  fontSize: 11,
-                  fontFamily: 'Inter',
-                  fontWeight: '400',
-                  wordWrap: 'break-word',
-                }}
-              >
-                Hình thức nhận
-              </div>
-              <div
-                style={{
-                  overflow: 'hidden',
-                  justifyContent: 'flex-start',
-                  alignItems: 'flex-start',
-                  gap: 6,
-                  display: 'inline-flex',
-                  marginTop: 2,
-                }}
-              >
-                <div
-                  style={{
-                    paddingLeft: 6,
-                    paddingRight: 6,
-                    paddingTop: 2,
-                    paddingBottom: 2,
-                    background: '#DBEAFE',
-                    overflow: 'hidden',
-                    borderRadius: 999,
-                    justifyContent: 'flex-start',
-                    alignItems: 'flex-start',
-                    display: 'flex',
-                  }}
-                >
-                  <div
-                    style={{
-                      color: '#1D4ED8',
-                      fontSize: 10,
-                      fontFamily: 'Inter',
-                      fontWeight: '500',
-                      wordWrap: 'break-word',
-                    }}
-                  >
-                    PDF ký số
-                  </div>
+        {/* Thông tin và lịch hẹn */}
+        <div style={{ flex: '1 1 360px', minWidth: 300, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="staff-detail-card">
+            <h2 className="staff-detail-section-title">Thông tin hồ sơ</h2>
+            <div style={{ height: 12 }} />
+            <div className="staff-detail-divider" />
+            {[
+              ['Mã yêu cầu', request.request_code],
+              ['Thủ tục', request.type_name],
+              ['Sinh viên', `${student.full_name || ''} — ${student.mssv || ''}`],
+              ['Hình thức nhận', request.form_data?.result_preference],
+            ].map(([label, value]) => (
+              <React.Fragment key={label}>
+                <div className="staff-detail-row">
+                  <div className="staff-detail-label">{label}</div>
+                  <div className="staff-detail-value">{value || '—'}</div>
                 </div>
-                <div
-                  style={{
-                    paddingLeft: 6,
-                    paddingRight: 6,
-                    paddingTop: 2,
-                    paddingBottom: 2,
-                    background: '#DCFCE7',
-                    overflow: 'hidden',
-                    borderRadius: 999,
-                    justifyContent: 'flex-start',
-                    alignItems: 'flex-start',
-                    display: 'flex',
-                  }}
-                >
-                  <div
-                    style={{
-                      color: '#168039',
-                      fontSize: 10,
-                      fontFamily: 'Inter',
-                      fontWeight: '500',
-                      wordWrap: 'break-word',
-                    }}
-                  >
-                    Bản cứng
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div style={{ alignSelf: 'stretch', height: 1, background: '#E2E5EA' }} />
-
-            {/* Số bản */}
-            <div
-              style={{
-                alignSelf: 'stretch',
-                paddingTop: 10,
-                paddingBottom: 10,
-                overflow: 'hidden',
-                flexDirection: 'column',
-                justifyContent: 'flex-start',
-                alignItems: 'flex-start',
-                gap: 2,
-                display: 'flex',
-              }}
-            >
-              <div
-                style={{
-                  alignSelf: 'stretch',
-                  color: '#6B7280',
-                  fontSize: 11,
-                  fontFamily: 'Inter',
-                  fontWeight: '400',
-                  wordWrap: 'break-word',
-                }}
-              >
-                Số bản
-              </div>
-              <div
-                style={{
-                  alignSelf: 'stretch',
-                  color: '#1F2937',
-                  fontSize: 12,
-                  fontFamily: 'Inter',
-                  fontWeight: '500',
-                  wordWrap: 'break-word',
-                }}
-              >
-                {quantity}
-              </div>
-            </div>
-            <div style={{ alignSelf: 'stretch', height: 1, background: '#E2E5EA' }} />
-
-            {/* Ngôn ngữ */}
-            <div
-              style={{
-                alignSelf: 'stretch',
-                paddingTop: 10,
-                paddingBottom: 10,
-                overflow: 'hidden',
-                flexDirection: 'column',
-                justifyContent: 'flex-start',
-                alignItems: 'flex-start',
-                gap: 2,
-                display: 'flex',
-              }}
-            >
-              <div
-                style={{
-                  alignSelf: 'stretch',
-                  color: '#6B7280',
-                  fontSize: 11,
-                  fontFamily: 'Inter',
-                  fontWeight: '400',
-                  wordWrap: 'break-word',
-                }}
-              >
-                Ngôn ngữ
-              </div>
-              <div
-                style={{
-                  alignSelf: 'stretch',
-                  color: '#1F2937',
-                  fontSize: 12,
-                  fontFamily: 'Inter',
-                  fontWeight: '500',
-                  wordWrap: 'break-word',
-                }}
-              >
-                {language}
-              </div>
+                <div className="staff-detail-divider" />
+              </React.Fragment>
+            ))}
+            <div className="staff-detail-row">
+              <div className="staff-detail-label">Trạng thái</div>
+              <span style={statusStyle(request.internal_status)}>{request.internal_status}</span>
             </div>
           </div>
 
-          {/* Card 2: Thông tin nhận bản cứng */}
-          <div
-            style={{
-              alignSelf: 'stretch',
-              paddingLeft: 20,
-              paddingRight: 20,
-              paddingTop: 16,
-              paddingBottom: 16,
-              background: 'white',
-              overflow: 'visible',
-              borderRadius: 12,
-              border: '1px #E2E5EA solid',
-              flexDirection: 'column',
-              justifyContent: 'flex-start',
-              alignItems: 'flex-start',
-              gap: 10,
-              display: 'flex',
-              boxSizing: 'border-box',
-            }}
-          >
-            <div
-              style={{
-                alignSelf: 'stretch',
-                color: '#1F2937',
-                fontSize: 15,
-                fontFamily: 'Inter',
-                fontWeight: '600',
-                wordWrap: 'break-word',
-              }}
-            >
-              Thông tin nhận bản cứng
-            </div>
+          <div className="staff-detail-card">
+            <h2 className="staff-detail-section-title">Lịch nhận bản cứng</h2>
+            <div style={{ height: 12 }} />
 
-            {/* Địa điểm */}
-            <div
-              style={{
-                alignSelf: 'stretch',
-                position: 'relative',
-                overflow: 'visible',
-                flexDirection: 'column',
-                justifyContent: 'flex-start',
-                alignItems: 'flex-start',
-                gap: 4,
-                display: 'flex',
-              }}
-            >
-              <div
-                style={{
-                  alignSelf: 'stretch',
-                  color: '#4B5563',
-                  fontSize: 12,
-                  fontFamily: 'Inter',
-                  fontWeight: '500',
-                  wordWrap: 'break-word',
-                }}
-              >
-                Địa điểm
+            {result?.pickup_date && (
+              <div style={{ fontSize: 14, color: '#1F2937', marginBottom: 12, lineHeight: 1.6 }}>
+                Đã hẹn: <strong>{formatDateTime(result.pickup_date)}</strong> tại <strong>{result.pickup_location}</strong>
+                {result.pickup_note ? <div style={{ color: '#6B7280' }}>{result.pickup_note}</div> : null}
+                {result.handover_confirmed_at && (
+                  <div style={{ color: '#047857', fontWeight: 600 }}>
+                    Đã bàn giao lúc {formatDateTime(result.handover_confirmed_at)}
+                  </div>
+                )}
               </div>
-              <div
-                onClick={() => {
-                  setOpenLocationDropdown(!openLocationDropdown);
-                  setOpenDateDropdown(false);
-                }}
-                style={{
-                  alignSelf: 'stretch',
-                  paddingLeft: 10,
-                  paddingRight: 10,
-                  paddingTop: 8,
-                  paddingBottom: 8,
-                  background: 'white',
-                  borderRadius: 6,
-                  border: '1px #E2E5EA solid',
-                  justifyContent: 'flex-start',
-                  alignItems: 'center',
-                  gap: 4,
-                  display: 'inline-flex',
-                  cursor: 'pointer',
-                  boxSizing: 'border-box',
-                }}
-              >
-                <div
-                  style={{
-                    flex: '1 1 0',
-                    color: location ? '#1F2937' : '#9CA3AF',
-                    fontSize: 12,
-                    fontFamily: 'Inter',
-                    fontWeight: '400',
-                    wordWrap: 'break-word',
-                  }}
-                >
-                  {location || 'Chọn địa điểm...'}
-                </div>
-                <div
-                  style={{
-                    color: '#6B7280',
-                    fontSize: 12,
-                    fontFamily: 'Inter',
-                    fontWeight: '400',
-                    wordWrap: 'break-word',
-                  }}
-                >
-                  ▾
-                </div>
-              </div>
+            )}
 
-              {openLocationDropdown && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    right: 0,
-                    marginTop: 4,
-                    background: 'white',
-                    borderRadius: 8,
-                    border: '1px #E2E5EA solid',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                    zIndex: 50,
-                    overflow: 'hidden',
-                  }}
-                >
-                  {locationOptions.map((opt) => (
-                    <div
-                      key={opt}
-                      onClick={() => {
-                        setLocation(opt);
-                        setOpenLocationDropdown(false);
-                      }}
-                      style={{
-                        padding: '8px 12px',
-                        fontSize: 12,
-                        fontFamily: 'Inter',
-                        color: location === opt ? '#AA2327' : '#1F2937',
-                        fontWeight: location === opt ? '600' : '400',
-                        background: location === opt ? '#FDF2F2' : 'white',
-                        cursor: 'pointer',
-                      }}
-                      onMouseEnter={(e) => {
-                        if (location !== opt) e.currentTarget.style.background = '#F9FAFB';
-                      }}
-                      onMouseLeave={(e) => {
-                        if (location !== opt) e.currentTarget.style.background = 'white';
-                      }}
-                    >
-                      {opt}
-                    </div>
-                  ))}
+            {isApproved && result && !result.handover_confirmed_at && (
+              <form onSubmit={handleAssignPickup} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <label style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>
+                  Địa điểm
+                  <select style={{ ...inputStyle, marginTop: 6 }} value={location} onChange={(e) => setLocation(e.target.value)}>
+                    {LOCATION_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                  </select>
+                </label>
+                <label style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>
+                  Ngày nhận
+                  <input type="date" min={today} style={{ ...inputStyle, marginTop: 6 }} value={pickupDay} onChange={(e) => setPickupDay(e.target.value)} required />
+                </label>
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <label style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#374151' }}>
+                    Từ
+                    <input type="time" style={{ ...inputStyle, marginTop: 6 }} value={timeFrom} onChange={(e) => setTimeFrom(e.target.value)} required />
+                  </label>
+                  <label style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#374151' }}>
+                    Đến
+                    <input type="time" style={{ ...inputStyle, marginTop: 6 }} value={timeTo} onChange={(e) => setTimeTo(e.target.value)} required />
+                  </label>
                 </div>
-              )}
-            </div>
+                <label style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>
+                  Người liên hệ
+                  <input type="text" style={{ ...inputStyle, marginTop: 6 }} value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} />
+                </label>
+                <button type="submit" className="staff-btn-action-outline" disabled={busy}>
+                  {result.pickup_date ? 'Cập nhật lịch hẹn' : 'Gửi lịch hẹn cho sinh viên'}
+                </button>
+              </form>
+            )}
 
-            {/* Ngày nhận */}
-            <div
-              style={{
-                alignSelf: 'stretch',
-                position: 'relative',
-                overflow: 'visible',
-                flexDirection: 'column',
-                justifyContent: 'flex-start',
-                alignItems: 'flex-start',
-                gap: 4,
-                display: 'flex',
-              }}
-            >
-              <div
-                style={{
-                  alignSelf: 'stretch',
-                  color: '#4B5563',
-                  fontSize: 12,
-                  fontFamily: 'Inter',
-                  fontWeight: '500',
-                  wordWrap: 'break-word',
-                }}
+            {isApproved && result?.pickup_date && !result.handover_confirmed_at && (
+              <button
+                type="button"
+                className="staff-btn-action-primary"
+                style={{ marginTop: 12, width: '100%' }}
+                disabled={busy}
+                onClick={handleConfirmHandover}
               >
-                Ngày nhận
-              </div>
-              <div
-                onClick={() => {
-                  setOpenDateDropdown(!openDateDropdown);
-                  setOpenLocationDropdown(false);
-                }}
-                style={{
-                  alignSelf: 'stretch',
-                  paddingLeft: 10,
-                  paddingRight: 10,
-                  paddingTop: 8,
-                  paddingBottom: 8,
-                  background: 'white',
-                  borderRadius: 6,
-                  border: '1px #E2E5EA solid',
-                  justifyContent: 'flex-start',
-                  alignItems: 'center',
-                  gap: 4,
-                  display: 'inline-flex',
-                  cursor: 'pointer',
-                  boxSizing: 'border-box',
-                }}
-              >
-                <div
-                  style={{
-                    flex: '1 1 0',
-                    color: pickupDate ? '#1F2937' : '#9CA3AF',
-                    fontSize: 12,
-                    fontFamily: 'Inter',
-                    fontWeight: '400',
-                    wordWrap: 'break-word',
-                  }}
-                >
-                  {pickupDate || 'Chọn ngày...'}
-                </div>
-                <div
-                  style={{
-                    color: '#6B7280',
-                    fontSize: 12,
-                    fontFamily: 'Inter',
-                    fontWeight: '400',
-                    wordWrap: 'break-word',
-                  }}
-                >
-                  ▾
-                </div>
-              </div>
+                Xác nhận đã bàn giao bản cứng →
+              </button>
+            )}
 
-              {openDateDropdown && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    right: 0,
-                    marginTop: 4,
-                    background: 'white',
-                    borderRadius: 8,
-                    border: '1px #E2E5EA solid',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                    zIndex: 50,
-                    overflow: 'hidden',
-                  }}
-                >
-                  {dateOptions.map((opt) => (
-                    <div
-                      key={opt}
-                      onClick={() => {
-                        setPickupDate(opt);
-                        setOpenDateDropdown(false);
-                      }}
-                      style={{
-                        padding: '8px 12px',
-                        fontSize: 12,
-                        fontFamily: 'Inter',
-                        color: pickupDate === opt ? '#AA2327' : '#1F2937',
-                        fontWeight: pickupDate === opt ? '600' : '400',
-                        background: pickupDate === opt ? '#FDF2F2' : 'white',
-                        cursor: 'pointer',
-                      }}
-                      onMouseEnter={(e) => {
-                        if (pickupDate !== opt) e.currentTarget.style.background = '#F9FAFB';
-                      }}
-                      onMouseLeave={(e) => {
-                        if (pickupDate !== opt) e.currentTarget.style.background = 'white';
-                      }}
-                    >
-                      {opt}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Giờ nhận: Từ - Đến */}
-            <div
-              style={{
-                alignSelf: 'stretch',
-                overflow: 'hidden',
-                justifyContent: 'flex-start',
-                alignItems: 'flex-start',
-                gap: 8,
-                display: 'inline-flex',
-              }}
-            >
-              {/* Từ */}
-              <div
-                style={{
-                  flex: '1 1 0',
-                  overflow: 'hidden',
-                  flexDirection: 'column',
-                  justifyContent: 'flex-start',
-                  alignItems: 'flex-start',
-                  gap: 4,
-                  display: 'inline-flex',
-                }}
-              >
-                <div
-                  style={{
-                    color: '#4B5563',
-                    fontSize: 12,
-                    fontFamily: 'Inter',
-                    fontWeight: '500',
-                    wordWrap: 'break-word',
-                  }}
-                >
-                  Từ
-                </div>
-                <input
-                  type="text"
-                  value={timeFrom}
-                  onChange={(e) => setTimeFrom(e.target.value)}
-                  style={{
-                    alignSelf: 'stretch',
-                    paddingLeft: 10,
-                    paddingRight: 10,
-                    paddingTop: 8,
-                    paddingBottom: 8,
-                    background: 'white',
-                    borderRadius: 6,
-                    border: '1px #E2E5EA solid',
-                    outline: 'none',
-                    color: '#1F2937',
-                    fontSize: 12,
-                    fontFamily: 'Inter',
-                    fontWeight: '400',
-                    boxSizing: 'border-box',
-                    width: '100%',
-                  }}
-                />
-              </div>
-
-              {/* Đến */}
-              <div
-                style={{
-                  flex: '1 1 0',
-                  overflow: 'hidden',
-                  flexDirection: 'column',
-                  justifyContent: 'flex-start',
-                  alignItems: 'flex-start',
-                  gap: 4,
-                  display: 'inline-flex',
-                }}
-              >
-                <div
-                  style={{
-                    color: '#4B5563',
-                    fontSize: 12,
-                    fontFamily: 'Inter',
-                    fontWeight: '500',
-                    wordWrap: 'break-word',
-                  }}
-                >
-                  Đến
-                </div>
-                <input
-                  type="text"
-                  value={timeTo}
-                  onChange={(e) => setTimeTo(e.target.value)}
-                  style={{
-                    alignSelf: 'stretch',
-                    paddingLeft: 10,
-                    paddingRight: 10,
-                    paddingTop: 8,
-                    paddingBottom: 8,
-                    background: 'white',
-                    borderRadius: 6,
-                    border: '1px #E2E5EA solid',
-                    outline: 'none',
-                    color: '#1F2937',
-                    fontSize: 12,
-                    fontFamily: 'Inter',
-                    fontWeight: '400',
-                    boxSizing: 'border-box',
-                    width: '100%',
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Người liên hệ */}
-            <div
-              style={{
-                alignSelf: 'stretch',
-                overflow: 'hidden',
-                flexDirection: 'column',
-                justifyContent: 'flex-start',
-                alignItems: 'flex-start',
-                gap: 4,
-                display: 'flex',
-              }}
-            >
-              <div
-                style={{
-                  alignSelf: 'stretch',
-                  color: '#4B5563',
-                  fontSize: 12,
-                  fontFamily: 'Inter',
-                  fontWeight: '500',
-                  wordWrap: 'break-word',
-                }}
-              >
-                Người liên hệ
-              </div>
-              <input
-                type="text"
-                value={contactPerson}
-                onChange={(e) => setContactPerson(e.target.value)}
-                style={{
-                  alignSelf: 'stretch',
-                  paddingLeft: 10,
-                  paddingRight: 10,
-                  paddingTop: 8,
-                  paddingBottom: 8,
-                  background: 'white',
-                  borderRadius: 6,
-                  border: '1px #E2E5EA solid',
-                  outline: 'none',
-                  color: '#1F2937',
-                  fontSize: 12,
-                  fontFamily: 'Inter',
-                  fontWeight: '400',
-                  boxSizing: 'border-box',
-                  width: '100%',
-                }}
-              />
-            </div>
+            {!isApproved && !result?.handover_confirmed_at && (
+              <p style={{ fontSize: 14, color: '#6B7280' }}>Hồ sơ không ở trạng thái chuẩn bị kết quả.</p>
+            )}
           </div>
-
-          {/* Confirm Button */}
-          <button
-            type="button"
-            onClick={handleConfirmIssue}
-            style={{
-              alignSelf: 'stretch',
-              paddingLeft: 16,
-              paddingRight: 16,
-              paddingTop: 10,
-              paddingBottom: 10,
-              background: '#AA2327',
-              overflow: 'hidden',
-              borderRadius: 8,
-              border: 'none',
-              justifyContent: 'center',
-              alignItems: 'center',
-              display: 'inline-flex',
-              cursor: 'pointer',
-              transition: 'background 0.15s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#931E22';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = '#AA2327';
-            }}
-          >
-            <div
-              style={{
-                flex: '1 1 0',
-                textAlign: 'center',
-                color: 'white',
-                fontSize: 13,
-                fontFamily: 'Inter',
-                fontWeight: '600',
-                wordWrap: 'break-word',
-              }}
-            >
-              Xác nhận cấp kết quả →
-            </div>
-          </button>
         </div>
       </div>
     </div>

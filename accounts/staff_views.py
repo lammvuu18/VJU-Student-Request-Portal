@@ -68,7 +68,7 @@ def staff_inbox_view(request):
     base_qs = (
         Request.objects.filter(dept_filter, is_draft=False)
         .exclude(status__in=INBOX_TERMINAL_STATUSES)
-        .select_related("procedure_type", "user", "user__student_registry")
+        .select_related("procedure_type", "user", "user__student_registry", "assigned_staff")
     )
 
     if user.role == "staff":
@@ -115,6 +115,10 @@ def staff_inbox_view(request):
             "student_name": reg.full_name if reg else r.user.full_name,
             "mssv": reg.mssv if reg else (r.form_data or {}).get("mssv"),
             "internal_status": r.internal_status,
+            "assigned_staff": {
+                "user_id": r.assigned_staff.user_id,
+                "full_name": r.assigned_staff.full_name,
+            } if r.assigned_staff else None,
             "sla_deadline": _format_datetime(r.sla_deadline),
             "sla_remaining_hours": rem_hours,
             "is_overdue": is_overdue,

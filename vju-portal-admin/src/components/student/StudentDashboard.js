@@ -1,31 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CustomDropdown from '../common/CustomDropdown';
 import DateRangePicker from '../common/DateRangePicker';
-import { studentOverviewRequests } from '../../data/mockData';
+import api, { getCurrentUser } from '../../services/api';
+import { formatDate } from '../../utils/format';
 import './StudentPages.css';
 
-const procedureOptions = [
-  { value: 'all', label: 'Tất cả thủ tục' },
-  { value: 'Cấp bảng điểm', label: 'Cấp bảng điểm' },
-  { value: 'Xác nhận sinh viên', label: 'Xác nhận sinh viên' },
-  { value: 'Cấp lại thẻ sinh viên', label: 'Cấp lại thẻ sinh viên' },
-  { value: 'Xác nhận học phí', label: 'Xác nhận học phí' },
-  { value: 'Phúc khảo bài thi', label: 'Phúc khảo bài thi' },
-  { value: 'Đổi mã học phần', label: 'Đổi mã học phần' },
-  { value: 'Cấp giấy xác nhận', label: 'Cấp giấy xác nhận' },
-  { value: 'Thay đổi thông tin', label: 'Thay đổi thông tin' },
-  { value: 'Rút hồ sơ', label: 'Rút hồ sơ' },
-];
+// "Hoàn thành" trên giao diện tương ứng trạng thái "Đã xử lý" của backend
+const DONE_STATUS = 'Đã xử lý';
 
 const statusOptions = [
   { value: 'all', label: 'Tất cả trạng thái' },
+  { value: 'Đã gửi', label: 'Đã gửi' },
   { value: 'Đang xử lý', label: 'Đang xử lý' },
   { value: 'Cần bổ sung', label: 'Cần bổ sung' },
   { value: 'Chờ thanh toán', label: 'Chờ thanh toán' },
-  { value: 'Hoàn thành', label: 'Hoàn thành' },
+  { value: 'Đã duyệt', label: 'Đã duyệt' },
+  { value: DONE_STATUS, label: 'Hoàn thành' },
+  { value: 'Từ chối', label: 'Từ chối' },
   { value: 'Đã hủy', label: 'Đã hủy' },
 ];
+
+const pad2 = (n) => String(n).padStart(2, '0');
 
 function StudentDashboard() {
   const navigate = useNavigate();
@@ -44,9 +40,35 @@ function StudentDashboard() {
     return new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
   };
 
-  const requests = (studentOverviewRequests && studentOverviewRequests.length > 0)
-    ? studentOverviewRequests.slice(0, 50)
-    : [];
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const user = getCurrentUser() || {};
+  const firstName = (user.full_name || user.name || '').trim().split(' ').slice(-1)[0] || 'bạn';
+
+  useEffect(() => {
+    let isMounted = true;
+    api.requests.getMyRequests({ limit: 100 })
+      .then((res) => {
+        if (!isMounted) return;
+        setRequests((res.data || []).map(r => ({
+          id: r.request_id,
+          code: r.request_code,
+          procedure: r.type_name,
+          date: formatDate(r.created_at),
+          status: r.status,
+        })));
+      })
+      .catch((err) => isMounted && setLoadError(err.message || 'Không tải được danh sách yêu cầu.'))
+      .finally(() => isMounted && setLoading(false));
+    return () => { isMounted = false; };
+  }, []);
+
+  const procedureOptions = [
+    { value: 'all', label: 'Tất cả thủ tục' },
+    ...Array.from(new Set(requests.map(r => r.procedure))).map(name => ({ value: name, label: name })),
+  ];
+  const countByStatus = (status) => pad2(requests.filter(r => r.status === status).length);
 
   const filtered = requests.filter((r) => {
     // 1. Procedure Filter
@@ -70,7 +92,7 @@ function StudentDashboard() {
     // 4. Search Filter
     if (search.trim()) {
       const q = search.trim().toLowerCase();
-      const codeMatch = r.id.toLowerCase().includes(q) || (r.request_code && r.request_code.toLowerCase().includes(q));
+      const codeMatch = (r.code || '').toLowerCase().includes(q);
       const procMatch = r.procedure.toLowerCase().includes(q);
       const dateMatch = r.date.toLowerCase().includes(q);
       const statusMatch = r.status.toLowerCase().includes(q);
@@ -100,7 +122,7 @@ function StudentDashboard() {
     <div className="student-overview-page">
       {/* Top Greeting & Action Header */}
       <div className="overview-header-row">
-        <h1 className="overview-greeting-title">Chào Minh Anh, ngày mới tốt lành!</h1>
+        <h1 className="overview-greeting-title">Chào {firstName}, ngày mới tốt lành!</h1>
         <button
           className="btn-new-request"
           onClick={() => navigate('/student/procedures')}
@@ -125,7 +147,7 @@ function StudentDashboard() {
           style={{ cursor: 'pointer' }}
           title="Bấm để lọc yêu cầu đang xử lý"
         >
-          <div className="stat-card-number">02</div>
+          <div className="stat-card-number">{countByStatus('Đang xử lý')}</div>
           <div className="stat-card-footer">
             <svg className="stat-card-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#68717D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="3" />
@@ -146,7 +168,7 @@ function StudentDashboard() {
           title="Bấm để lọc yêu cầu cần bổ sung"
         >
           <div className="stat-card-red-bar" />
-          <div className="stat-card-number text-red">01</div>
+          <div className="stat-card-number text-red">{countByStatus('Cần bổ sung')}</div>
           <div className="stat-card-footer">
             <svg className="stat-card-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#68717D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10" />
@@ -168,7 +190,7 @@ function StudentDashboard() {
           title="Bấm để lọc yêu cầu chờ thanh toán"
         >
           <div className="stat-card-red-bar" />
-          <div className="stat-card-number text-red">01</div>
+          <div className="stat-card-number text-red">{countByStatus('Chờ thanh toán')}</div>
           <div className="stat-card-footer">
             <svg className="stat-card-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#68717D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="2" y="5" width="20" height="14" rx="2" />
@@ -180,15 +202,15 @@ function StudentDashboard() {
 
         {/* Card 4: 08 Hoàn thành */}
         <div
-          className={`overview-stat-card ${filterStatus === 'Hoàn thành' ? 'overview-stat-card--active' : ''}`}
+          className={`overview-stat-card ${filterStatus === DONE_STATUS ? 'overview-stat-card--active' : ''}`}
           onClick={() => {
-            setFilterStatus(prev => prev === 'Hoàn thành' ? 'all' : 'Hoàn thành');
+            setFilterStatus(prev => prev === DONE_STATUS ? 'all' : DONE_STATUS);
             setCurrentPage(1);
           }}
           style={{ cursor: 'pointer' }}
           title="Bấm để lọc yêu cầu hoàn thành"
         >
-          <div className="stat-card-number">08</div>
+          <div className="stat-card-number">{countByStatus(DONE_STATUS)}</div>
           <div className="stat-card-footer">
             <svg className="stat-card-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#68717D" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="20 6 9 17 4 12" />
@@ -207,7 +229,7 @@ function StudentDashboard() {
           style={{ cursor: 'pointer' }}
           title="Bấm để lọc yêu cầu đã hủy"
         >
-          <div className="stat-card-number">02</div>
+          <div className="stat-card-number">{countByStatus('Đã hủy')}</div>
           <div className="stat-card-footer">
             <svg className="stat-card-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#68717D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10" />
@@ -294,21 +316,22 @@ function StudentDashboard() {
               {paginated.length === 0 ? (
                 <tr>
                   <td colSpan={5} style={{ textAlign: 'center', padding: '36px', color: '#68717D' }}>
-                    Không có yêu cầu nào phù hợp với bộ lọc
+                    {loading ? 'Đang tải danh sách yêu cầu...' : (loadError || (requests.length === 0 ? 'Bạn chưa có yêu cầu nào' : 'Không có yêu cầu nào phù hợp với bộ lọc'))}
                   </td>
                 </tr>
               ) : (
                 paginated.map((req) => {
                   const isRedPill = req.status === 'Chờ thanh toán' || req.status === 'Đang xử lý' || req.status === 'Cần bổ sung';
+                  const statusLabel = req.status === DONE_STATUS ? 'Hoàn thành' : req.status;
                   return (
                     <tr key={req.id}>
-                      <td className="cell-code">{req.id}</td>
+                      <td className="cell-code">{req.code}</td>
                       <td className="cell-proc">{req.procedure}</td>
                       <td className="cell-date">{req.date}</td>
                       <td>
                         <div className="status-pill-wrapper">
                           <span className={`status-pill ${isRedPill ? 'pill-red' : 'pill-gray'}`}>
-                            {req.status}
+                            {statusLabel}
                           </span>
                         </div>
                       </td>

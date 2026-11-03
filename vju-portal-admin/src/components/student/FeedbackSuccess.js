@@ -7,11 +7,11 @@ function FeedbackSuccess() {
   const { id } = useParams();
   const location = useLocation();
 
-  const requestCode = id || location.state?.requestCode || 'VJU-2026-0840';
+  const requestCode = location.state?.requestCode || id;
 
   const handleBackToDetail = () => {
-    if (requestCode) {
-      navigate(`/student/request/${requestCode}`);
+    if (id) {
+      navigate(`/student/request/${id}`);
     } else {
       navigate('/student/dashboard');
     }

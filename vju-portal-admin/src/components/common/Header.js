@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Modal from './Modal';
 import Button from './Button';
 import { users } from '../../data/mockData';
-import api, { loginWithRole, logout, getCurrentUser, getSavedRole, ROLE_ACCOUNTS, normalizeRole } from '../../services/api';
+import api, { loginWithRole, getCurrentUser, getSavedRole, ROLE_ACCOUNTS, normalizeRole, USE_MOCK } from '../../services/api';
 import './Header.css';
 
 const initialNotifications = [
@@ -49,6 +49,14 @@ const initialNotifications = [
   },
 ];
 
+// Đường dẫn chi tiết đơn theo vai trò đang đăng nhập
+const requestPathForRole = (requestId) => {
+  const role = normalizeRole(getSavedRole());
+  if (role === 'staff') return `/staff/request/${requestId}`;
+  if (role === 'deptHead') return `/dept-head/request/${requestId}`;
+  return `/student/request/${requestId}`;
+};
+
 const mapBackendNotification = (item) => {
   const title = item.title || '';
   const msg = item.message || '';
@@ -79,7 +87,7 @@ const mapBackendNotification = (item) => {
     time: timeDisplay,
     unread: !item.is_read,
     type,
-    target_url: item.request_code ? `/student/request/${item.request_code}` : (item.request_id ? `/student/request/${item.request_id}` : null),
+    target_url: item.request_id ? requestPathForRole(item.request_id) : null,
   };
 };
 
@@ -87,7 +95,7 @@ function Header({ userName = 'User' }) {
   const navigate = useNavigate();
   const [showNotif, setShowNotif] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [notifications, setNotifications] = useState(initialNotifications);
+  const [notifications, setNotifications] = useState(USE_MOCK ? initialNotifications : []);
   const [notifFilter, setNotifFilter] = useState('all');
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
@@ -102,12 +110,11 @@ function Header({ userName = 'User' }) {
   const fetchNotifications = async () => {
     try {
       const res = await api.notifications.getAll();
-      if (res && res.data && Array.isArray(res.data) && res.data.length > 0) {
-        const mapped = res.data.map(mapBackendNotification);
-        setNotifications(mapped);
+      if (res && Array.isArray(res.data)) {
+        setNotifications(res.data.map(mapBackendNotification));
       }
     } catch (err) {
-      console.warn('Backend notification not available, using fallback:', err.message);
+      console.warn('Không tải được thông báo:', err.message);
     }
   };
 
@@ -132,9 +139,12 @@ function Header({ userName = 'User' }) {
     navigate(acc.homePath);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setShowUserMenu(false);
-    logout();
+    // authApi.logout thu hồi token phía backend rồi xóa phiên ở trình duyệt
+    try {
+      await api.auth.logout();
+    } catch (e) {}
     navigate('/login');
   };
 
@@ -385,6 +395,7 @@ function Header({ userName = 'User' }) {
                   <span>Đổi mật khẩu</span>
                 </button>
 
+                {USE_MOCK && (<>
                 <div className="user-menu-divider" />
 
                 <div style={{ padding: '6px 16px 4px', fontSize: 11, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase' }}>
@@ -436,6 +447,7 @@ function Header({ userName = 'User' }) {
                   <span className="user-menu-icon">🎓</span>
                   <span>Hiệu trưởng</span>
                 </button>
+                </>)}
 
                 <div className="user-menu-divider" />
 

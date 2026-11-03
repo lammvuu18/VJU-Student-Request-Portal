@@ -27,11 +27,9 @@ class CorsMiddleware:
     def _add_cors_headers(self, response, request):
         response['Vary'] = 'Origin'
         origin = request.headers.get('Origin')
-        if not origin:
+        if origin not in settings.CORS_ALLOWED_ORIGINS:
             return
-        allowed_origins = [o.strip() for o in getattr(settings, 'CORS_ALLOWED_ORIGINS', []) if o.strip()]
-        if origin in allowed_origins or settings.DEBUG or '*' in allowed_origins:
-            response['Access-Control-Allow-Origin'] = origin
-            response['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS, PATCH'
-            response['Access-Control-Allow-Headers'] = 'Authorization, Content-Type, X-CSRFToken, X-Requested-With'
-            response['Access-Control-Allow-Credentials'] = 'true'
+        response['Access-Control-Allow-Origin'] = origin
+        response['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS, PATCH'
+        response['Access-Control-Allow-Headers'] = 'Authorization, Content-Type, X-CSRFToken, X-Requested-With'
+        response['Access-Control-Allow-Credentials'] = 'true'

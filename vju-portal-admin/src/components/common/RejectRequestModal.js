@@ -20,8 +20,11 @@ function RejectRequestModal({
   studentName = 'Nguyễn Minh Anh',
   initialReason = '',
   initialNotes = '',
+  reasons = null,
   onSubmit,
 }) {
+  // Danh mục lý do lấy từ backend (GET /rejection-reasons), giữ "Lý do khác" để nhập tự do
+  const reasonList = reasons && reasons.length ? [...reasons, 'Lý do khác'] : defaultReasons;
   const [selectedReason, setSelectedReason] = useState(initialReason);
   const [notes, setNotes] = useState(initialNotes);
   const [openDropdown, setOpenDropdown] = useState(false);
@@ -56,7 +59,7 @@ function RejectRequestModal({
     if (e && e.preventDefault) e.preventDefault();
     if (onSubmit) {
       onSubmit({
-        reason: selectedReason || 'Hồ sơ không đủ điều kiện xét duyệt',
+        reason: selectedReason || (reasons && reasons.length ? '' : 'Hồ sơ không đủ điều kiện xét duyệt'),
         notes,
       });
     }
@@ -131,7 +134,7 @@ function RejectRequestModal({
 
           {openDropdown && (
             <div className="reject-modal-select-menu">
-              {defaultReasons.map((reason) => (
+              {reasonList.map((reason) => (
                 <div
                   key={reason}
                   className={`reject-modal-select-item ${

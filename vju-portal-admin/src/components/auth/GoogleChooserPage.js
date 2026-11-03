@@ -27,6 +27,12 @@ const REGISTERED_STUDENTS = [
     avatar: 'XH',
     color: '#D97706',
   },
+  {
+    name: 'Quốc Anh (Gmail)',
+    email: 'guenkokuain020411@gmail.com',
+    avatar: 'QA',
+    color: '#DB2777',
+  },
 ];
 
 function GoogleChooserPage() {

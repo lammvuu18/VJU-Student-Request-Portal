@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getCurrentUser } from '../../services/api';
+import { useInbox } from '../staff/useInbox';
 import './DeptHeadPages.css';
 
-// 12 Months data matching Figma heights
+const pad2 = (n) => String(n).padStart(2, '0');
+
+// Biểu đồ 12 tháng vẫn là dữ liệu mẫu: backend chưa có API thống kê
 const monthlyData = [
   { month: 'T1', height: 45, value: 15 },
   { month: 'T2', height: 60, value: 20 },
@@ -18,123 +22,16 @@ const monthlyData = [
   { month: 'T12', height: 72, value: 24 },
 ];
 
-// 8 Overdue records matching Figma spec + expanded list
-const overdueRequests = [
-  {
-    code: 'VJU-2026-0842',
-    procedure: 'Cấp bảng điểm',
-    sla: '3 ngày',
-    student: 'Nguyễn Minh Anh',
-    receivedDate: '21/10/2026',
-    completedDate: '24/10/2026',
-    status: 'Chờ phân công',
-    statusType: 'assign',
-  },
-  {
-    code: 'VJU-2026-0839',
-    procedure: 'Xác nhận SV',
-    sla: '2 ngày',
-    student: 'Trần Văn Bình',
-    receivedDate: '20/10/2026',
-    completedDate: '22/10/2026',
-    status: 'Chờ phê duyệt',
-    statusType: 'approval',
-  },
-  {
-    code: 'VJU-2026-0835',
-    procedure: 'Phúc khảo',
-    sla: '7 ngày',
-    student: 'Lê Thị Cúc',
-    receivedDate: '19/10/2026',
-    completedDate: '26/10/2026',
-    status: 'Chờ phân công',
-    statusType: 'assign',
-  },
-  {
-    code: 'VJU-2026-0830',
-    procedure: 'Cấp bảng điểm',
-    sla: '3 ngày',
-    student: 'Phạm Đức Dũng',
-    receivedDate: '18/10/2026',
-    completedDate: '21/10/2026',
-    status: 'Chờ phê duyệt',
-    statusType: 'approval',
-  },
-  {
-    code: 'VJU-2026-0828',
-    procedure: 'Bảo lưu KQ',
-    sla: '5 ngày',
-    student: 'Ngô Thị Em',
-    receivedDate: '17/10/2026',
-    completedDate: '22/10/2026',
-    status: 'Chờ phân công',
-    statusType: 'assign',
-  },
-  {
-    code: 'VJU-2026-0825',
-    procedure: 'Xác nhận SV',
-    sla: '2 ngày',
-    student: 'Hoàng Văn Phúc',
-    receivedDate: '16/10/2026',
-    completedDate: '18/10/2026',
-    status: 'Chờ phê duyệt',
-    statusType: 'approval',
-  },
-  {
-    code: 'VJU-2026-0820',
-    procedure: 'Cấp bảng điểm',
-    sla: '3 ngày',
-    student: 'Đỗ Thị Giang',
-    receivedDate: '15/10/2026',
-    completedDate: '18/10/2026',
-    status: 'Chờ phân công',
-    statusType: 'assign',
-  },
-  {
-    code: 'VJU-2026-0818',
-    procedure: 'Phúc khảo',
-    sla: '7 ngày',
-    student: 'Vũ Văn Hải',
-    receivedDate: '14/10/2026',
-    completedDate: '21/10/2026',
-    status: 'Chờ phê duyệt',
-    statusType: 'approval',
-  },
-];
-
-const extraProcs = ['Cấp bảng điểm', 'Xác nhận SV', 'Phúc khảo', 'Bảo lưu KQ', 'Miễn giảm HP', 'Cấp lại thẻ SV'];
-const extraStudents = [
-  'Mai T. Hương', 'Bùi Thị Hạnh', 'Đặng Minh Khôi', 'Đinh Thị Lan',
-  'Dương Văn Nam', 'Lý Thị Oanh', 'Mai Văn Phong', 'Phan Thị Quỳnh',
-  'Trịnh Văn Sang', 'Võ Thị Tâm', 'Lương Văn Uyên', 'Cao Thị Vân'
-];
-const extraSLAs = ['3 ngày', '2 ngày', '7 ngày', '5 ngày'];
-
-if (overdueRequests.length < 25) {
-  for (let i = overdueRequests.length; i < 25; i++) {
-    const isAssign = i % 2 === 0;
-    const num = String(815 - (i - 8) * 3).padStart(4, '0');
-    const day = String(Math.max(1, 14 - (i - 8))).padStart(2, '0');
-    const compDay = String(Math.max(1, parseInt(day, 10) + 3)).padStart(2, '0');
-    overdueRequests.push({
-      code: `VJU-2026-${num}`,
-      procedure: extraProcs[i % extraProcs.length],
-      sla: extraSLAs[i % extraSLAs.length],
-      student: extraStudents[i % extraStudents.length],
-      receivedDate: `${day}/10/2026`,
-      completedDate: `${compDay}/10/2026`,
-      status: isAssign ? 'Chờ phân công' : 'Chờ phê duyệt',
-      statusType: isAssign ? 'assign' : 'approval',
-    });
-  }
-}
-
 function DeptHeadOverview() {
   const navigate = useNavigate();
   const [hoveredBar, setHoveredBar] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [jumpPage, setJumpPage] = useState('');
   const pageSize = 5;
+  const { items, summary, loading, error } = useInbox();
+  const user = getCurrentUser() || {};
+  const count = (internalStatus) => pad2(items.filter(r => r.internalStatus === internalStatus).length);
+  const overdueRequests = items.filter(r => r.isOverdueRow);
 
   const totalPages = Math.max(1, Math.ceil(overdueRequests.length / pageSize));
   const paginatedRequests = overdueRequests.slice(
@@ -158,56 +55,50 @@ function DeptHeadOverview() {
   return (
     <div className="depthead-overview-container">
       {/* 1. Page Title */}
-      <h1 className="depthead-overview-title">Tổng quan Phòng Đào tạo</h1>
+      <h1 className="depthead-overview-title">Tổng quan {user.department_name || 'phòng ban'}</h1>
 
       {/* 2. Stat Cards Row (5 Cards) */}
       <div className="depthead-stat-cards-row">
-        {/* Card 1: Đang xử lý */}
-        <div
-          className="depthead-stat-card"
-          onClick={() => navigate('/dept-head/requests')}
-          style={{ cursor: 'pointer' }}
-        >
-          <div className="depthead-stat-num">12</div>
-          <div className="depthead-stat-label">Đang xử lý</div>
-        </div>
-
-        {/* Card 2: Chờ phân công (Highlighted Red Border) */}
+        {/* Thống kê từ hộp thư phòng (chỉ gồm hồ sơ chưa đóng) */}
         <div
           className="depthead-stat-card depthead-stat-card--alert"
           onClick={() => navigate('/dept-head/requests')}
+          style={{ cursor: 'pointer' }}
         >
-          <div className="depthead-stat-num depthead-stat-num--alert">05</div>
+          <div className="depthead-stat-num depthead-stat-num--alert">{count('Chờ phân công')}</div>
           <div className="depthead-stat-label depthead-stat-label--alert">Chờ phân công</div>
         </div>
-
-        {/* Card 3: Chờ phê duyệt (Highlighted Red Border) */}
+        <div
+          className="depthead-stat-card"
+          onClick={() => navigate('/dept-head/requests')}
+          style={{ cursor: 'pointer' }}
+        >
+          <div className="depthead-stat-num">{count('CV đang thẩm định')}</div>
+          <div className="depthead-stat-label">Đang thẩm định</div>
+        </div>
+        <div
+          className="depthead-stat-card"
+          onClick={() => navigate('/dept-head/requests')}
+          style={{ cursor: 'pointer' }}
+        >
+          <div className="depthead-stat-num">{count('Cần bổ sung')}</div>
+          <div className="depthead-stat-label">Chờ bổ sung</div>
+        </div>
+        <div
+          className="depthead-stat-card"
+          onClick={() => navigate('/dept-head/requests')}
+          style={{ cursor: 'pointer' }}
+        >
+          <div className="depthead-stat-num">{count('Đã duyệt — Đang chuẩn bị kết quả')}</div>
+          <div className="depthead-stat-label">Đã duyệt, chờ trả KQ</div>
+        </div>
         <div
           className="depthead-stat-card depthead-stat-card--alert"
           onClick={() => navigate('/dept-head/requests')}
-        >
-          <div className="depthead-stat-num depthead-stat-num--alert">03</div>
-          <div className="depthead-stat-label depthead-stat-label--alert">Chờ phê duyệt</div>
-        </div>
-
-        {/* Card 4: Hoàn thành */}
-        <div
-          className="depthead-stat-card"
-          onClick={() => navigate('/dept-head/requests')}
           style={{ cursor: 'pointer' }}
         >
-          <div className="depthead-stat-num">47</div>
-          <div className="depthead-stat-label">Hoàn thành</div>
-        </div>
-
-        {/* Card 5: Đã hủy */}
-        <div
-          className="depthead-stat-card"
-          onClick={() => navigate('/dept-head/requests')}
-          style={{ cursor: 'pointer' }}
-        >
-          <div className="depthead-stat-num">02</div>
-          <div className="depthead-stat-label">Đã hủy</div>
+          <div className="depthead-stat-num depthead-stat-num--alert">{pad2(summary.overdue)}</div>
+          <div className="depthead-stat-label depthead-stat-label--alert">Quá hạn</div>
         </div>
       </div>
 
@@ -278,35 +169,36 @@ function DeptHeadOverview() {
             <div className="depthead-th">SLA</div>
             <div className="depthead-th">Sinh viên</div>
             <div className="depthead-th">Ngày nhận</div>
-            <div className="depthead-th">Ngày hoàn thành</div>
+            <div className="depthead-th">Hạn xử lý</div>
             <div className="depthead-th">Trạng thái</div>
           </div>
 
           <div className="req-detail-divider" style={{ minWidth: 760 }} />
 
+          {overdueRequests.length === 0 && (
+            <div style={{ padding: '24px 0', textAlign: 'center', color: '#6B7280', fontSize: 13 }}>
+              {loading ? 'Đang tải...' : (error || 'Không có hồ sơ quá hạn.')}
+            </div>
+          )}
           {/* Table Rows */}
           {paginatedRequests.map((row) => (
-            <React.Fragment key={row.code}>
+            <React.Fragment key={row.id}>
               <div
                 className="depthead-table-row"
-                onClick={() => navigate(`/dept-head/request/${row.code}`)}
+                onClick={() => navigate(`/dept-head/request/${row.id}`)}
                 title="Bấm để xem chi tiết yêu cầu"
               >
                 <div className="depthead-td" style={{ fontWeight: 500 }}>{row.code}</div>
                 <div className="depthead-td">{row.procedure}</div>
-                <div className="depthead-td">{row.sla}</div>
+                <div className="depthead-td">{row.slaRemainingHours !== null && row.slaRemainingHours !== undefined ? `Quá ${Math.ceil(-row.slaRemainingHours / 24)} ngày` : '—'}</div>
                 <div className="depthead-td">{row.student}</div>
-                <div className="depthead-td">{row.receivedDate}</div>
-                <div className="depthead-td">{row.completedDate}</div>
+                <div className="depthead-td">{row.assignedDate}</div>
+                <div className="depthead-td">{row.deadline}</div>
                 <div className="depthead-td">
-                  {row.statusType === 'assign' ? (
-                    <div className="depthead-badge-pending-assign">
-                      {row.status}
-                    </div>
+                  {row.internalStatus === 'Chờ phân công' ? (
+                    <div className="depthead-badge-pending-assign">Chờ phân công</div>
                   ) : (
-                    <div className="depthead-badge-pending-approval">
-                      {row.status}
-                    </div>
+                    <div className="depthead-badge-pending-approval">{row.internalStatus}</div>
                   )}
                 </div>
               </div>
@@ -318,7 +210,7 @@ function DeptHeadOverview() {
         {/* Pagination Row */}
         <div className="depthead-pagination-row">
           <div className="depthead-pagination-info">
-            Hiển thị <strong>{(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, overdueRequests.length)}</strong> / <strong>{overdueRequests.length}</strong> hồ sơ
+            Hiển thị <strong>{overdueRequests.length === 0 ? 0 : (currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, overdueRequests.length)}</strong> / <strong>{overdueRequests.length}</strong> hồ sơ
           </div>
 
           <div style={{ flex: '1 1 0' }} />

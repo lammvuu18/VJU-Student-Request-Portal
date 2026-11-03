@@ -1,7 +1,33 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { users, procedures } from '../../data/mockData';
+import api, { getCurrentUser } from '../../services/api';
 import './StudentPages.css';
+
+// Giá trị tự điền lấy từ hồ sơ người dùng (backend vẫn ghi đè lại khi lưu)
+const resolveAutoFill = (key, user) => {
+  const mapping = {
+    'student.full_name': user.full_name || user.name,
+    'student.mssv': user.mssv,
+    'student.class_name': user.class_name,
+    'student.cohort': user.cohort,
+    'student.major': user.major,
+    'student.email': user.email,
+  };
+  if (key in mapping) return mapping[key] || '';
+  return null;
+};
+
+// required_if dạng { field_key, value } hoặc { <field_key>: <value>, ... }
+const matchesCondition = (requiredIf, values) => {
+  if (!requiredIf || typeof requiredIf !== 'object') return false;
+  if ('field_key' in requiredIf && 'value' in requiredIf) {
+    return values[requiredIf.field_key] === requiredIf.value;
+  }
+  return Object.entries(requiredIf).every(([k, v]) => values[k] === v);
+};
+
+const parseFormats = (allowed) =>
+  (allowed || 'PDF,JPG,PNG').split(',').map(f => f.trim().toLowerCase()).filter(Boolean);
 
 function RequestForm({ initialStep }) {
   const navigate = useNavigate();
@@ -9,120 +35,183 @@ function RequestForm({ initialStep }) {
   const { procedureId } = useParams();
   const searchParams = new URLSearchParams(location.search);
   const stepFromQuery = searchParams.get('step');
+  const student = getCurrentUser() || {};
 
-  const procedure = procedures.find(p => p.id === parseInt(procedureId)) || procedures[0];
-  const student = users.student || {};
+  const [procedure, setProcedure] = useState(null);
+  const [loadError, setLoadError] = useState('');
+  const [values, setValues] = useState({});
+  // { [config_id]: File[] }
+  const [filesByConfig, setFilesByConfig] = useState({});
+  const [dragConfigId, setDragConfigId] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [createdRequest, setCreatedRequest] = useState(null);
 
   // Current Step: 1 = Điền thông tin, 2 = Thanh toán lệ phí
   const [currentStep, setCurrentStep] = useState(
     initialStep || (stepFromQuery === '2' ? 2 : 1)
   );
 
-  // Form State (Step 1)
-  const [formData, setFormData] = useState({
-    fullName: student.full_name || student.name || 'Nguyễn Minh Anh',
-    mssv: student.mssv || '21CS001',
-    className: student.class_name || 'BCSE-2021',
-    cohort: 'QH-2021',
-    major: 'Khoa học Máy tính',
-    email: student.email || 'minhanh@vju.ac.vn',
-    purpose: '',
-    quantity: 1,
-    language: 'Tiếng Việt',
-    deliveryMethod: 'Bản điện tử (PDF ký số)',
-    notes: '',
-  });
+  useEffect(() => {
+    let isMounted = true;
+    const load = async () => {
+      if (!procedureId) {
+        setLoadError('Chưa chọn thủ tục. Vui lòng chọn thủ tục từ danh mục.');
+        return;
+      }
+      try {
+        const res = await api.procedures.getDetail(procedureId);
+        if (!isMounted) return;
+        const detail = res.data;
+        const initialValues = {};
+        (detail.form_fields || []).forEach((field) => {
+          const auto = field.auto_fill_field ? resolveAutoFill(field.auto_fill_field, student) : null;
+          initialValues[field.field_key] = auto !== null ? auto : '';
+        });
+        setProcedure(detail);
+        setValues(initialValues);
+      } catch (err) {
+        if (isMounted) setLoadError(err.message || 'Không tải được thông tin thủ tục.');
+      }
+    };
+    load();
+    return () => { isMounted = false; };
+  }, [procedureId]);
 
-  const [files, setFiles] = useState([]);
-  const [isDragging, setIsDragging] = useState(false);
-  const fileInputRef = useRef(null);
-
-  // Payment State (Step 2)
+  // Payment State (Step 2) — backend chưa có cổng thanh toán, màn hình này chỉ mô phỏng
   const [paymentMethod, setPaymentMethod] = useState('card'); // 'card' | 'transfer' | 'wallet'
   const [cardData, setCardData] = useState({
-    cardHolder: 'NGUYEN MINH ANH',
-    cardNumber: '9704 2200 1234 5678',
-    expiry: '12 / 28',
-    cvv: '888',
+    cardHolder: '',
+    cardNumber: '',
+    expiry: '',
+    cvv: '',
   });
 
-  // Calculate pricing
-  const unitFee = procedure.fee_amount || (procedure.fee === 'Miễn phí' ? 0 : 30000);
+  const unitFee = (procedure && procedure.is_fee_required && procedure.fee_amount) || 0;
+  const formData = { quantity: 1 };
   const totalAmount = unitFee * formData.quantity;
   const formattedUnitPrice = unitFee === 0 ? 'Miễn phí' : `${unitFee.toLocaleString('vi-VN')} VNĐ`;
   const formattedTotalPrice = unitFee === 0 ? 'Miễn phí' : `${totalAmount.toLocaleString('vi-VN')} VNĐ`;
-  const orderCode = 'VJU-2026-0842';
+  const orderCode = createdRequest ? createdRequest.request_code : '';
 
-  const handleChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const handleChange = (key, value) => {
+    setValues(prev => ({ ...prev, [key]: value }));
   };
 
-  const handleQuantityChange = (delta) => {
-    setFormData(prev => ({
-      ...prev,
-      quantity: Math.max(1, prev.quantity + delta),
-    }));
-  };
-
-  const handleFileChange = (e) => {
-    if (e.target.files) {
-      const newFiles = Array.from(e.target.files);
-      setFiles(prev => [...prev, ...newFiles]);
+  const addFiles = (config, fileList) => {
+    const formats = parseFormats(config.allowed_formats);
+    const maxBytes = (config.max_size_mb || 5) * 1024 * 1024;
+    const accepted = [];
+    for (const file of Array.from(fileList || [])) {
+      const ext = file.name.split('.').pop().toLowerCase();
+      const normalizedExt = ext === 'jpeg' ? 'jpg' : ext;
+      if (!formats.includes(normalizedExt)) {
+        setSubmitError(`"${file.name}": chỉ chấp nhận ${formats.join(', ').toUpperCase()}.`);
+        continue;
+      }
+      if (file.size > maxBytes) {
+        setSubmitError(`"${file.name}" vượt quá ${config.max_size_mb || 5} MB.`);
+        continue;
+      }
+      accepted.push(file);
+    }
+    if (accepted.length > 0) {
+      setFilesByConfig(prev => ({ ...prev, [config.config_id]: [...(prev[config.config_id] || []), ...accepted] }));
     }
   };
 
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    setIsDragging(true);
+  const handleRemoveFile = (configId, index) => {
+    setFilesByConfig(prev => ({ ...prev, [configId]: (prev[configId] || []).filter((_, i) => i !== index) }));
   };
 
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
+  const isFieldVisible = (field) => !field.required_if || matchesCondition(field.required_if, values);
+  const isFieldRequired = (field) => field.is_required || matchesCondition(field.required_if, values);
 
-  const handleDrop = (e) => {
+  // Gửi yêu cầu lên backend
+  const handleStep1Submit = async (e) => {
     e.preventDefault();
-    setIsDragging(false);
-    if (e.dataTransfer.files) {
-      const newFiles = Array.from(e.dataTransfer.files);
-      setFiles(prev => [...prev, ...newFiles]);
+    setSubmitError('');
+
+    const missingAttachment = (procedure.attachment_configs || []).find(
+      c => c.is_required && !(filesByConfig[c.config_id] || []).length
+    );
+    if (missingAttachment) {
+      setSubmitError(`Vui lòng đính kèm: ${missingAttachment.item_name}.`);
+      return;
+    }
+
+    // Chỉ gửi các trường đang hiển thị, trường tự điền do backend tự lấy
+    const formPayload = {};
+    (procedure.form_fields || []).forEach((field) => {
+      if (field.auto_fill_field || !isFieldVisible(field)) return;
+      const val = values[field.field_key];
+      if (val === '' || val === undefined || val === null) return;
+      formPayload[field.field_key] = field.data_type === 'number' ? Number(val) : val;
+    });
+
+    const attachments = [];
+    Object.entries(filesByConfig).forEach(([configId, files]) => {
+      files.forEach(file => attachments.push({ config_id: configId, file }));
+    });
+
+    setSubmitting(true);
+    try {
+      const res = await api.requests.create({
+        type_id: procedure.type_id,
+        form_data: formPayload,
+        attachments,
+      });
+      setCreatedRequest(res.data);
+      if (procedure.is_fee_required) {
+        setCurrentStep(2);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        navigate('/student/request/success', {
+          state: { procedure, request: res.data, message: res.message },
+        });
+      }
+    } catch (err) {
+      setSubmitError(err.message || 'Gửi yêu cầu thất bại.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const handleRemoveFile = (index) => {
-    setFiles(prev => prev.filter((_, i) => i !== index));
-  };
-
-  // Submit Step 1 -> Go to Step 2
-  const handleStep1Submit = (e) => {
-    e.preventDefault();
-    setCurrentStep(2);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  // Submit Step 2 -> Success
+  // Backend chưa có cổng thanh toán: đơn đã được tạo ở trạng thái "Chờ thanh toán"
   const handlePaymentSubmit = (e) => {
     e.preventDefault();
     navigate('/student/request/success', {
       state: {
         procedure,
-        formData,
-        orderCode,
-        totalAmount: formattedTotalPrice,
-        paymentMethod,
-        filesCount: files.length,
+        request: createdRequest,
+        message: 'Đơn đã được tạo và đang chờ thanh toán. Cổng thanh toán trực tuyến chưa được tích hợp.',
       },
     });
   };
 
-  const formattedQuantity = formData.quantity < 10 ? `0${formData.quantity}` : `${formData.quantity}`;
+  if (loadError) {
+    return (
+      <div className="reqform-container">
+        <div className="reqform-card">
+          <p style={{ color: '#B91C1C', margin: 0 }}>{loadError}</p>
+          <div className="reqform-actions-row">
+            <button type="button" className="reqform-btn-back" onClick={() => navigate('/student/procedures')}>
+              ← Về danh mục thủ tục
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  const getHeaderTitle = () => {
-    if (procedure.id === 1 || procedure.name === 'Cấp bảng điểm') {
-      return 'Nộp yêu cầu cấp bảng điểm';
-    }
-    return `Nộp yêu cầu ${procedure.name.toLowerCase()}`;
-  };
+  if (!procedure) {
+    return (
+      <div className="reqform-container">
+        <p style={{ textAlign: 'center', color: '#68717D' }}>Đang tải thông tin thủ tục...</p>
+      </div>
+    );
+  }
 
   // ==========================================
   // RENDER STEP 2: THANH TOÁN LỆ PHÍ (FIGMA)
@@ -398,17 +487,109 @@ function RequestForm({ initialStep }) {
   // ==========================================
   // RENDER STEP 1: ĐIỀN THÔNG TIN THỦ TỤC
   // ==========================================
-  const steps = [
-    { num: 1, label: 'Điền thông tin', active: true },
-    { num: 2, label: 'Xác nhận & thanh toán', active: false },
-    { num: 3, label: 'Xử lý', active: false },
-    { num: 4, label: 'Nhận kết quả', active: false },
-  ];
+  const steps = procedure.is_fee_required
+    ? [
+      { num: 1, label: 'Điền thông tin', active: true },
+      { num: 2, label: 'Xác nhận & thanh toán', active: false },
+      { num: 3, label: 'Xử lý', active: false },
+      { num: 4, label: 'Nhận kết quả', active: false },
+    ]
+    : [
+      { num: 1, label: 'Điền thông tin', active: true },
+      { num: 2, label: 'Xử lý', active: false },
+      { num: 3, label: 'Nhận kết quả', active: false },
+    ];
+
+  const renderInput = (field) => {
+    const value = values[field.field_key] ?? '';
+    const required = isFieldRequired(field);
+
+    if (field.auto_fill_field) {
+      const autoValue = resolveAutoFill(field.auto_fill_field, student);
+      return (
+        <input
+          type="text"
+          className="reqform-input"
+          value={autoValue !== null ? autoValue : ''}
+          placeholder="Hệ thống tự động điền khi gửi"
+          readOnly
+          disabled
+        />
+      );
+    }
+
+    if (field.data_type === 'dropdown') {
+      return (
+        <div className="reqform-select-wrap">
+          <select
+            className="reqform-select"
+            value={value}
+            onChange={(e) => handleChange(field.field_key, e.target.value)}
+            required={required}
+          >
+            <option value="" disabled>{field.placeholder || `Chọn ${field.field_name.toLowerCase()}`}</option>
+            {(field.dropdown_options || []).map(opt => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
+          <span className="reqform-select-arrow">▾</span>
+        </div>
+      );
+    }
+
+    if (field.data_type === 'radio') {
+      return (
+        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', paddingTop: 6 }}>
+          {(field.dropdown_options || []).map(opt => (
+            <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, cursor: 'pointer' }}>
+              <input
+                type="radio"
+                name={field.field_key}
+                value={opt}
+                checked={value === opt}
+                onChange={() => handleChange(field.field_key, opt)}
+                required={required}
+              />
+              {opt}
+            </label>
+          ))}
+        </div>
+      );
+    }
+
+    if (field.data_type === 'textarea') {
+      return (
+        <textarea
+          className="reqform-input"
+          rows={4}
+          style={{ height: 'auto', paddingTop: 10, resize: 'vertical' }}
+          placeholder={field.placeholder || ''}
+          value={value}
+          onChange={(e) => handleChange(field.field_key, e.target.value)}
+          required={required}
+        />
+      );
+    }
+
+    const inputType = { number: 'number', date: 'date' }[field.data_type] || 'text';
+    return (
+      <input
+        type={inputType}
+        className="reqform-input"
+        placeholder={field.placeholder || ''}
+        value={value}
+        onChange={(e) => handleChange(field.field_key, e.target.value)}
+        required={required}
+      />
+    );
+  };
+
+  const visibleFields = (procedure.form_fields || []).filter(isFieldVisible);
 
   return (
     <div className="reqform-container">
       {/* Centered Page Title */}
-      <h1 className="reqform-main-title">{getHeaderTitle()}</h1>
+      <h1 className="reqform-main-title">Nộp yêu cầu {procedure.name.toLowerCase()}</h1>
 
       {/* Stepper Bar */}
       <div className="reqform-stepper-wrap">
@@ -437,276 +618,99 @@ function RequestForm({ initialStep }) {
 
       {/* Main Form Card */}
       <form className="reqform-card" onSubmit={handleStep1Submit}>
-        {/* Row 1: Họ và tên & Mã số sinh viên */}
-        <div className="reqform-row">
-          <div className="reqform-col">
-            <div className="reqform-label-row">
-              <span className="reqform-label">Họ và tên</span>
-              <span className="reqform-required"> *</span>
-            </div>
-            <input
-              type="text"
-              className="reqform-input"
-              placeholder="Nhập họ và tên"
-              value={formData.fullName}
-              onChange={(e) => handleChange('fullName', e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="reqform-col">
-            <div className="reqform-label-row">
-              <span className="reqform-label">Mã số sinh viên</span>
-              <span className="reqform-required"> *</span>
-            </div>
-            <input
-              type="text"
-              className="reqform-input"
-              placeholder="Nhập MSSV"
-              value={formData.mssv}
-              onChange={(e) => handleChange('mssv', e.target.value)}
-              required
-            />
-          </div>
-        </div>
-
-        {/* Row 2: Lớp & Khóa */}
-        <div className="reqform-row">
-          <div className="reqform-col">
-            <div className="reqform-label-row">
-              <span className="reqform-label">Lớp</span>
-              <span className="reqform-required"> *</span>
-            </div>
-            <input
-              type="text"
-              className="reqform-input"
-              placeholder="Nhập lớp"
-              value={formData.className}
-              onChange={(e) => handleChange('className', e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="reqform-col">
-            <div className="reqform-label-row">
-              <span className="reqform-label">Khóa</span>
-              <span className="reqform-required"> *</span>
-            </div>
-            <div className="reqform-select-wrap">
-              <select
-                className="reqform-select"
-                value={formData.cohort}
-                onChange={(e) => handleChange('cohort', e.target.value)}
-                required
-              >
-                <option value="" disabled>Chọn niên khóa</option>
-                <option value="QH-2021">QH-2021</option>
-                <option value="QH-2022">QH-2022</option>
-                <option value="QH-2023">QH-2023</option>
-                <option value="QH-2024">QH-2024</option>
-                <option value="QH-2025">QH-2025</option>
-              </select>
-              <span className="reqform-select-arrow">▾</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Row 3: Ngành & Email */}
-        <div className="reqform-row">
-          <div className="reqform-col">
-            <div className="reqform-label-row">
-              <span className="reqform-label">Ngành</span>
-              <span className="reqform-required"> *</span>
-            </div>
-            <div className="reqform-select-wrap">
-              <select
-                className="reqform-select"
-                value={formData.major}
-                onChange={(e) => handleChange('major', e.target.value)}
-                required
-              >
-                <option value="" disabled>Chọn ngành</option>
-                <option value="Khoa học Máy tính">Khoa học Máy tính</option>
-                <option value="Kỹ thuật Máy tính">Kỹ thuật Máy tính</option>
-                <option value="Kỹ thuật Xây dựng">Kỹ thuật Xây dựng</option>
-                <option value="Nông nghiệp Thông minh">Nông nghiệp Thông minh</option>
-                <option value="Công nghệ Thực phẩm">Công nghệ Thực phẩm</option>
-                <option value="Nhật Bản học">Nhật Bản học</option>
-              </select>
-              <span className="reqform-select-arrow">▾</span>
-            </div>
-          </div>
-
-          <div className="reqform-col">
-            <div className="reqform-label-row">
-              <span className="reqform-label">Email</span>
-              <span className="reqform-required"> *</span>
-            </div>
-            <input
-              type="email"
-              className="reqform-input"
-              placeholder="Nhập email"
-              value={formData.email}
-              onChange={(e) => handleChange('email', e.target.value)}
-              required
-            />
-          </div>
-        </div>
-
-        {/* Row 4: Mục đích sử dụng */}
-        <div className="reqform-col full-width">
-          <div className="reqform-label-row">
-            <span className="reqform-label">Mục đích sử dụng</span>
-            <span className="reqform-required"> *</span>
-          </div>
-          <input
-            type="text"
-            className="reqform-input"
-            placeholder="Nhập mục đích sử dụng bảng điểm"
-            value={formData.purpose}
-            onChange={(e) => handleChange('purpose', e.target.value)}
-            required
-          />
-        </div>
-
-        {/* Row 5: Số bản (Stepper Counter) */}
-        <div className="reqform-col full-width">
-          <div className="reqform-label-row">
-            <span className="reqform-label">Số bản</span>
-            <span className="reqform-required"> *</span>
-          </div>
-          <div className="reqform-counter">
-            <button
-              type="button"
-              className="reqform-counter-btn"
-              onClick={() => handleQuantityChange(-1)}
-            >
-              −
-            </button>
-            <div className="reqform-counter-val">{formattedQuantity}</div>
-            <button
-              type="button"
-              className="reqform-counter-btn"
-              onClick={() => handleQuantityChange(1)}
-            >
-              +
-            </button>
-          </div>
-        </div>
-
-        {/* Row 6: Ngôn ngữ & Hình thức nhận */}
-        <div className="reqform-row">
-          <div className="reqform-col">
-            <div className="reqform-label-row">
-              <span className="reqform-label">Ngôn ngữ</span>
-              <span className="reqform-required"> *</span>
-            </div>
-            <div className="reqform-select-wrap">
-              <select
-                className="reqform-select"
-                value={formData.language}
-                onChange={(e) => handleChange('language', e.target.value)}
-                required
-              >
-                <option value="" disabled>Chọn ngôn ngữ</option>
-                <option value="Tiếng Việt">Tiếng Việt</option>
-                <option value="Tiếng Anh">Tiếng Anh</option>
-                <option value="Song ngữ (Việt - Anh)">Song ngữ (Việt - Anh)</option>
-              </select>
-              <span className="reqform-select-arrow">▾</span>
-            </div>
-          </div>
-
-          <div className="reqform-col">
-            <div className="reqform-label-row">
-              <span className="reqform-label">Hình thức nhận</span>
-              <span className="reqform-required"> *</span>
-            </div>
-            <div className="reqform-select-wrap">
-              <select
-                className="reqform-select"
-                value={formData.deliveryMethod}
-                onChange={(e) => handleChange('deliveryMethod', e.target.value)}
-                required
-              >
-                <option value="" disabled>Chọn hình thức nhận</option>
-                <option value="Bản điện tử (PDF ký số)">Bản điện tử (PDF ký số)</option>
-                <option value="Bản cứng tại phòng">Bản cứng tại phòng</option>
-                <option value="Cả hai hình thức">Cả hai hình thức</option>
-              </select>
-              <span className="reqform-select-arrow">▾</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Row 7: Ghi chú */}
-        <div className="reqform-col full-width">
-          <div className="reqform-label-row">
-            <span className="reqform-label">Ghi chú</span>
-          </div>
-          <input
-            type="text"
-            className="reqform-input"
-            placeholder="Nhập ghi chú (không bắt buộc)"
-            value={formData.notes}
-            onChange={(e) => handleChange('notes', e.target.value)}
-          />
-        </div>
-
-        {/* Row 8: Hồ sơ đính kèm */}
-        <div className="reqform-col full-width">
-          <div className="reqform-label-row">
-            <span className="reqform-label">Hồ sơ đính kèm</span>
-          </div>
-
-          <input
-            type="file"
-            ref={fileInputRef}
-            style={{ display: 'none' }}
-            multiple
-            accept=".pdf,application/pdf"
-            onChange={handleFileChange}
-          />
-
+        {submitError && (
           <div
-            className={`reqform-dropzone ${isDragging ? 'drag-over' : ''}`}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
+            role="alert"
+            style={{
+              padding: '10px 14px', background: '#FEF2F2', border: '1px solid #FCA5A5',
+              borderRadius: 8, color: '#B91C1C', fontSize: 13,
+            }}
           >
-            <div className="reqform-dropzone-text">Kéo thả tệp vào đây hoặc</div>
-            <div className="reqform-dropzone-btn">
-              <span>Chọn tệp ↑</span>
-            </div>
-            <div className="reqform-dropzone-hint">Chấp nhận PDF · Tối đa 5 MB</div>
+            {submitError}
           </div>
+        )}
 
-          {/* Uploaded files preview */}
-          {files.length > 0 && (
-            <div className="reqform-uploaded-list">
-              {files.map((file, idx) => (
-                <div key={idx} className="reqform-uploaded-item">
-                  <span className="reqform-file-icon">📄</span>
-                  <span className="reqform-file-name">{file.name}</span>
-                  <span className="reqform-file-size">({(file.size / 1024).toFixed(1)} KB)</span>
-                  <button
-                    type="button"
-                    className="reqform-file-remove"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleRemoveFile(idx);
-                    }}
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
+        {/* Các trường form do admin cấu hình cho thủ tục */}
+        {visibleFields.map(field => (
+          <div key={field.field_id} className="reqform-col full-width">
+            <div className="reqform-label-row">
+              <span className="reqform-label">{field.field_name}</span>
+              {isFieldRequired(field) && <span className="reqform-required"> *</span>}
             </div>
-          )}
-        </div>
+            {renderInput(field)}
+          </div>
+        ))}
 
-        {/* Row 9: Buttons Footer */}
+        {/* Hồ sơ đính kèm theo từng cấu hình */}
+        {(procedure.attachment_configs || []).map(config => {
+          const files = filesByConfig[config.config_id] || [];
+          const formats = parseFormats(config.allowed_formats);
+          const inputId = `attachment-input-${config.config_id}`;
+          return (
+            <div key={config.config_id} className="reqform-col full-width">
+              <div className="reqform-label-row">
+                <span className="reqform-label">{config.item_name}</span>
+                {config.is_required && <span className="reqform-required"> *</span>}
+              </div>
+
+              <input
+                id={inputId}
+                type="file"
+                style={{ display: 'none' }}
+                multiple
+                accept={formats.map(f => `.${f}`).join(',') + (formats.includes('jpg') ? ',.jpeg' : '')}
+                onChange={(e) => {
+                  addFiles(config, e.target.files);
+                  e.target.value = '';
+                }}
+              />
+
+              <div
+                className={`reqform-dropzone ${dragConfigId === config.config_id ? 'drag-over' : ''}`}
+                onDragOver={(e) => { e.preventDefault(); setDragConfigId(config.config_id); }}
+                onDragLeave={() => setDragConfigId(null)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragConfigId(null);
+                  addFiles(config, e.dataTransfer.files);
+                }}
+                onClick={() => document.getElementById(inputId)?.click()}
+              >
+                <div className="reqform-dropzone-text">Kéo thả tệp vào đây hoặc</div>
+                <div className="reqform-dropzone-btn">
+                  <span>Chọn tệp ↑</span>
+                </div>
+                <div className="reqform-dropzone-hint">
+                  Chấp nhận {formats.join(', ').toUpperCase()} · Tối đa {config.max_size_mb || 5} MB
+                </div>
+              </div>
+
+              {files.length > 0 && (
+                <div className="reqform-uploaded-list">
+                  {files.map((file, idx) => (
+                    <div key={`${file.name}-${idx}`} className="reqform-uploaded-item">
+                      <span className="reqform-file-icon">📄</span>
+                      <span className="reqform-file-name">{file.name}</span>
+                      <span className="reqform-file-size">({(file.size / 1024).toFixed(1)} KB)</span>
+                      <button
+                        type="button"
+                        className="reqform-file-remove"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveFile(config.config_id, idx);
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {/* Buttons Footer */}
         <div className="reqform-actions-row">
           <button
             type="button"
@@ -718,8 +722,9 @@ function RequestForm({ initialStep }) {
           <button
             type="submit"
             className="reqform-btn-submit"
+            disabled={submitting}
           >
-            Gửi và thanh toán →
+            {submitting ? 'Đang gửi...' : (procedure.is_fee_required ? 'Gửi và thanh toán →' : 'Gửi yêu cầu →')}
           </button>
         </div>
       </form>

@@ -1,106 +1,132 @@
-import React, { useState } from 'react';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import Modal from '../common/Modal';
 import Button from '../common/Button';
-import { studentOverviewRequests, allRequests } from '../../data/mockData';
+import api from '../../services/api';
+import {
+  formatDate, formatDateTime, formatFileSize, statusStyle, TIMELINE_ACTION_LABELS,
+} from '../../utils/format';
 import './StudentPages.css';
+
+const DONE_STATUS = 'Đã xử lý';
 
 function RequestDetail() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const location = useLocation();
-  const navState = location.state || {};
 
-  // Find request in mock data or fallback to Figma default VJU-2026-0842
-  const foundReq = (studentOverviewRequests || []).find(
-    (r) => r.id === id || r.request_code === id || String(r.request_id) === String(id)
-  ) || (allRequests || []).find(
-    (r) => r.id === id || r.request_code === id || String(r.request_id) === String(id)
-  );
+  const [request, setRequest] = useState(null);
+  const [timeline, setTimeline] = useState([]);
+  const [fieldLabels, setFieldLabels] = useState({});
+  const [loadError, setLoadError] = useState('');
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [toast, setToast] = useState(null);
 
-  const request = foundReq || {
-    id: id || navState.orderCode || 'VJU-2026-0842',
-    request_code: id || navState.orderCode || 'VJU-2026-0842',
-    student: 'Nguyễn Minh Anh',
-    mssv: '21CS001',
-    procedure: 'Cấp bảng điểm',
-    procedure_id: 1,
-    purpose: 'Xin việc / Ứng tuyển',
-    quantity: 1,
-    language: 'Tiếng Việt',
-    delivery_method: 'PDF ký số',
-    date: '21/10/2026',
-    status: 'Đang xử lý',
-    assigned_to: 'Chưa phân công',
+  const showToast = (message, isError = false) => {
+    setToast({ message, isError });
+    setTimeout(() => setToast(null), 3500);
   };
 
-  const [showDocModal, setShowDocModal] = useState(false);
-  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
-  const [rating, setRating] = useState(5);
-  const [feedbackComment, setFeedbackComment] = useState('');
-  const [toastMsg, setToastMsg] = useState('');
+  const load = useCallback(async () => {
+    try {
+      const [detailRes, timelineRes] = await Promise.all([
+        api.requests.getDetail(id),
+        api.requests.getTimeline(id),
+      ]);
+      setRequest(detailRes.data);
+      setTimeline(timelineRes.data || []);
 
-  const showToast = (msg) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(''), 3500);
+      // Lấy tên hiển thị của các trường form theo cấu hình thủ tục
+      api.procedures.getDetail(detailRes.data.type_id)
+        .then((res) => {
+          const labels = {};
+          (res.data.form_fields || []).forEach(f => { labels[f.field_key] = f.field_name; });
+          setFieldLabels(labels);
+        })
+        .catch(() => {});
+    } catch (err) {
+      setLoadError(err.message || 'Không tải được yêu cầu.');
+    }
+  }, [id]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleCancel = async () => {
+    setBusy(true);
+    try {
+      const res = await api.requests.cancel(request.request_id);
+      setShowCancelModal(false);
+      showToast(res.message || 'Đã hủy yêu cầu.');
+      await load();
+    } catch (err) {
+      setShowCancelModal(false);
+      showToast(err.message, true);
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const handleFeedbackSubmit = (e) => {
-    e.preventDefault();
-    setShowFeedbackModal(false);
-    showToast('Cảm ơn bạn đã gửi đánh giá dịch vụ!');
+  const handleDownload = async (url, fileName) => {
+    try {
+      await api.attachments.download(url, fileName);
+    } catch (err) {
+      showToast(err.message, true);
+    }
   };
 
-  const getStatusPillClass = (status) => {
-    if (status === 'Đang xử lý') return 'processing';
-    if (status === 'Cần bổ sung') return 'supplement';
-    if (status === 'Chờ thanh toán') return 'payment';
-    if (status === 'Hoàn thành') return 'completed';
-    if (status === 'Đã hủy') return 'cancelled';
-    return 'processing';
-  };
+  if (loadError) {
+    return (
+      <div className="req-detail-container">
+        <div className="req-detail-top-bar">
+          <h1 className="req-detail-title">Không tải được yêu cầu</h1>
+          <button type="button" className="btn-back-to-requests" onClick={() => navigate('/student/dashboard')}>
+            <span>← Yêu cầu của tôi</span>
+          </button>
+        </div>
+        <div className="req-detail-card"><p style={{ color: '#B91C1C' }}>{loadError}</p></div>
+      </div>
+    );
+  }
 
-  const requestCode = request.id || request.request_code || navState.orderCode || 'VJU-2026-0842';
-  const studentName = request.student || navState.formData?.student_name || 'Nguyễn Minh Anh';
-  const studentMssv = request.mssv || '21CS001';
-  const procedureName = navState.procedure?.name || request.procedure || request.type_name || 'Cấp bảng điểm';
-  const purpose = navState.formData?.purpose || request.purpose || request.form_data?.purpose || 'Xin việc / Ứng tuyển';
-  const quantity = navState.formData?.quantity || request.quantity || request.form_data?.quantity || 1;
-  const language = navState.formData?.language || request.language || request.form_data?.language || 'Tiếng Việt';
-  const deliveryMethod = navState.formData?.delivery_method || request.delivery_method || request.form_data?.delivery_method || 'PDF ký số';
-  const submissionDate = navState.submissionDate || request.date || '21/10/2026';
-  const status = navState.status || request.status || 'Đang xử lý';
-  const assignee = request.assigned_to || request.staff_name || 'Chưa phân công';
+  if (!request) {
+    return <div className="req-detail-container"><p style={{ color: '#68717D' }}>Đang tải yêu cầu...</p></div>;
+  }
+
+  const student = request.student || {};
+  const result = request.result;
+  const statusLabel = request.status === DONE_STATUS ? 'Hoàn thành' : request.status;
+  const canCancel = request.internal_status === 'Chờ phân công';
+  const needsSupplement = request.internal_status === 'Cần bổ sung';
+  const canFeedback = request.status === DONE_STATUS;
+  const formEntries = Object.entries(request.form_data || {}).filter(([, v]) => v !== '' && v !== null && v !== undefined);
+
+  const infoRows = [
+    ['Tên sinh viên', student.full_name],
+    ['Mã sinh viên', student.mssv],
+    ['Mã yêu cầu', request.request_code],
+    ['Tên thủ tục', request.type_name],
+    ['Phòng ban xử lý', request.department_name],
+    ...formEntries.map(([key, value]) => [fieldLabels[key] || key, String(value)]),
+    ['Ngày gửi', formatDateTime(request.created_at)],
+    ['Hạn xử lý dự kiến', formatDate(request.sla_deadline)],
+  ];
 
   return (
     <div className="req-detail-container">
-      {/* Toast Notification */}
-      {toastMsg && (
+      {toast && (
         <div style={{
-          position: 'fixed',
-          top: 24,
-          right: 24,
-          zIndex: 9999,
-          background: '#059669',
-          color: '#FFFFFF',
-          padding: '12px 20px',
-          borderRadius: 8,
-          boxShadow: '0 4px 14px rgba(0,0,0,0.15)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          fontSize: 14,
-          fontWeight: 600,
-          fontFamily: 'Inter, sans-serif',
+          position: 'fixed', top: 24, right: 24, zIndex: 9999,
+          background: toast.isError ? '#B91C1C' : '#059669', color: '#FFFFFF',
+          padding: '12px 20px', borderRadius: 8, boxShadow: '0 4px 14px rgba(0,0,0,0.15)',
+          fontSize: 14, fontWeight: 600, fontFamily: 'Inter, sans-serif', maxWidth: 420,
         }}>
-          <span>✓</span>
-          <span>{toastMsg}</span>
+          {toast.message}
         </div>
       )}
 
       {/* Top Header Row */}
       <div className="req-detail-top-bar">
-        <h1 className="req-detail-title">Yêu cầu {requestCode}</h1>
+        <h1 className="req-detail-title">Yêu cầu {request.request_code}</h1>
         <button
           type="button"
           className="btn-back-to-requests"
@@ -115,290 +141,158 @@ function RequestDetail() {
         <div className="req-detail-card-title">Thông tin yêu cầu</div>
         <div className="req-detail-divider" />
 
-        {/* Row 1: Tên sinh viên */}
-        <div className="req-detail-row">
-          <div className="req-detail-label">Tên sinh viên</div>
-          <div className="req-detail-value">{studentName}</div>
-        </div>
-        <div className="req-detail-divider" />
+        {infoRows.map(([label, value]) => (
+          <React.Fragment key={label}>
+            <div className="req-detail-row">
+              <div className="req-detail-label">{label}</div>
+              <div className="req-detail-value">{value || '—'}</div>
+            </div>
+            <div className="req-detail-divider" />
+          </React.Fragment>
+        ))}
 
-        {/* Row 2: Mã sinh viên */}
-        <div className="req-detail-row">
-          <div className="req-detail-label">Mã sinh viên</div>
-          <div className="req-detail-value">{studentMssv}</div>
-        </div>
-        <div className="req-detail-divider" />
-
-        {/* Row 3: Mã yêu cầu */}
-        <div className="req-detail-row">
-          <div className="req-detail-label">Mã yêu cầu</div>
-          <div className="req-detail-value">{requestCode}</div>
-        </div>
-        <div className="req-detail-divider" />
-
-        {/* Row 4: Tên thủ tục */}
-        <div className="req-detail-row">
-          <div className="req-detail-label">Tên thủ tục</div>
-          <div className="req-detail-value">{procedureName}</div>
-        </div>
-        <div className="req-detail-divider" />
-
-        {/* Row 5: Mục đích */}
-        <div className="req-detail-row">
-          <div className="req-detail-label">Mục đích</div>
-          <div className="req-detail-value">{purpose}</div>
-        </div>
-        <div className="req-detail-divider" />
-
-        {/* Row 6: Số bản */}
-        <div className="req-detail-row">
-          <div className="req-detail-label">Số bản</div>
-          <div className="req-detail-value">{quantity}</div>
-        </div>
-        <div className="req-detail-divider" />
-
-        {/* Row 7: Ngôn ngữ */}
-        <div className="req-detail-row">
-          <div className="req-detail-label">Ngôn ngữ</div>
-          <div className="req-detail-value">{language}</div>
-        </div>
-        <div className="req-detail-divider" />
-
-        {/* Row 8: Hình thức nhận kết quả */}
-        <div className="req-detail-row">
-          <div className="req-detail-label">Hình thức nhận kết quả</div>
-          <div className="req-detail-value">{deliveryMethod}</div>
-        </div>
-        <div className="req-detail-divider" />
-
-        {/* Row 9: Ngày gửi */}
-        <div className="req-detail-row">
-          <div className="req-detail-label">Ngày gửi</div>
-          <div className="req-detail-value">{submissionDate}</div>
-        </div>
-        <div className="req-detail-divider" />
-
-        {/* Row 10: Trạng thái */}
         <div className="req-detail-row">
           <div className="req-detail-label">Trạng thái</div>
           <div className="req-detail-value">
-            <span className={`req-status-pill ${getStatusPillClass(status)}`}>
-              {status}
-            </span>
+            <span style={statusStyle(request.status)}>{statusLabel}</span>
           </div>
         </div>
         <div className="req-detail-divider" />
 
-        {/* Row 11: Người phụ trách */}
         <div className="req-detail-row">
           <div className="req-detail-label">Người phụ trách</div>
-          <div className="req-detail-value">{assignee}</div>
+          <div className="req-detail-value">{request.assigned_staff?.full_name || 'Chưa phân công'}</div>
         </div>
         <div className="req-detail-divider" />
 
-        {/* Row 12: Tài liệu đã gửi */}
         <div className="req-detail-row">
           <div className="req-detail-label">Tài liệu đã gửi</div>
-          <div className="req-detail-value">
-            <button
-              type="button"
-              className="btn-view-document"
-              onClick={() => setShowDocModal(true)}
-            >
-              <span>Xem tài liệu ↗</span>
-            </button>
+          <div className="req-detail-value" style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
+            {(request.attachments || []).length === 0 && <span>Không có tài liệu đính kèm</span>}
+            {(request.attachments || []).map(att => (
+              <button
+                key={att.attachment_id}
+                type="button"
+                className="btn-view-document"
+                onClick={() => handleDownload(att.download_url, att.file_name)}
+                title={att.item_name || ''}
+              >
+                <span>
+                  {att.is_supplement ? '[Bổ sung] ' : ''}{att.file_name} ({formatFileSize(att.file_size)}) ↓
+                </span>
+              </button>
+            ))}
           </div>
         </div>
         <div className="req-detail-divider" />
       </div>
 
-      {/* Action Buttons Row */}
-      <div className="req-detail-actions">
-        {/* Button 1: Bổ sung hồ sơ */}
-        <button
-          type="button"
-          className="btn-req-action-outline"
-          onClick={() => navigate('/student/request/supplement')}
-        >
-          Bổ sung hồ sơ
-        </button>
+      {/* Kết quả */}
+      {result && (
+        <div className="req-detail-card" style={{ marginTop: 16 }}>
+          <div className="req-detail-card-title">Kết quả</div>
+          <div className="req-detail-divider" />
+          <div className="req-detail-row">
+            <div className="req-detail-label">Mã xác minh</div>
+            <div className="req-detail-value">{result.verification_code}</div>
+          </div>
+          <div className="req-detail-divider" />
+          <div className="req-detail-row">
+            <div className="req-detail-label">Người duyệt</div>
+            <div className="req-detail-value">{result.signed_by || '—'} · {formatDateTime(result.signed_at)}</div>
+          </div>
+          <div className="req-detail-divider" />
+          {result.pickup_date && (
+            <>
+              <div className="req-detail-row">
+                <div className="req-detail-label">Lịch nhận bản cứng</div>
+                <div className="req-detail-value">
+                  {formatDateTime(result.pickup_date)} tại {result.pickup_location}
+                  {result.pickup_note ? ` (${result.pickup_note})` : ''}
+                </div>
+              </div>
+              <div className="req-detail-divider" />
+            </>
+          )}
+          {result.handover_confirmed_at && (
+            <>
+              <div className="req-detail-row">
+                <div className="req-detail-label">Đã nhận bản cứng</div>
+                <div className="req-detail-value">{formatDateTime(result.handover_confirmed_at)}</div>
+              </div>
+              <div className="req-detail-divider" />
+            </>
+          )}
+        </div>
+      )}
 
-        {/* Button 2: Thanh toán */}
-        <button
-          type="button"
-          className="btn-req-action-outline"
-          onClick={() => navigate(`/student/request/payment/${request.procedure_id || 1}`)}
-        >
-          Thanh toán
-        </button>
-
-        {/* Button 3: Đánh giá */}
-        <button
-          type="button"
-          className="btn-req-action-outline"
-          onClick={() => navigate(`/student/request/${requestCode}/feedback`, {
-            state: { requestCode, procedureName, department: 'Phòng Đào tạo' }
-          })}
-        >
-          Đánh giá
-        </button>
-
-        {/* Button 4: Nhận kết quả → */}
-        <button
-          type="button"
-          className="btn-req-action-primary"
-          onClick={() => navigate('/student/request/result')}
-        >
-          <span>Nhận kết quả →</span>
-        </button>
+      {/* Lịch sử xử lý */}
+      <div className="req-detail-card" style={{ marginTop: 16 }}>
+        <div className="req-detail-card-title">Lịch sử xử lý</div>
+        <div className="req-detail-divider" />
+        {timeline.map((log, idx) => (
+          <React.Fragment key={`${log.created_at}-${idx}`}>
+            <div className="req-detail-row">
+              <div className="req-detail-label">{formatDateTime(log.created_at)}</div>
+              <div className="req-detail-value">
+                <strong>{TIMELINE_ACTION_LABELS[log.action] || log.action}</strong> · {log.performed_by}
+                {log.note ? <div style={{ fontSize: 13, color: '#68717D', marginTop: 2 }}>{log.note}</div> : null}
+              </div>
+            </div>
+            <div className="req-detail-divider" />
+          </React.Fragment>
+        ))}
       </div>
 
-      {/* Modal Xem tài liệu đã gửi */}
-      <Modal
-        isOpen={showDocModal}
-        onClose={() => setShowDocModal(false)}
-        title="Tài liệu đính kèm yêu cầu"
-      >
-        <div style={{ padding: '8px 0', fontFamily: 'Inter, sans-serif' }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            padding: 14,
-            background: '#F9FAFB',
-            borderRadius: 8,
-            border: '1px solid #E2E5EA',
-            marginBottom: 16,
-          }}>
-            <div style={{
-              width: 40,
-              height: 40,
-              borderRadius: 8,
-              background: '#FCE8E8',
-              color: '#AA2327',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 700,
-              fontSize: 13,
-            }}>
-              PDF
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#202630' }}>
-                Don_yeu_cau_{requestCode}.pdf
-              </div>
-              <div style={{ fontSize: 12, color: '#68717D', marginTop: 2 }}>
-                1.4 MB • Đã tải lên vào {submissionDate}
-              </div>
-            </div>
-            <button
-              type="button"
-              className="btn btn--outline-red"
-              style={{ padding: '6px 12px', fontSize: 12 }}
-              onClick={() => showToast('Đang tải xuống tệp đính kèm...')}
-            >
-              Tải xuống
-            </button>
-          </div>
+      {/* Action Buttons Row: chỉ hiện thao tác hợp lệ với trạng thái hiện tại */}
+      <div className="req-detail-actions">
+        {canCancel && (
+          <button type="button" className="btn-req-action-outline" onClick={() => setShowCancelModal(true)}>
+            Hủy yêu cầu
+          </button>
+        )}
+        {needsSupplement && (
+          <button
+            type="button"
+            className="btn-req-action-outline"
+            onClick={() => navigate(`/student/request/${request.request_id}/supplement`)}
+          >
+            Bổ sung hồ sơ
+          </button>
+        )}
+        {canFeedback && (
+          <button
+            type="button"
+            className="btn-req-action-outline"
+            onClick={() => navigate(`/student/request/${request.request_id}/feedback`, {
+              state: { requestCode: request.request_code, procedureName: request.type_name, department: request.department_name },
+            })}
+          >
+            Đánh giá
+          </button>
+        )}
+        {result && (
+          <button
+            type="button"
+            className="btn-req-action-primary"
+            onClick={() => navigate(`/student/request/${request.request_id}/receive`)}
+          >
+            <span>Nhận kết quả →</span>
+          </button>
+        )}
+      </div>
 
-          <div style={{
-            height: 180,
-            background: '#F5F6F8',
-            borderRadius: 8,
-            border: '1px dashed #CBD5E1',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#68717D',
-            fontSize: 13,
-            gap: 8,
-          }}>
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#68717D" strokeWidth="1.5">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-              <line x1="16" y1="13" x2="8" y2="13" />
-              <line x1="16" y1="17" x2="8" y2="17" />
-              <polyline points="10 9 9 9 8 9" />
-            </svg>
-            <span>Bản xem trước tệp tài liệu PDF hợp lệ có ký số nội bộ</span>
-          </div>
+      {/* Xác nhận hủy */}
+      <Modal isOpen={showCancelModal} onClose={() => setShowCancelModal(false)} title="Hủy yêu cầu">
+        <p style={{ fontSize: 14, color: '#202630', fontFamily: 'Inter, sans-serif' }}>
+          Bạn chắc chắn muốn hủy yêu cầu <strong>{request.request_code}</strong>? Thao tác này không hoàn tác được.
+        </p>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
+          <Button variant="secondary" onClick={() => setShowCancelModal(false)}>Đóng</Button>
+          <Button variant="primary" onClick={handleCancel} disabled={busy}>
+            {busy ? 'Đang hủy...' : 'Hủy yêu cầu'}
+          </Button>
         </div>
-      </Modal>
-
-      {/* Modal Đánh giá chất lượng dịch vụ */}
-      <Modal
-        isOpen={showFeedbackModal}
-        onClose={() => setShowFeedbackModal(false)}
-        title="Đánh giá chất lượng dịch vụ"
-      >
-        <form onSubmit={handleFeedbackSubmit} style={{ fontFamily: 'Inter, sans-serif' }}>
-          <p style={{ fontSize: 13, color: '#68717D', marginBottom: 16 }}>
-            Vui lòng đánh giá mức độ hài lòng của bạn đối với quá trình xử lý thủ tục <strong>{procedureName}</strong> ({requestCode}):
-          </p>
-
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#202630', marginBottom: 8 }}>
-              Mức độ hài lòng
-            </label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  type="button"
-                  onClick={() => setRating(star)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    fontSize: 26,
-                    cursor: 'pointer',
-                    color: star <= rating ? '#AA2327' : '#D1D5DB',
-                    transition: 'color 0.15s',
-                    padding: 0,
-                  }}
-                >
-                  ★
-                </button>
-              ))}
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#68717D', alignSelf: 'center', marginLeft: 8 }}>
-                {rating === 5 ? 'Rất hài lòng' : rating === 4 ? 'Hài lòng' : rating === 3 ? 'Bình thường' : 'Chưa hài lòng'}
-              </span>
-            </div>
-          </div>
-
-          <div style={{ marginBottom: 20 }}>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#202630', marginBottom: 6 }}>
-              Ý kiến đóng góp (tùy chọn)
-            </label>
-            <textarea
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                border: '1px solid #E2E5EA',
-                borderRadius: 8,
-                fontSize: 13,
-                fontFamily: 'Inter, sans-serif',
-                color: '#202630',
-                outline: 'none',
-                boxSizing: 'border-box',
-                minHeight: 80,
-              }}
-              placeholder="Chia sẻ thêm cảm nhận hoặc góp ý giúp VJU cải thiện dịch vụ..."
-              value={feedbackComment}
-              onChange={(e) => setFeedbackComment(e.target.value)}
-            />
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-            <Button variant="secondary" onClick={() => setShowFeedbackModal(false)}>
-              Đóng
-            </Button>
-            <Button variant="primary" type="submit">
-              Gửi đánh giá
-            </Button>
-          </div>
-        </form>
       </Modal>
     </div>
   );

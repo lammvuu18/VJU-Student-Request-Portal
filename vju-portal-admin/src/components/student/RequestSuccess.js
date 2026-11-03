@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { formatDate, statusStyle } from '../../utils/format';
 import './StudentPages.css';
 
 function RequestSuccess() {
@@ -7,10 +8,13 @@ function RequestSuccess() {
   const location = useLocation();
   const state = location.state || {};
 
-  const orderCode = state.orderCode || 'VJU-2026-0842';
-  const procedureName = state.procedure?.name || 'Cấp bảng điểm';
-  const deptName = state.procedure?.department_name || 'Phòng Đào tạo';
-  const submissionDate = state.submissionDate || '21/10/2026';
+  const request = state.request || {};
+  const orderCode = request.request_code || '—';
+  const procedureName = state.procedure?.name || '—';
+  const deptName = state.procedure?.department_name || 'phòng ban phụ trách';
+  const submissionDate = formatDate(request.created_at);
+  const status = request.status || 'Đã gửi';
+  const isWaitingPayment = status === 'Chờ thanh toán';
 
   return (
     <div className="reqsuccess-container">
@@ -21,9 +25,10 @@ function RequestSuccess() {
 
       {/* Header Titles */}
       <div className="reqsuccess-header-group">
-        <h1 className="reqsuccess-title">Thanh toán thành công</h1>
+        <h1 className="reqsuccess-title">{isWaitingPayment ? 'Đã tạo yêu cầu' : 'Gửi yêu cầu thành công'}</h1>
         <p className="reqsuccess-subtitle">
-          Đơn của bạn đã được gửi và đang được {deptName} xử lý.
+          {state.message || `Đơn của bạn đã được gửi tới ${deptName}.`}
+          {request.sla_deadline && ` Hạn xử lý dự kiến: ${formatDate(request.sla_deadline)}.`}
         </p>
       </div>
 
@@ -61,8 +66,8 @@ function RequestSuccess() {
         {/* Row 4: Trạng thái */}
         <div className="reqsuccess-row">
           <div className="reqsuccess-label" style={{ fontSize: 14, color: '#68717D' }}>Trạng thái</div>
-          <div className="reqsuccess-status-badge">
-            Đang xử lý
+          <div style={statusStyle(status)}>
+            {status}
           </div>
         </div>
         <div className="reqsuccess-divider" />
@@ -72,13 +77,7 @@ function RequestSuccess() {
           <button
             type="button"
             className="reqsuccess-btn-detail"
-            onClick={() => navigate(`/student/request/${orderCode}`, {
-              state: {
-                ...state,
-                orderCode,
-                status: 'Đang xử lý',
-              },
-            })}
+            onClick={() => navigate(request.request_id ? `/student/request/${request.request_id}` : '/student/dashboard')}
           >
             Xem chi tiết →
           </button>

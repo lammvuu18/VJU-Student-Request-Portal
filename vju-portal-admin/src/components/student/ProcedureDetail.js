@@ -45,8 +45,8 @@ function ProcedureDetail() {
           if (Array.isArray(d.attachment_configs) && d.attachment_configs.length > 0) {
             const mappedDocs = d.attachment_configs.map((att, idx) => ({
               stt: String(idx + 1).padStart(2, '0'),
-              name: att.file_label || `Tệp minh chứng ${idx + 1}`,
-              desc: att.file_description || `Yêu cầu tải lên định dạng ${att.allowed_extensions || 'PDF, JPG, PNG'}, tối đa ${att.max_size_mb || 5} MB.`,
+              name: `${att.item_name || `Tệp minh chứng ${idx + 1}`}${att.is_required ? ' (bắt buộc)' : ' (không bắt buộc)'}`,
+              desc: `Định dạng ${att.allowed_formats || 'PDF, JPG, PNG'}, tối đa ${att.max_size_mb || 5} MB.`,
               hasTemplate: Boolean(att.template_url),
               templateName: att.template_url || 'mau_ho_so.docx',
             }));

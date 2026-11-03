@@ -6,3 +6,4 @@ venv/
 staticfiles/
 media/
 docs/testing/*.postman_environment.json
+.venv/
