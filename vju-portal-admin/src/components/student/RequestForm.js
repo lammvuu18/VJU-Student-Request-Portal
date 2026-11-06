@@ -93,27 +93,28 @@ function RequestForm({ initialStep }) {
   const orderCode = createdRequest ? createdRequest.request_code : '';
 
   // Khi chuyển sang Step 2, tự động khởi tạo link thanh toán PayOS
+  const targetRequestId = createdRequest?.request_id;
   useEffect(() => {
-    let isMounted = true;
-    if (currentStep === 2 && createdRequest && !paymentData && !paymentLoading) {
+    let active = true;
+    if (currentStep === 2 && targetRequestId && !paymentData) {
       setPaymentLoading(true);
       setPaymentError('');
-      api.payments.createForRequest(createdRequest.request_id)
+      api.payments.createForRequest(targetRequestId)
         .then((res) => {
-          if (isMounted) {
+          if (active) {
             setPaymentData(res.data);
             setPaymentLoading(false);
           }
         })
         .catch((err) => {
-          if (isMounted) {
+          if (active) {
             setPaymentError(err.message || 'Không thể tạo link thanh toán PayOS.');
             setPaymentLoading(false);
           }
         });
     }
-    return () => { isMounted = false; };
-  }, [currentStep, createdRequest, paymentData, paymentLoading]);
+    return () => { active = false; };
+  }, [currentStep, targetRequestId, paymentData]);
 
   // Polling tự động kiểm tra trạng thái thanh toán mỗi 2.5s
   useEffect(() => {
@@ -252,6 +253,18 @@ function RequestForm({ initialStep }) {
       if (procedure.is_fee_required) {
         setCurrentStep(2);
         window.scrollTo({ top: 0, behavior: 'smooth' });
+        // Khởi tạo link thanh toán PayOS ngay lập tức
+        setPaymentLoading(true);
+        setPaymentError('');
+        api.payments.createForRequest(res.data.request_id)
+          .then((payRes) => {
+            setPaymentData(payRes.data);
+            setPaymentLoading(false);
+          })
+          .catch((payErr) => {
+            setPaymentError(payErr.message || 'Không thể tạo link thanh toán PayOS.');
+            setPaymentLoading(false);
+          });
       } else {
         navigate('/student/request/success', {
           state: { procedure, request: res.data, message: res.message },
@@ -400,8 +413,19 @@ function RequestForm({ initialStep }) {
                 </p>
               </div>
             ) : paymentLoading ? (
-              <div style={{ textAlign: 'center', padding: '40px 20px', color: '#68717D' }}>
-                <p style={{ fontSize: 15, fontWeight: 500 }}>Đang kết nối cổng thanh toán PayOS và tạo mã VietQR...</p>
+              <div style={{ textAlign: 'center', padding: '48px 24px', color: '#68717D' }}>
+                <style>{`@keyframes spinPay { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+                <div style={{
+                  width: 40, height: 40, border: '3.5px solid #E5E7EB',
+                  borderTopColor: '#AA2327', borderRadius: '50%',
+                  animation: 'spinPay 0.9s linear infinite', margin: '0 auto 16px'
+                }} />
+                <p style={{ fontSize: 16, fontWeight: 600, color: '#1F2937', margin: '0 0 6px 0' }}>
+                  Đang khởi tạo mã VietQR từ cổng PayOS...
+                </p>
+                <p style={{ fontSize: 13, color: '#6B7280', margin: 0 }}>
+                  Hệ thống đang kết nối mạng Napas để sinh tài khoản thanh toán tự động (thường mất 2-3 giây)
+                </p>
               </div>
             ) : paymentError ? (
               <div style={{ textAlign: 'center', padding: '30px 20px' }}>

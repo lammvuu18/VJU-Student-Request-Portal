@@ -73,6 +73,25 @@ def create_payment_link(request_obj: Request, payment_method: str = "payos", ret
     if fee_amount <= 0:
         raise PaymentError("Thủ tục này không yêu cầu đóng phí.")
 
+    # 3.1 Tái sử dụng giao dịch pending đang mở (nếu có và chưa hết hạn) để phản hồi tức thì (<10ms)
+    existing_pending = Payment.objects.filter(request=request_obj, status="pending").order_by("-created_at").first()
+    if existing_pending and existing_pending.payment_url and existing_pending.callback_data:
+        qr = existing_pending.callback_data.get("qr_code")
+        if qr:
+            expires_at = request_obj.created_at + timedelta(hours=24)
+            return {
+                "payment_id": existing_pending.payment_id,
+                "txn_id": existing_pending.txn_id,
+                "amount": int(existing_pending.amount),
+                "payment_method": existing_pending.payment_method,
+                "payment_url": existing_pending.payment_url,
+                "qr_code": qr,
+                "account_number": existing_pending.callback_data.get("account_number"),
+                "account_name": existing_pending.callback_data.get("account_name"),
+                "bin": existing_pending.callback_data.get("bin"),
+                "expires_at": expires_at.isoformat(),
+            }
+
     # 4. Chuẩn bị tham số gọi PayOS
     client = get_payos_client()
     order_code = generate_order_code(request_obj)
