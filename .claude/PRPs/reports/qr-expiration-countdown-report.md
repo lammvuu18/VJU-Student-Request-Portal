@@ -52,3 +52,4 @@
 
 ## Deviations from Plan
 - Đã điều chỉnh giao diện theo chỉ đạo trực tiếp của người dùng: Loại bỏ toàn bộ icon màu mè, bỏ chấm tròn status, không dùng màu chữ xanh/cam/đỏ sặc sỡ, chuyển toàn bộ sang phong cách đơn giản, tinh gọn với màu chữ trung tính chuẩn mực.
+
