@@ -1,8 +1,9 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 import json
 import logging
 
 from django.http import JsonResponse
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
@@ -118,6 +119,17 @@ def _payment_status(request, request_id: int):
     latest_data = None
     if latest_payment:
         cb = latest_payment.callback_data or {}
+        exp_str = cb.get("expires_at")
+        rem_sec = 0
+        if exp_str:
+            try:
+                exp_dt = datetime.fromisoformat(exp_str)
+                if timezone.is_naive(exp_dt):
+                    exp_dt = timezone.make_aware(exp_dt)
+                rem_sec = max(0, int((exp_dt - timezone.now()).total_seconds()))
+            except Exception:
+                pass
+
         latest_data = {
             "payment_id": latest_payment.payment_id,
             "status": latest_payment.status,
@@ -128,6 +140,8 @@ def _payment_status(request, request_id: int):
             "account_number": cb.get("account_number"),
             "account_name": cb.get("account_name"),
             "bin": cb.get("bin"),
+            "expires_at": exp_str,
+            "remaining_seconds": rem_sec,
             "completed_at": _format_datetime(latest_payment.completed_at) if latest_payment.completed_at else None,
         }
 

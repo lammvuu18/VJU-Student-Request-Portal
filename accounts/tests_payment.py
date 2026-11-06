@@ -253,3 +253,74 @@ class PaymentTestCase(TestCase):
 
         req.refresh_from_db()
         self.assertEqual(req.internal_status, "Chờ thanh toán")
+
+    @patch("accounts.payment_service.get_payos_client")
+    def test_payment_link_has_15min_expiration(self, mock_client_getter):
+        mock_client = MagicMock()
+        mock_res = MagicMock()
+        mock_res.order_code = 555666
+        mock_res.checkout_url = "https://pay.payos.vn/web/mock555"
+        mock_res.qr_code = "0002010102123854..."
+        mock_res.account_number = "123456789"
+        mock_res.account_name = "TRUONG DAI HOC VIET NHAT"
+        mock_res.bin = "970422"
+        mock_client.payment_requests.create.return_value = mock_res
+        mock_client_getter.return_value = mock_client
+
+        req = self._create_fee_request()
+        res = self.client.post(
+            f"/api/requests/{req.request_id}/payments",
+            data=json.dumps({"payment_method": "payos"}),
+            content_type="application/json",
+            **self._auth_header(self.sv_a),
+        )
+        self.assertEqual(res.status_code, 201)
+        data = res.json()["data"]
+        self.assertIn("expires_at", data)
+        self.assertIn("remaining_seconds", data)
+        self.assertTrue(data["remaining_seconds"] <= 900 and data["remaining_seconds"] > 880)
+
+    @patch("accounts.payment_service.get_payos_client")
+    def test_expired_payment_marked_failed_and_new_link_created(self, mock_client_getter):
+        req = self._create_fee_request()
+        # Tạo 1 payment đã hết hạn 5 phút trước
+        past_time = timezone.now() - timedelta(minutes=20)
+        p = Payment.objects.create(
+            request=req,
+            txn_id="EXP-001",
+            amount=50000,
+            status="pending",
+            payment_url="https://pay.payos.vn/web/exp1",
+            callback_data={
+                "qr_code": "OLD_QR",
+                "expires_at": (past_time + timedelta(minutes=15)).isoformat(),
+            },
+            retry_count=1,
+        )
+
+        mock_client = MagicMock()
+        mock_res = MagicMock()
+        mock_res.order_code = 777888
+        mock_res.checkout_url = "https://pay.payos.vn/web/new777"
+        mock_res.qr_code = "NEW_QR"
+        mock_res.account_number = "123456789"
+        mock_res.account_name = "TRUONG DAI HOC VIET NHAT"
+        mock_res.bin = "970422"
+        mock_client.payment_requests.create.return_value = mock_res
+        mock_client_getter.return_value = mock_client
+
+        res = self.client.post(
+            f"/api/requests/{req.request_id}/payments",
+            data=json.dumps({"payment_method": "payos"}),
+            content_type="application/json",
+            **self._auth_header(self.sv_a),
+        )
+        self.assertEqual(res.status_code, 201)
+        data = res.json()["data"]
+        self.assertEqual(data["qr_code"], "NEW_QR")
+        self.assertEqual(data["retry_count"], 2)
+
+        # Cũ đã bị failed
+        p.refresh_from_db()
+        self.assertEqual(p.status, "failed")
+

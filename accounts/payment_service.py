@@ -1,6 +1,6 @@
 import logging
 import time
-from datetime import timedelta
+from datetime import datetime, timedelta
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
@@ -12,6 +12,8 @@ from .models import Payment, Request, StateAuditLog, Notification, User
 from .services import calculate_sla_deadline
 
 logger = logging.getLogger(__name__)
+
+QR_EXPIRATION_SECONDS = 900  # 15 phút hiệu lực cho mỗi phiên mã QR VietQR
 
 
 class PaymentError(Exception):
@@ -63,6 +65,11 @@ def create_payment_link(request_obj: Request, payment_method: str = "payos", ret
     if request_obj.internal_status != "Chờ thanh toán":
         raise InvalidStateError(f"Đơn đang ở trạng thái '{request_obj.status}', không thể tạo giao dịch thanh toán.")
 
+    now = timezone.now()
+    overall_deadline = request_obj.created_at + timedelta(hours=24)
+    if now >= overall_deadline:
+        raise PaymentError("Đơn đã quá hạn thanh toán (24 giờ).")
+
     # 2. Kiểm tra BR-29: Quá 3 lần thất bại -> Khóa thanh toán
     failed_count = Payment.objects.filter(request=request_obj, status="failed").count()
     if failed_count >= 3:
@@ -73,12 +80,25 @@ def create_payment_link(request_obj: Request, payment_method: str = "payos", ret
     if fee_amount <= 0:
         raise PaymentError("Thủ tục này không yêu cầu đóng phí.")
 
-    # 3.1 Tái sử dụng giao dịch pending đang mở (nếu có và chưa hết hạn) để phản hồi tức thì (<10ms)
+    # 3.1 Kiểm tra giao dịch pending đang mở (nếu có)
     existing_pending = Payment.objects.filter(request=request_obj, status="pending").order_by("-created_at").first()
     if existing_pending and existing_pending.payment_url and existing_pending.callback_data:
         qr = existing_pending.callback_data.get("qr_code")
-        if qr:
-            expires_at = request_obj.created_at + timedelta(hours=24)
+        raw_exp = existing_pending.callback_data.get("expires_at")
+        exp_dt = None
+        if raw_exp:
+            try:
+                exp_dt = datetime.fromisoformat(raw_exp)
+                if timezone.is_naive(exp_dt):
+                    exp_dt = timezone.make_aware(exp_dt)
+            except Exception:
+                exp_dt = None
+        if not exp_dt:
+            exp_dt = existing_pending.created_at + timedelta(seconds=QR_EXPIRATION_SECONDS)
+
+        # Còn hạn ít nhất 15 giây thì tái sử dụng để phản hồi tức thì
+        if qr and now < (exp_dt - timedelta(seconds=15)):
+            rem_sec = max(0, int((exp_dt - now).total_seconds()))
             return {
                 "payment_id": existing_pending.payment_id,
                 "txn_id": existing_pending.txn_id,
@@ -89,8 +109,17 @@ def create_payment_link(request_obj: Request, payment_method: str = "payos", ret
                 "account_number": existing_pending.callback_data.get("account_number"),
                 "account_name": existing_pending.callback_data.get("account_name"),
                 "bin": existing_pending.callback_data.get("bin"),
-                "expires_at": expires_at.isoformat(),
+                "expires_at": exp_dt.isoformat(),
+                "remaining_seconds": rem_sec,
+                "retry_count": existing_pending.retry_count,
             }
+        else:
+            # Giao dịch pending cũ đã hết hạn -> đánh dấu failed
+            existing_pending.status = "failed"
+            existing_pending.save(update_fields=["status"])
+            failed_count = Payment.objects.filter(request=request_obj, status="failed").count()
+            if failed_count >= 3:
+                raise PaymentLockedError("Đã thất bại 3 lần. Vui lòng liên hệ PKHTC.")
 
     # 4. Chuẩn bị tham số gọi PayOS
     client = get_payos_client()
@@ -109,6 +138,10 @@ def create_payment_link(request_obj: Request, payment_method: str = "payos", ret
     # Cắt ngắn tên item nếu dài quá
     safe_item_name = procedure_name[:50]
 
+    # Tính mốc hết hạn cho phiên QR mới (15 phút hoặc hạn chót 24h, tùy mốc nào đến trước)
+    session_deadline = min(now + timedelta(seconds=QR_EXPIRATION_SECONDS), overall_deadline)
+    expired_at_timestamp = int(session_deadline.timestamp())
+
     try:
         req_data = CreatePaymentLinkRequest(
             order_code=order_code,
@@ -122,7 +155,8 @@ def create_payment_link(request_obj: Request, payment_method: str = "payos", ret
                     quantity=1,
                     price=fee_amount,
                 )
-            ]
+            ],
+            expired_at=expired_at_timestamp,
         )
         res = client.payment_requests.create(req_data)
     except PayOSError as e:
@@ -131,8 +165,6 @@ def create_payment_link(request_obj: Request, payment_method: str = "payos", ret
     except Exception as e:
         logger.error(f"Unexpected error creating PayOS link: {e}")
         raise PaymentError(f"Lỗi khi kết nối cổng thanh toán: {str(e)}")
-
-    expires_at = request_obj.created_at + timedelta(hours=24)
 
     # 5. Lưu bản ghi Payment
     payment = Payment.objects.create(
@@ -147,6 +179,7 @@ def create_payment_link(request_obj: Request, payment_method: str = "payos", ret
             "account_number": res.account_number,
             "account_name": res.account_name,
             "bin": res.bin,
+            "expires_at": session_deadline.isoformat(),
         },
         retry_count=failed_count + 1,
     )
@@ -161,7 +194,9 @@ def create_payment_link(request_obj: Request, payment_method: str = "payos", ret
         "account_number": res.account_number,
         "account_name": res.account_name,
         "bin": res.bin,
-        "expires_at": expires_at.isoformat(),
+        "expires_at": session_deadline.isoformat(),
+        "remaining_seconds": max(0, int((session_deadline - now).total_seconds())),
+        "retry_count": payment.retry_count,
     }
 
 

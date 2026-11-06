@@ -23,12 +23,56 @@ function RequestDetail() {
   const [paymentData, setPaymentData] = useState(null);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentError, setPaymentError] = useState('');
+  const [remainingSeconds, setRemainingSeconds] = useState(null);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState(null);
 
   const showToast = (message, isError = false) => {
     setToast({ message, isError });
     setTimeout(() => setToast(null), 3500);
+  };
+
+  // Đếm ngược thời gian hiệu lực của mã QR
+  useEffect(() => {
+    if (!paymentData?.expires_at) {
+      setRemainingSeconds(null);
+      return;
+    }
+    const calcRemaining = () => {
+      const expTime = new Date(paymentData.expires_at).getTime();
+      return Math.max(0, Math.floor((expTime - Date.now()) / 1000));
+    };
+    setRemainingSeconds(calcRemaining());
+    const timer = setInterval(() => {
+      const diff = calcRemaining();
+      setRemainingSeconds(diff);
+      if (diff <= 0) clearInterval(timer);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [paymentData?.expires_at]);
+
+  const isExpired = remainingSeconds !== null && remainingSeconds <= 0;
+
+  const formatCountdown = (totalSec) => {
+    if (totalSec === null || totalSec === undefined) return '--:--';
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  };
+
+  const handleRefreshPayment = () => {
+    if (!request) return;
+    setPaymentLoading(true);
+    setPaymentError('');
+    api.payments.createForRequest(request.request_id)
+      .then((res) => {
+        setPaymentData(res.data);
+        setPaymentLoading(false);
+      })
+      .catch((err) => {
+        setPaymentError(err.message || 'Không thể làm mới mã thanh toán.');
+        setPaymentLoading(false);
+      });
   };
 
   const load = useCallback(async () => {
@@ -391,40 +435,79 @@ function RequestDetail() {
           </div>
         ) : paymentData ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-            <div style={{ width: 200, height: 200, margin: '0 auto 12px', background: '#F9FAFB', padding: 8, borderRadius: 8, border: '1px solid #E5E7EB' }}>
+            <div style={{ position: 'relative', width: 200, height: 200, margin: '0 auto 10px', background: '#FFFFFF', padding: 8, borderRadius: 6, border: '1px solid #E5E7EB' }}>
               {paymentData.qr_code && (
                 <img
                   src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(paymentData.qr_code)}`}
                   alt="VietQR PayOS"
-                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                  style={{ width: '100%', height: '100%', objectFit: 'contain', opacity: isExpired ? 0.2 : 1 }}
                 />
+              )}
+              {isExpired && (
+                <div style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'rgba(255, 255, 255, 0.94)',
+                  borderRadius: 6,
+                  padding: 10,
+                }}>
+                  <p style={{ margin: '0 0 8px 0', fontSize: 13, color: '#374151', fontWeight: 500 }}>
+                    Mã QR đã hết hạn
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleRefreshPayment}
+                    disabled={paymentLoading}
+                    style={{
+                      fontSize: 12,
+                      padding: '6px 12px',
+                      borderRadius: 4,
+                      border: '1px solid #D1D5DB',
+                      background: '#FFFFFF',
+                      color: '#374151',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {paymentLoading ? 'Đang tạo...' : 'Làm mới mã QR'}
+                  </button>
+                </div>
               )}
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#059669', fontSize: 13, fontWeight: 600, marginBottom: 12 }}>
-              <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#10B981' }} />
-              Đang chờ nhận tiền... Quét mã bằng App ngân hàng bất kỳ
+            <div style={{ textAlign: 'center', margin: '4px 0 12px 0', fontSize: 13, color: '#4B5563' }}>
+              {isExpired ? (
+                <span>Mã QR đã hết thời gian hiệu lực</span>
+              ) : (
+                <span>Mã QR có hiệu lực trong: <strong style={{ color: '#1F2937', fontWeight: 600 }}>{formatCountdown(remainingSeconds)}</strong></span>
+              )}
             </div>
 
             <div style={{ width: '100%', textAlign: 'left', background: '#F9FAFB', padding: '12px 16px', borderRadius: 6, fontSize: 13, display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
-              <div><strong>Số tiền:</strong> <span style={{ color: '#AA2327', fontWeight: 700 }}>{Number(paymentData.amount).toLocaleString('vi-VN')} VNĐ</span></div>
-              <div><strong>Ngân hàng:</strong> {paymentData.bin === '970422' ? 'MB Bank (Quân đội)' : (paymentData.bin || 'Ngân hàng nội địa')}</div>
-              <div><strong>Số tài khoản:</strong> {paymentData.account_number}</div>
-              <div><strong>Chủ tài khoản:</strong> {paymentData.account_name}</div>
-              <div><strong>Mã giao dịch / Nội dung:</strong> <span style={{ color: '#1E40AF', fontWeight: 600 }}>{paymentData.txn_id}</span></div>
+              <div><span>Số tiền:</span> <strong>{Number(paymentData.amount).toLocaleString('vi-VN')} VNĐ</strong></div>
+              <div><span>Ngân hàng:</span> <strong>{paymentData.bin === '970422' ? 'MB Bank (Quân đội)' : (paymentData.bin || 'Ngân hàng nội địa')}</strong></div>
+              <div><span>Số tài khoản:</span> <strong>{paymentData.account_number}</strong></div>
+              <div><span>Chủ tài khoản:</span> <strong>{paymentData.account_name}</strong></div>
+              <div><span>Mã giao dịch / Nội dung:</span> <strong>{paymentData.txn_id}</strong></div>
             </div>
 
             <div style={{ display: 'flex', gap: 10, width: '100%', justifyContent: 'flex-end' }}>
-              <Button variant="secondary" onClick={() => setShowPaymentModal(false)}>Để sau</Button>
+              <Button variant="secondary" onClick={() => setShowPaymentModal(false)}>Đóng</Button>
               {paymentData.payment_url && (
                 <a
                   href={paymentData.payment_url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="btn-req-action-primary"
-                  style={{ textDecoration: 'none', background: '#AA2327', borderColor: '#AA2327', color: '#FFFFFF', padding: '8px 16px' }}
+                  style={{ textDecoration: 'none', padding: '8px 16px' }}
                 >
-                  Mở trang PayOS →
+                  Mở cổng PayOS →
                 </a>
               )}
             </div>

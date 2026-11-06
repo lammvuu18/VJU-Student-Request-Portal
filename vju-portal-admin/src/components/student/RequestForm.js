@@ -84,6 +84,7 @@ function RequestForm({ initialStep }) {
   const [paymentError, setPaymentError] = useState('');
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [checkingManual, setCheckingManual] = useState(false);
+  const [remainingSeconds, setRemainingSeconds] = useState(null);
 
   const unitFee = (procedure && procedure.is_fee_required && procedure.fee_amount) || 0;
   const formData = { quantity: 1 };
@@ -116,9 +117,58 @@ function RequestForm({ initialStep }) {
     return () => { active = false; };
   }, [currentStep, targetRequestId, paymentData]);
 
-  // Polling tự động kiểm tra trạng thái thanh toán mỗi 2.5s
+  // Đếm ngược thời gian hiệu lực của mã QR
   useEffect(() => {
-    if (currentStep !== 2 || !createdRequest || paymentSuccess) return;
+    if (!paymentData?.expires_at) {
+      setRemainingSeconds(null);
+      return;
+    }
+
+    const calcRemaining = () => {
+      const expTime = new Date(paymentData.expires_at).getTime();
+      return Math.max(0, Math.floor((expTime - Date.now()) / 1000));
+    };
+
+    setRemainingSeconds(calcRemaining());
+
+    const timer = setInterval(() => {
+      const diff = calcRemaining();
+      setRemainingSeconds(diff);
+      if (diff <= 0) {
+        clearInterval(timer);
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [paymentData?.expires_at]);
+
+  const isExpired = remainingSeconds !== null && remainingSeconds <= 0;
+
+  const formatCountdown = (totalSec) => {
+    if (totalSec === null || totalSec === undefined) return '--:--';
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  };
+
+  const handleRefreshPayment = () => {
+    if (!createdRequest) return;
+    setPaymentLoading(true);
+    setPaymentError('');
+    api.payments.createForRequest(createdRequest.request_id)
+      .then((res) => {
+        setPaymentData(res.data);
+        setPaymentLoading(false);
+      })
+      .catch((err) => {
+        setPaymentError(err.message || 'Không thể làm mới mã thanh toán.');
+        setPaymentLoading(false);
+      });
+  };
+
+  // Polling tự động kiểm tra trạng thái thanh toán mỗi 2.5s (tạm dừng khi mã QR đã hết hạn)
+  useEffect(() => {
+    if (currentStep !== 2 || !createdRequest || paymentSuccess || isExpired) return;
 
     let isSubscribed = true;
     const intervalId = setInterval(async () => {
@@ -447,33 +497,79 @@ function RequestForm({ initialStep }) {
             ) : (
               <div className="reqpayment-transfer-box">
                 {/* VietQR Code Box */}
-                <div className="reqpayment-qr-wrap" style={{ position: 'relative' }}>
+                <div className="reqpayment-qr-wrap" style={{ position: 'relative', width: 190, margin: '0 auto' }}>
                   {paymentData?.qr_code ? (
-                    <img
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(paymentData.qr_code)}`}
-                      alt="VietQR PayOS"
-                      className="reqpayment-qr-img"
-                      style={{ width: 190, height: 190, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
-                    />
+                    <div style={{ position: 'relative', width: 190, height: 190 }}>
+                      <img
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(paymentData.qr_code)}`}
+                        alt="VietQR PayOS"
+                        className="reqpayment-qr-img"
+                        style={{
+                          width: 190,
+                          height: 190,
+                          borderRadius: 6,
+                          border: '1px solid #E5E7EB',
+                          opacity: isExpired ? 0.2 : 1,
+                          display: 'block',
+                        }}
+                      />
+                      {isExpired && (
+                        <div style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: 'rgba(255, 255, 255, 0.94)',
+                          borderRadius: 6,
+                          padding: 10,
+                          textAlign: 'center',
+                        }}>
+                          <p style={{ margin: '0 0 8px 0', fontSize: 13, color: '#374151', fontWeight: 500 }}>
+                            Mã QR đã hết hạn
+                          </p>
+                          <button
+                            type="button"
+                            onClick={handleRefreshPayment}
+                            disabled={paymentLoading}
+                            style={{
+                              fontSize: 12,
+                              padding: '6px 12px',
+                              borderRadius: 4,
+                              border: '1px solid #D1D5DB',
+                              background: '#FFFFFF',
+                              color: '#374151',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {paymentLoading ? 'Đang tạo...' : 'Làm mới mã QR'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   ) : (
-                    <div style={{ width: 190, height: 190, background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: 190, height: 190, background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6B7280', fontSize: 13, borderRadius: 6 }}>
                       Đang nạp QR...
                     </div>
                   )}
                 </div>
 
-                <div style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                  color: '#059669', fontSize: 13, fontWeight: 600, margin: '8px 0 12px 0'
-                }}>
-                  <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#10B981' }} />
-                  Đang chờ bạn quét mã thanh toán...
+                <div style={{ textAlign: 'center', margin: '10px 0 14px 0', fontSize: 13, color: '#4B5563' }}>
+                  {isExpired ? (
+                    <span>Mã QR đã hết thời gian hiệu lực</span>
+                  ) : (
+                    <span>Mã QR có hiệu lực trong: <strong style={{ color: '#1F2937', fontWeight: 600 }}>{formatCountdown(remainingSeconds)}</strong></span>
+                  )}
                 </div>
 
                 {/* Transfer Info */}
                 <div className="reqpayment-transfer-info">
                   <div className="reqpayment-transfer-row">
-                    <span>Số tiền:</span> <strong style={{ color: '#AA2327', fontSize: 16 }}>{formattedTotalPrice}</strong>
+                    <span>Số tiền:</span> <strong>{formattedTotalPrice}</strong>
                   </div>
                   <div className="reqpayment-transfer-row">
                     <span>Ngân hàng:</span> <strong>{paymentData?.bin === '970422' ? 'MB Bank (Quân đội)' : (paymentData?.bin || 'Ngân hàng nội địa')}</strong>
@@ -485,7 +581,7 @@ function RequestForm({ initialStep }) {
                     <span>Chủ tài khoản:</span> <strong>{paymentData?.account_name || 'VJU ONESTOP'}</strong>
                   </div>
                   <div className="reqpayment-transfer-row">
-                    <span>Mã giao dịch / Nội dung:</span> <strong style={{ color: '#1E40AF' }}>{paymentData?.txn_id || orderCode}</strong>
+                    <span>Mã giao dịch / Nội dung:</span> <strong>{paymentData?.txn_id || orderCode}</strong>
                   </div>
                 </div>
 
