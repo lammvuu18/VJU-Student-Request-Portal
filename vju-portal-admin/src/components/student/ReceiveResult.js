@@ -89,12 +89,46 @@ function ReceiveResult() {
     <div className="receive-result-container">
       {toast && (
         <div style={{
-          position: 'fixed', top: 24, right: 24, zIndex: 9999,
-          background: toast.isError ? '#B91C1C' : '#059669', color: '#FFFFFF',
-          padding: '12px 20px', borderRadius: 8, boxShadow: '0 4px 14px rgba(0,0,0,0.15)',
-          fontSize: 14, fontWeight: 600, fontFamily: 'Inter, sans-serif', maxWidth: 420,
+          position: 'fixed',
+          top: 24,
+          right: 24,
+          zIndex: 9999,
+          paddingLeft: 16,
+          paddingRight: 16,
+          paddingTop: 12,
+          paddingBottom: 12,
+          background: 'white',
+          boxShadow: '0px 4px 16px rgba(0, 0, 0, 0.12)',
+          overflow: 'hidden',
+          borderRadius: 10,
+          outline: toast.isError ? '1px #FEE2E2 solid' : '1px #DCFCE7 solid',
+          outlineOffset: '-1px',
+          justifyContent: 'flex-start',
+          alignItems: 'center',
+          gap: 8,
+          display: 'inline-flex',
+          maxWidth: 460,
+          boxSizing: 'border-box',
+          animation: 'globalToastSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
         }}>
-          {toast.message}
+          <div style={{
+            width: 24,
+            height: 24,
+            background: toast.isError ? '#DC2626' : '#168039',
+            overflow: 'hidden',
+            borderRadius: 999,
+            justifyContent: 'center',
+            alignItems: 'center',
+            display: 'flex',
+            flexShrink: 0,
+          }}>
+            <div style={{ color: 'white', fontSize: 14, fontFamily: 'Inter, sans-serif', fontWeight: '600', wordWrap: 'break-word' }}>
+              {toast.isError ? '✕' : '✓'}
+            </div>
+          </div>
+          <div style={{ color: '#1F2937', fontSize: 13, fontFamily: 'Inter, sans-serif', fontWeight: '500', wordWrap: 'break-word' }}>
+            {toast.message}
+          </div>
         </div>
       )}
 
