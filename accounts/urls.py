@@ -4,6 +4,7 @@ from . import procedure_views
 from . import notification_views
 from . import request_views
 from . import staff_views
+from . import payment_views
 
 urlpatterns = [
     # Authentication endpoints
@@ -24,6 +25,7 @@ urlpatterns = [
     # Module 1-2: Student Requests & Results & Verification
     path('requests', request_views.requests_collection_view, name='requests_collection'),
     path('requests/<int:request_id>', request_views.request_detail_view, name='request_detail'),
+    path('requests/<int:request_id>/payments', payment_views.request_payments_dispatch_view, name='request_payments'),
     path('requests/<int:request_id>/cancel', request_views.request_cancel_view, name='request_cancel'),
     path('requests/<int:request_id>/supplements', request_views.request_supplements_view, name='request_supplements'),
     path('requests/<int:request_id>/timeline', request_views.request_timeline_view, name='request_timeline'),
@@ -31,6 +33,9 @@ urlpatterns = [
     path('results/<int:result_id>/download', request_views.result_download_view, name='result_download'),
     path('attachments/<int:attachment_id>/download', request_views.attachment_download_view, name='attachment_download'),
     path('verify/<str:verification_code>', request_views.verify_document_view, name='verify_document'),
+
+    # Payment Gateway Webhook
+    path('webhooks/payos', payment_views.payos_webhook_view, name='payos_webhook'),
 
     # Module 1-2: Staff & Department Head workflow
     path('staff/inbox', staff_views.staff_inbox_view, name='staff_inbox'),

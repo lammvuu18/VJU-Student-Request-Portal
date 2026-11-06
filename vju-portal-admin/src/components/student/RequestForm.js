@@ -78,14 +78,12 @@ function RequestForm({ initialStep }) {
     return () => { isMounted = false; };
   }, [procedureId]);
 
-  // Payment State (Step 2) — backend chưa có cổng thanh toán, màn hình này chỉ mô phỏng
-  const [paymentMethod, setPaymentMethod] = useState('card'); // 'card' | 'transfer' | 'wallet'
-  const [cardData, setCardData] = useState({
-    cardHolder: '',
-    cardNumber: '',
-    expiry: '',
-    cvv: '',
-  });
+  // Payment State (Step 2) — Tích hợp cổng thanh toán PayOS thật
+  const [paymentData, setPaymentData] = useState(null);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentError, setPaymentError] = useState('');
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [checkingManual, setCheckingManual] = useState(false);
 
   const unitFee = (procedure && procedure.is_fee_required && procedure.fee_amount) || 0;
   const formData = { quantity: 1 };
@@ -93,6 +91,95 @@ function RequestForm({ initialStep }) {
   const formattedUnitPrice = unitFee === 0 ? 'Miễn phí' : `${unitFee.toLocaleString('vi-VN')} VNĐ`;
   const formattedTotalPrice = unitFee === 0 ? 'Miễn phí' : `${totalAmount.toLocaleString('vi-VN')} VNĐ`;
   const orderCode = createdRequest ? createdRequest.request_code : '';
+
+  // Khi chuyển sang Step 2, tự động khởi tạo link thanh toán PayOS
+  useEffect(() => {
+    let isMounted = true;
+    if (currentStep === 2 && createdRequest && !paymentData && !paymentLoading) {
+      setPaymentLoading(true);
+      setPaymentError('');
+      api.payments.createForRequest(createdRequest.request_id)
+        .then((res) => {
+          if (isMounted) {
+            setPaymentData(res.data);
+            setPaymentLoading(false);
+          }
+        })
+        .catch((err) => {
+          if (isMounted) {
+            setPaymentError(err.message || 'Không thể tạo link thanh toán PayOS.');
+            setPaymentLoading(false);
+          }
+        });
+    }
+    return () => { isMounted = false; };
+  }, [currentStep, createdRequest, paymentData, paymentLoading]);
+
+  // Polling tự động kiểm tra trạng thái thanh toán mỗi 2.5s
+  useEffect(() => {
+    if (currentStep !== 2 || !createdRequest || paymentSuccess) return;
+
+    let isSubscribed = true;
+    const intervalId = setInterval(async () => {
+      try {
+        const res = await api.payments.getStatus(createdRequest.request_id);
+        const latest = res?.data?.latest_payment;
+        const reqStatus = res?.data?.request_status;
+
+        if (latest?.status === 'completed' || reqStatus === 'Đã gửi') {
+          if (isSubscribed) {
+            setPaymentSuccess(true);
+            setTimeout(() => {
+              navigate('/student/request/success', {
+                state: {
+                  procedure,
+                  request: { ...createdRequest, status: 'Đã gửi', internal_status: 'Chờ phân công' },
+                  message: 'Thanh toán lệ phí thành công! Hồ sơ đã được chuyển cán bộ thẩm định.',
+                },
+              });
+            }, 1200);
+          }
+        }
+      } catch (err) {
+        // Polling âm thầm
+      }
+    }, 2500);
+
+    return () => {
+      isSubscribed = false;
+      clearInterval(intervalId);
+    };
+  }, [currentStep, createdRequest, paymentSuccess, navigate, procedure]);
+
+  // Kiểm tra trạng thái chủ động khi người dùng bấm nút
+  const handleCheckPaymentManual = async () => {
+    if (!createdRequest) return;
+    setCheckingManual(true);
+    try {
+      const res = await api.payments.getStatus(createdRequest.request_id);
+      const latest = res?.data?.latest_payment;
+      const reqStatus = res?.data?.request_status;
+
+      if (latest?.status === 'completed' || reqStatus === 'Đã gửi') {
+        setPaymentSuccess(true);
+        setTimeout(() => {
+          navigate('/student/request/success', {
+            state: {
+              procedure,
+              request: { ...createdRequest, status: 'Đã gửi', internal_status: 'Chờ phân công' },
+              message: 'Thanh toán lệ phí thành công! Hồ sơ đã được chuyển cán bộ thẩm định.',
+            },
+          });
+        }, 1000);
+      } else {
+        alert('Hệ thống chưa nhận được tiền từ ngân hàng. Vui lòng kiểm tra lại sau giây lát.');
+      }
+    } catch (err) {
+      alert(err.message || 'Lỗi khi kiểm tra thanh toán.');
+    } finally {
+      setCheckingManual(false);
+    }
+  };
 
   const handleChange = (key, value) => {
     setValues(prev => ({ ...prev, [key]: value }));
@@ -294,174 +381,113 @@ function RequestForm({ initialStep }) {
             </div>
           </div>
 
-          {/* Right Column: Phương thức thanh toán & Form */}
+          {/* Right Column: Phương thức thanh toán PayOS & VietQR Thật */}
           <div className="reqpayment-form-card">
-            {/* Payment Method Tabs */}
-            <div className="reqpayment-tabs-row">
-              {/* Tab 1: Thẻ ngân hàng */}
-              <button
-                type="button"
-                className={`reqpayment-tab-btn ${paymentMethod === 'card' ? 'active' : ''}`}
-                onClick={() => setPaymentMethod('card')}
-              >
-                <div className="reqpayment-tab-icon">
-                  <svg width="16" height="12" viewBox="0 0 16 12" fill="none">
-                    <rect x="0.5" y="0.5" width="15" height="11" rx="2" stroke="currentColor" strokeWidth="1.2" />
-                    <path d="M0.5 3.5h15" stroke="currentColor" strokeWidth="1.2" />
-                    <circle cx="3.5" cy="7.5" r="1" fill="currentColor" />
-                  </svg>
+            {paymentSuccess ? (
+              <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                <div style={{
+                  width: 64, height: 64, borderRadius: '50%', background: '#DCFCE7',
+                  color: '#15803D', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 32, margin: '0 auto 16px', fontWeight: 'bold'
+                }}>
+                  ✓
                 </div>
-                <span>Thẻ ngân hàng</span>
-              </button>
-
-              {/* Tab 2: Chuyển khoản */}
-              <button
-                type="button"
-                className={`reqpayment-tab-btn ${paymentMethod === 'transfer' ? 'active' : ''}`}
-                onClick={() => setPaymentMethod('transfer')}
-              >
-                <div className="reqpayment-tab-icon">
-                  <svg width="16" height="13" viewBox="0 0 16 13" fill="none">
-                    <rect x="1" y="2" width="14" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
-                    <path d="M4 5.5h8M4 8.5h5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
-                  </svg>
-                </div>
-                <span>Chuyển khoản</span>
-              </button>
-
-              {/* Tab 3: Ví điện tử */}
-              <button
-                type="button"
-                className={`reqpayment-tab-btn ${paymentMethod === 'wallet' ? 'active' : ''}`}
-                onClick={() => setPaymentMethod('wallet')}
-              >
-                <div className="reqpayment-tab-icon">
-                  <svg width="16" height="13" viewBox="0 0 16 13" fill="none">
-                    <rect x="1" y="3" width="14" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
-                    <path d="M3 1h10a1.5 1.5 0 011.5 1.5V3" stroke="currentColor" strokeWidth="1.1" />
-                    <circle cx="11.5" cy="7.5" r="1.2" fill="currentColor" />
-                  </svg>
-                </div>
-                <span>Ví điện tử</span>
-              </button>
-            </div>
-
-            {/* Card Form Fields */}
-            {paymentMethod === 'card' && (
-              <>
-                <div className="reqpayment-field-group">
-                  <label className="reqpayment-field-label">Tên chủ thẻ</label>
-                  <input
-                    type="text"
-                    className="reqpayment-field-input"
-                    value={cardData.cardHolder}
-                    onChange={(e) => setCardData({ ...cardData, cardHolder: e.target.value })}
-                    placeholder="NGUYEN MINH ANH"
-                  />
-                </div>
-
-                <div className="reqpayment-field-group">
-                  <label className="reqpayment-field-label">Số thẻ</label>
-                  <input
-                    type="text"
-                    className="reqpayment-field-input"
-                    value={cardData.cardNumber}
-                    onChange={(e) => setCardData({ ...cardData, cardNumber: e.target.value })}
-                    placeholder="0000 0000 0000 0000"
-                  />
-                </div>
-
-                <div className="reqpayment-fields-row">
-                  <div className="reqpayment-field-group">
-                    <label className="reqpayment-field-label">Ngày hết hạn</label>
-                    <input
-                      type="text"
-                      className="reqpayment-field-input"
-                      value={cardData.expiry}
-                      onChange={(e) => setCardData({ ...cardData, expiry: e.target.value })}
-                      placeholder="MM / YY"
-                    />
-                  </div>
-                  <div className="reqpayment-field-group">
-                    <label className="reqpayment-field-label">CVV</label>
-                    <input
-                      type="password"
-                      maxLength={4}
-                      className="reqpayment-field-input"
-                      value={cardData.cvv}
-                      onChange={(e) => setCardData({ ...cardData, cvv: e.target.value })}
-                      placeholder="•••"
-                    />
-                  </div>
-                </div>
-
+                <h3 style={{ color: '#15803D', margin: '0 0 8px 0', fontSize: 18, fontWeight: 700 }}>
+                  Thanh toán thành công!
+                </h3>
+                <p style={{ color: '#4B5563', fontSize: 14, margin: 0 }}>
+                  Đang chuyển tiếp về trang kết quả nộp hồ sơ...
+                </p>
+              </div>
+            ) : paymentLoading ? (
+              <div style={{ textAlign: 'center', padding: '40px 20px', color: '#68717D' }}>
+                <p style={{ fontSize: 15, fontWeight: 500 }}>Đang kết nối cổng thanh toán PayOS và tạo mã VietQR...</p>
+              </div>
+            ) : paymentError ? (
+              <div style={{ textAlign: 'center', padding: '30px 20px' }}>
+                <p style={{ color: '#B91C1C', marginBottom: 16 }}>{paymentError}</p>
                 <button
                   type="button"
                   className="reqpayment-btn-submit"
-                  onClick={handlePaymentSubmit}
+                  onClick={() => {
+                    setPaymentLoading(true);
+                    setPaymentError('');
+                    api.payments.createForRequest(createdRequest.request_id)
+                      .then((res) => { setPaymentData(res.data); setPaymentLoading(false); })
+                      .catch((err) => { setPaymentError(err.message || 'Lỗi khởi tạo PayOS'); setPaymentLoading(false); });
+                  }}
                 >
-                  Thanh toán ngay →
-                </button>
-              </>
-            )}
-
-            {/* Transfer View */}
-            {paymentMethod === 'transfer' && (
-              <div className="reqpayment-transfer-box">
-                <div className="reqpayment-qr-wrap">
-                  <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=21020001_${orderCode}_${totalAmount}`}
-                    alt="VietQR Payment"
-                    className="reqpayment-qr-img"
-                  />
-                </div>
-                <div className="reqpayment-transfer-info">
-                  <div className="reqpayment-transfer-row">
-                    <span>Ngân hàng:</span> <strong>Vietcombank (Hà Nội)</strong>
-                  </div>
-                  <div className="reqpayment-transfer-row">
-                    <span>Số tài khoản:</span> <strong>0011 0042 8888</strong>
-                  </div>
-                  <div className="reqpayment-transfer-row">
-                    <span>Chủ tài khoản:</span> <strong>TRUONG DAI HOC VIET NHAT</strong>
-                  </div>
-                  <div className="reqpayment-transfer-row">
-                    <span>Số tiền:</span> <strong style={{ color: '#AA2327' }}>{formattedTotalPrice}</strong>
-                  </div>
-                  <div className="reqpayment-transfer-row">
-                    <span>Nội dung CK:</span> <strong>{orderCode}</strong>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="reqpayment-btn-submit"
-                  onClick={handlePaymentSubmit}
-                >
-                  Tôi đã chuyển khoản →
+                  Thử lại →
                 </button>
               </div>
-            )}
-
-            {/* Wallet View */}
-            {paymentMethod === 'wallet' && (
+            ) : (
               <div className="reqpayment-transfer-box">
-                <div className="reqpayment-qr-wrap">
-                  <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=MOMO_${orderCode}_${totalAmount}`}
-                    alt="MoMo QR"
-                    className="reqpayment-qr-img"
-                  />
+                {/* VietQR Code Box */}
+                <div className="reqpayment-qr-wrap" style={{ position: 'relative' }}>
+                  {paymentData?.qr_code ? (
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(paymentData.qr_code)}`}
+                      alt="VietQR PayOS"
+                      className="reqpayment-qr-img"
+                      style={{ width: 190, height: 190, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
+                    />
+                  ) : (
+                    <div style={{ width: 190, height: 190, background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      Đang nạp QR...
+                    </div>
+                  )}
                 </div>
-                <p style={{ fontSize: 13, color: '#68717D', textAlign: 'center', margin: '8px 0' }}>
-                  Quét mã qua ứng dụng <strong>MoMo</strong> hoặc <strong>VNPay</strong> để hoàn tất thanh toán.
-                </p>
-                <button
-                  type="button"
-                  className="reqpayment-btn-submit"
-                  onClick={handlePaymentSubmit}
-                >
-                  Xác nhận ví điện tử →
-                </button>
+
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  color: '#059669', fontSize: 13, fontWeight: 600, margin: '8px 0 12px 0'
+                }}>
+                  <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#10B981' }} />
+                  Đang chờ bạn quét mã thanh toán...
+                </div>
+
+                {/* Transfer Info */}
+                <div className="reqpayment-transfer-info">
+                  <div className="reqpayment-transfer-row">
+                    <span>Số tiền:</span> <strong style={{ color: '#AA2327', fontSize: 16 }}>{formattedTotalPrice}</strong>
+                  </div>
+                  <div className="reqpayment-transfer-row">
+                    <span>Ngân hàng:</span> <strong>{paymentData?.bin === '970422' ? 'MB Bank (Quân đội)' : (paymentData?.bin || 'Ngân hàng nội địa')}</strong>
+                  </div>
+                  <div className="reqpayment-transfer-row">
+                    <span>Số tài khoản:</span> <strong>{paymentData?.account_number || '---'}</strong>
+                  </div>
+                  <div className="reqpayment-transfer-row">
+                    <span>Chủ tài khoản:</span> <strong>{paymentData?.account_name || 'VJU ONESTOP'}</strong>
+                  </div>
+                  <div className="reqpayment-transfer-row">
+                    <span>Mã giao dịch / Nội dung:</span> <strong style={{ color: '#1E40AF' }}>{paymentData?.txn_id || orderCode}</strong>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16, width: '100%' }}>
+                  {paymentData?.payment_url && (
+                    <a
+                      href={paymentData.payment_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="reqpayment-btn-submit"
+                      style={{ textAlign: 'center', textDecoration: 'none', background: '#AA2327', color: '#FFFFFF' }}
+                    >
+                      Mở cổng thanh toán PayOS →
+                    </a>
+                  )}
+
+                  <button
+                    type="button"
+                    className="reqpayment-btn-submit"
+                    style={{ background: '#FFFFFF', color: '#374151', border: '1px solid #D1D5DB' }}
+                    onClick={handleCheckPaymentManual}
+                    disabled={checkingManual}
+                  >
+                    {checkingManual ? 'Đang kiểm tra...' : 'Kiểm tra trạng thái thanh toán'}
+                  </button>
+                </div>
               </div>
             )}
           </div>

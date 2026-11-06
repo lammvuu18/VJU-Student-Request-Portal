@@ -161,6 +161,14 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 VERIFY_BASE_URL = os.getenv('VERIFY_BASE_URL', 'http://localhost:3000/verify/')
 
+# PayOS Payment Gateway Configuration
+PAYOS_CLIENT_ID = os.getenv("PAYOS_CLIENT_ID", "")
+PAYOS_API_KEY = os.getenv("PAYOS_API_KEY", "")
+PAYOS_CHECKSUM_KEY = os.getenv("PAYOS_CHECKSUM_KEY", "")
+PAYOS_RETURN_URL = os.getenv("PAYOS_RETURN_URL", "http://localhost:3000/student/requests")
+PAYOS_CANCEL_URL = os.getenv("PAYOS_CANCEL_URL", "http://localhost:3000/student/requests")
+
+
 
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration

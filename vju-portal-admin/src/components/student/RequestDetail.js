@@ -19,6 +19,10 @@ function RequestDetail() {
   const [fieldLabels, setFieldLabels] = useState({});
   const [loadError, setLoadError] = useState('');
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentData, setPaymentData] = useState(null);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentError, setPaymentError] = useState('');
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState(null);
 
@@ -74,6 +78,49 @@ function RequestDetail() {
     }
   };
 
+  // Khởi tạo và kiểm tra thanh toán khi mở Modal
+  useEffect(() => {
+    if (!showPaymentModal || !request) return;
+
+    let isMounted = true;
+    setPaymentLoading(true);
+    setPaymentError('');
+
+    api.payments.createForRequest(request.request_id)
+      .then((res) => {
+        if (isMounted) {
+          setPaymentData(res.data);
+          setPaymentLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (isMounted) {
+          setPaymentError(err.message || 'Lỗi khi tạo link thanh toán.');
+          setPaymentLoading(false);
+        }
+      });
+
+    const intervalId = setInterval(async () => {
+      try {
+        const res = await api.payments.getStatus(request.request_id);
+        const latest = res?.data?.latest_payment;
+        if (latest?.status === 'completed' || res?.data?.request_status === 'Đã gửi') {
+          clearInterval(intervalId);
+          setShowPaymentModal(false);
+          showToast('Thanh toán thành công! Hồ sơ đã được chuyển xử lý.');
+          load();
+        }
+      } catch (err) {
+        // ignore
+      }
+    }, 2500);
+
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+    };
+  }, [showPaymentModal, request, load]);
+
   if (loadError) {
     return (
       <div className="req-detail-container">
@@ -98,6 +145,7 @@ function RequestDetail() {
   const canCancel = request.internal_status === 'Chờ phân công';
   const needsSupplement = request.internal_status === 'Cần bổ sung';
   const canFeedback = request.status === DONE_STATUS;
+  const isWaitingPayment = request.status === 'Chờ thanh toán' || request.internal_status === 'Chờ thanh toán';
   const formEntries = Object.entries(request.form_data || {}).filter(([, v]) => v !== '' && v !== null && v !== undefined);
 
   const infoRows = [
@@ -135,6 +183,31 @@ function RequestDetail() {
           <span>← Yêu cầu của tôi</span>
         </button>
       </div>
+
+      {/* Banner Chờ thanh toán */}
+      {isWaitingPayment && (
+        <div style={{
+          background: '#FFF7ED', border: '1px solid #FDBA74', borderRadius: 8, padding: '16px 20px',
+          marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12
+        }}>
+          <div>
+            <div style={{ fontWeight: 700, color: '#C2410C', fontSize: 15, marginBottom: 4 }}>
+              Đơn đang chờ thanh toán lệ phí
+            </div>
+            <div style={{ color: '#9A3412', fontSize: 13 }}>
+              Vui lòng thanh toán trực tuyến qua PayOS (VietQR) để hồ sơ được chuyển tiếp cho cán bộ tiếp nhận và xử lý.
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn-req-action-primary"
+            style={{ background: '#AA2327', borderColor: '#AA2327', color: '#FFFFFF' }}
+            onClick={() => setShowPaymentModal(true)}
+          >
+            <span>Thanh toán ngay →</span>
+          </button>
+        </div>
+      )}
 
       {/* Main Card: Thông tin yêu cầu */}
       <div className="req-detail-card">
@@ -246,6 +319,16 @@ function RequestDetail() {
 
       {/* Action Buttons Row: chỉ hiện thao tác hợp lệ với trạng thái hiện tại */}
       <div className="req-detail-actions">
+        {isWaitingPayment && (
+          <button
+            type="button"
+            className="btn-req-action-primary"
+            style={{ background: '#AA2327', borderColor: '#AA2327', color: '#FFFFFF' }}
+            onClick={() => setShowPaymentModal(true)}
+          >
+            <span>Thanh toán ngay →</span>
+          </button>
+        )}
         {canCancel && (
           <button type="button" className="btn-req-action-outline" onClick={() => setShowCancelModal(true)}>
             Hủy yêu cầu
@@ -293,6 +376,60 @@ function RequestDetail() {
             {busy ? 'Đang hủy...' : 'Hủy yêu cầu'}
           </Button>
         </div>
+      </Modal>
+
+      {/* Modal Thanh toán PayOS */}
+      <Modal isOpen={showPaymentModal} onClose={() => setShowPaymentModal(false)} title="Thanh toán lệ phí qua PayOS (VietQR)">
+        {paymentLoading ? (
+          <div style={{ textAlign: 'center', padding: '30px 10px', color: '#68717D' }}>
+            <p>Đang kết nối cổng PayOS và khởi tạo mã VietQR...</p>
+          </div>
+        ) : paymentError ? (
+          <div style={{ textAlign: 'center', padding: '20px 10px' }}>
+            <p style={{ color: '#B91C1C', marginBottom: 16 }}>{paymentError}</p>
+            <Button variant="secondary" onClick={() => setShowPaymentModal(false)}>Đóng</Button>
+          </div>
+        ) : paymentData ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+            <div style={{ width: 200, height: 200, margin: '0 auto 12px', background: '#F9FAFB', padding: 8, borderRadius: 8, border: '1px solid #E5E7EB' }}>
+              {paymentData.qr_code && (
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(paymentData.qr_code)}`}
+                  alt="VietQR PayOS"
+                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                />
+              )}
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#059669', fontSize: 13, fontWeight: 600, marginBottom: 12 }}>
+              <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#10B981' }} />
+              Đang chờ nhận tiền... Quét mã bằng App ngân hàng bất kỳ
+            </div>
+
+            <div style={{ width: '100%', textAlign: 'left', background: '#F9FAFB', padding: '12px 16px', borderRadius: 6, fontSize: 13, display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+              <div><strong>Số tiền:</strong> <span style={{ color: '#AA2327', fontWeight: 700 }}>{Number(paymentData.amount).toLocaleString('vi-VN')} VNĐ</span></div>
+              <div><strong>Ngân hàng:</strong> {paymentData.bin === '970422' ? 'MB Bank (Quân đội)' : (paymentData.bin || 'Ngân hàng nội địa')}</div>
+              <div><strong>Số tài khoản:</strong> {paymentData.account_number}</div>
+              <div><strong>Chủ tài khoản:</strong> {paymentData.account_name}</div>
+              <div><strong>Mã giao dịch / Nội dung:</strong> <span style={{ color: '#1E40AF', fontWeight: 600 }}>{paymentData.txn_id}</span></div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, width: '100%', justifyContent: 'flex-end' }}>
+              <Button variant="secondary" onClick={() => setShowPaymentModal(false)}>Để sau</Button>
+              {paymentData.payment_url && (
+                <a
+                  href={paymentData.payment_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-req-action-primary"
+                  style={{ textDecoration: 'none', background: '#AA2327', borderColor: '#AA2327', color: '#FFFFFF', padding: '8px 16px' }}
+                >
+                  Mở trang PayOS →
+                </a>
+              )}
+            </div>
+          </div>
+        ) : null}
       </Modal>
     </div>
   );

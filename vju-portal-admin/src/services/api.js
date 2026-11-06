@@ -497,7 +497,27 @@ export const requestApi = {
 // 4. PAYMENTS API (Contract Section 4) — backend chưa có, chỉ chạy ở chế độ mock
 // =============================================================================
 export const paymentApi = {
+  // POST /api/requests/:request_id/payments (Contract 4.1)
+  createForRequest: (requestId, payload = {}) => {
+    return apiFetch(`/requests/${requestId}/payments`, {
+      method: 'POST',
+      body: JSON.stringify({
+        payment_method: payload.payment_method || 'payos',
+        ...payload,
+      }),
+    });
+  },
+
+  // GET /api/requests/:request_id/payments (Contract 4.2)
+  getStatus: (requestId) => {
+    return apiFetch(`/requests/${requestId}/payments`);
+  },
+
+  // Giữ lại hàm create cũ để tương thích ngược
   create: async (payload) => {
+    if (payload?.request_id) {
+      return paymentApi.createForRequest(payload.request_id, payload);
+    }
     return apiFetch('/payments/create', {
       method: 'POST',
       body: JSON.stringify(payload),
@@ -505,8 +525,7 @@ export const paymentApi = {
       success: true,
       data: {
         order_id: `VJU-PAY-${Date.now()}`,
-        payment_url: 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?mock=true',
-        qr_code_url: 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=VJU-PAYMENT-MOCK',
+        payment_url: 'https://pay.payos.vn/test',
         amount: payload.amount || 50000,
         currency: 'VND',
         expires_at: new Date(Date.now() + 900000).toISOString(),
@@ -514,6 +533,7 @@ export const paymentApi = {
     }));
   },
 };
+
 
 // =============================================================================
 // 5. RESULTS & ATTACHMENTS (Contract Section 5) — cần token nên tải qua fetch
