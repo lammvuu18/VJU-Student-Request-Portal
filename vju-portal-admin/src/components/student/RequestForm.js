@@ -777,6 +777,20 @@ function RequestForm({ initialStep }) {
         )}
 
         {/* Các trường form do admin cấu hình cho thủ tục */}
+        {procedure.type_id === 2 && (
+          <div className="reqform-col full-width">
+            <div className="reqform-label-row">
+              <span className="reqform-label">Hình thức nhận kết quả</span>
+            </div>
+            <input
+              type="text"
+              className="reqform-input"
+              value="Bản cứng (Bắt buộc — Nhận trực tiếp bản gốc có dấu đỏ tại Phòng CTSV)"
+              readOnly
+              disabled
+            />
+          </div>
+        )}
         {visibleFields.map(field => (
           <div key={field.field_id} className="reqform-col full-width">
             <div className="reqform-label-row">

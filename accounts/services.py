@@ -350,7 +350,18 @@ def generate_result_pdf(req, verification_code: str, qr_code_data: str) -> str:
         lines.append(f"Mục đích: {purpose}")
     for key, val in form_data.items():
         if key not in ("full_name", "mssv", "class_name", "cohort", "major", "email", "purpose") and val:
-            lines.append(f"{key}: {val}")
+            label_map = {
+                "company_name": "Đơn vị tiếp nhận thực tập",
+                "company_address": "Địa chỉ đơn vị thực tập",
+                "internship_from": "Thực tập từ ngày",
+                "internship_to": "Thực tập đến ngày",
+                "course_name": "Học phần thực tập",
+                "result_preference": "Hình thức nhận kết quả",
+                "ho_khau": "Hộ khẩu thường trú",
+                "noi_dk_nvqs": "Nơi đăng ký NVQS",
+                "thoi_gian_dao_tao": "Thời gian đào tạo dự kiến",
+            }
+            lines.append(f"{label_map.get(key, key)}: {val}")
     lines.append(f"Mã xác minh: {verification_code}")
     lines.append(f"Ngày cấp: {timezone.localtime(timezone.now()).strftime('%Y-%m-%d')}")
 
