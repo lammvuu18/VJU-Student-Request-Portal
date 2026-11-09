@@ -7,7 +7,7 @@ from django.db import connection, transaction
 
 from accounts.management.commands.bootstrap_production import REJECTION_REASONS
 from accounts.models import (
-    AccessLog, Attachment, Department, Feedback, Holiday, Notification,
+    AccessLog, Attachment, Department, Feedback, FormField, Holiday, Notification,
     Payment, RejectionReason, Request, Result, StateAuditLog, StudentRegistry, User,
 )
 
@@ -25,6 +25,7 @@ class Command(BaseCommand):
 
         with transaction.atomic():
             self._clear_workflow_data()
+            self._seed_extra_catalog()
             self._seed_holidays()
             self._seed_rejection_reasons()
             self._seed_actors()
@@ -45,6 +46,22 @@ class Command(BaseCommand):
         Request.objects.all().delete()
         User.objects.filter(email__in=['staff.seed@vju.ac.vn', 'head.seed@vju.ac.vn']).delete()
 
+    def _seed_extra_catalog(self):
+        FormField.objects.update_or_create(
+            field_id=404,
+            defaults={
+                'procedure_type_id': 4,
+                'field_name': 'Điểm GPA tích lũy',
+                'field_key': 'gpa',
+                'data_type': 'number',
+                'is_required': False,
+                'placeholder': None,
+                'auto_fill_field': 'academic_ms.gpa',
+                'dropdown_options': None,
+                'display_order': 4,
+            },
+        )
+
     def _seed_holidays(self):
         Holiday.objects.all().delete()
         Holiday.objects.create(
@@ -61,14 +78,14 @@ class Command(BaseCommand):
 
     def _reset_sequences(self):
         models = [
-            RejectionReason, Request, Notification, Result,
+            RejectionReason, FormField, Request, Notification, Result,
             Attachment, Payment, StateAuditLog, AccessLog, Feedback, Holiday,
         ]
         with connection.cursor() as cursor:
             for statement in connection.ops.sequence_reset_sql(no_style(), models):
                 cursor.execute(statement)
             if connection.vendor == 'sqlite':
-                table_names = [m._meta.db_table for m in models if m is not RejectionReason]
+                table_names = [m._meta.db_table for m in models if m not in (RejectionReason, FormField)]
                 placeholders = ', '.join(['%s'] * len(table_names))
                 cursor.execute(f'DELETE FROM sqlite_sequence WHERE name IN ({placeholders})', table_names)
 

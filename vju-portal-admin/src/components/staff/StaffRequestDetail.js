@@ -168,8 +168,8 @@ function StaffRequestDetail({ basePath = '/staff' }) {
   const isWaitingAssign = request.internal_status === WAITING_ASSIGN;
   const isReviewing = request.internal_status === REVIEWING;
   const isApproved = request.internal_status === APPROVED;
-  const preference = request.form_data?.result_preference;
-  const needsHardCopy = preference === 'Bản cứng' || preference === 'Cả hai';
+  const preference = request.result_preference || request.form_data?.result_preference;
+  const needsHardCopy = preference === 'Bản cứng' || preference === 'Cả hai' || request.type_id === 2;
   const formEntries = Object.entries(request.form_data || {}).filter(([, v]) => v !== '' && v !== null && v !== undefined);
 
   const infoRows = [
@@ -247,6 +247,51 @@ function StaffRequestDetail({ basePath = '/staff' }) {
           </div>
         </div>
         <div className="staff-detail-divider" />
+
+        {request.academic_check && (
+          <>
+            <div className="staff-detail-row">
+              <div className="staff-detail-label">Tình trạng học vụ (Academic MS)</div>
+              <div className="staff-detail-value">
+                <span style={{
+                  display: 'inline-block',
+                  padding: '3px 10px',
+                  borderRadius: 999,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  background: request.academic_check.is_status_eligible ? '#ECFDF5' : '#FEF2F2',
+                  color: request.academic_check.is_status_eligible ? '#047857' : '#B91C1C',
+                }}>
+                  {request.academic_check.student_status === 'active' && '✓ Đang theo học (active)'}
+                  {request.academic_check.student_status === 'graduated' && (request.academic_check.is_status_eligible ? '✓ Đã tốt nghiệp (graduated)' : '✕ Đã tốt nghiệp — Không đủ điều kiện thực tập')}
+                  {request.academic_check.student_status === 'suspended' && '✕ Đang bảo lưu (suspended) — Không đang theo học'}
+                  {request.academic_check.student_status === 'dismissed' && '✕ Đã buộc thôi học (dismissed)'}
+                  {!['active', 'graduated', 'suspended', 'dismissed'].includes(request.academic_check.student_status) && request.academic_check.student_status}
+                </span>
+              </div>
+            </div>
+            <div className="staff-detail-divider" />
+            {request.academic_check.course_name && (
+              <>
+                <div className="staff-detail-row">
+                  <div className="staff-detail-label">Đối chiếu CTĐT (Academic MS)</div>
+                  <div className="staff-detail-value">
+                    {request.academic_check.course_in_curriculum ? (
+                      <span style={{ color: '#047857', fontWeight: 600 }}>
+                        ✓ Học phần &ldquo;{request.academic_check.course_name}&rdquo; ({request.academic_check.matched_course?.course_id}) có trong CTĐT
+                      </span>
+                    ) : (
+                      <span style={{ color: '#C2410C', fontWeight: 600 }}>
+                        ⚠ Học phần &ldquo;{request.academic_check.course_name}&rdquo; không có trong CTĐT — Cần bổ sung xác nhận từ Khoa
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="staff-detail-divider" />
+              </>
+            )}
+          </>
+        )}
 
         {request.result && (
           <>
@@ -331,7 +376,17 @@ function StaffRequestDetail({ basePath = '/staff' }) {
             <button type="button" className="staff-btn-action-outline" disabled={busy} onClick={() => setShowRejectModal(true)}>
               Từ chối
             </button>
-            <button type="button" className="staff-btn-action-outline" disabled={busy} onClick={() => setShowSupplementModal(true)}>
+            <button
+              type="button"
+              className="staff-btn-action-outline"
+              disabled={busy}
+              onClick={() => {
+                if (request.type_id === 2 && request.academic_check && !request.academic_check.course_in_curriculum && !supplementNote) {
+                  setSupplementNote('HP không trong CTĐT, vui lòng bổ sung xác nhận từ Khoa.');
+                }
+                setShowSupplementModal(true);
+              }}
+            >
               Yêu cầu bổ sung
             </button>
             {request.type_id === 4 ? (

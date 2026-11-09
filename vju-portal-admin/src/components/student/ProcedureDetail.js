@@ -135,6 +135,9 @@ function ProcedureDetail() {
     if (procedure.id === 1) {
       return 'PDF ký số / Bản giấy tại phòng';
     }
+    if (procedure.id === 2 || procedure.type_id === 2) {
+      return 'Bản cứng bắt buộc (nhận trực tiếp tại phòng PCTSV)';
+    }
     return procedure.result_type || 'PDF ký số / Bản giấy tại phòng';
   };
 

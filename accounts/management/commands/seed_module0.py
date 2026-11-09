@@ -73,7 +73,7 @@ FORM_FIELDS = [
     (401, 4, 'Học kỳ bảo lưu', 'semester', 'text', False, None, None, None, 2),
     (402, 4, 'Số kỳ bảo lưu', 'semester_count', 'number', False, None, None, None, 3),
     (403, 4, 'Lý do bảo lưu', 'reason', 'textarea', True, None, None, None, 1),
-    (404, 4, 'Điểm GPA tích lũy', 'gpa', 'number', False, None, 'academic_ms.gpa', None, 4),
+
     (501, 5, 'Đối tượng miễn giảm', 'beneficiary_type', 'text', True, None, None, None, 1),
     (701, 7, 'Trường của thủ tục ẩn', 'hidden_field', 'text', False, None, None, None, 1),
 ]
@@ -82,7 +82,7 @@ FORM_FIELDS = [
 ATTACHMENT_CONFIGS = [
     (1, 1, 'CCCD 2 mặt', False, 1),
     (3, 2, 'Thư mời thực tập', False, 2),
-    (4, 2, 'CCCD 2 mặt', True, 1),
+    (4, 2, 'CCCD 2 mặt', False, 1),
     (5, 5, 'Giấy XN hộ nghèo / cận nghèo / người có công', True, 1),
     (6, 5, 'Giấy khai sinh', True, 2),
     (7, 5, 'CCCD', True, 3),

@@ -367,7 +367,7 @@ def staff_approve_request_view(request, request_id):
         course_name = ((req.form_data or {}).get("course_name") or "").strip()
         if course_name:
             course_names = {c.get("course_name") for c in curriculum if isinstance(c, dict)}
-            if course_name not in course_names:
+            if course_name not in course_names and not req.attachments.filter(is_supplement=True).exists():
                 return _json_error(
                     "STUDENT_NOT_ELIGIBLE",
                     "Học phần thực tập không nằm trong chương trình đào tạo.",

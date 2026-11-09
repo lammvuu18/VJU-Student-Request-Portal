@@ -306,6 +306,17 @@ def _student_create_request(request):
                         status=400,
                     )
 
+    if procedure.type_id == 2:
+        from_str = cleaned_form_data.get("internship_from")
+        to_str = cleaned_form_data.get("internship_to")
+        if from_str and to_str:
+            if date.fromisoformat(str(to_str)) < date.fromisoformat(str(from_str)):
+                return _json_error(
+                    "INVALID_FORM_DATA",
+                    "Ngày kết thúc thực tập phải sau hoặc bằng ngày bắt đầu thực tập.",
+                    status=400,
+                )
+
     # 5. Kiểm tra file đính kèm
     configs_by_id = {c.config_id: c for c in procedure.attachment_configs.all()}
     raw_attachments = _extract_attachments_from_request(request)
@@ -322,7 +333,7 @@ def _student_create_request(request):
 
         config = configs_by_id.get(cid)
         if not config:
-            if procedure.type_id == 4 and cid == 4:
+            if (procedure.type_id if "procedure" in locals() else req.procedure_type_id) == 4 and cid == 4:
                 config = AttachmentConfig.objects.filter(config_id=4).first()
             if not config:
                 return _json_error("INVALID_ATTACHMENT", "config_id không thuộc thủ tục này.", status=400)
@@ -548,6 +559,33 @@ def request_detail_view(request, request_id):
         for a in req.attachments.all().order_by("attachment_id")
     ]
 
+    mssv = reg.mssv if reg else (req.form_data or {}).get("mssv", "")
+    academic_check = None
+    try:
+        status_info = AcademicMSService.get_student_status(mssv) if mssv else {"status": "unknown"}
+        academic_status = status_info.get("status", "unknown") if isinstance(status_info, dict) else "unknown"
+        academic_check = {
+            "student_status": academic_status,
+            "is_status_eligible": (
+                academic_status == "active"
+                if req.procedure_type_id == 2
+                else academic_status in ("active", "graduated")
+            ),
+        }
+        if req.procedure_type_id == 2 or "giới thiệu" in req.procedure_type.name.lower():
+            curriculum = AcademicMSService.get_student_curriculum(mssv) if mssv else []
+            course_name = ((req.form_data or {}).get("course_name") or "").strip()
+            matched_course = next(
+                (c for c in curriculum if isinstance(c, dict) and c.get("course_name") == course_name),
+                None,
+            )
+            academic_check["course_name"] = course_name
+            academic_check["course_in_curriculum"] = matched_course is not None
+            academic_check["matched_course"] = matched_course
+            academic_check["curriculum"] = curriculum
+    except Exception:
+        academic_check = None
+
     data = {
         "request_id": req.request_id,
         "request_code": req.request_code,
@@ -557,6 +595,8 @@ def request_detail_view(request, request_id):
         "status": req.status,
         "internal_status": req.internal_status,
         "form_data": req.form_data or {},
+        "result_preference": req.result_preference or (req.form_data or {}).get("result_preference"),
+        "academic_check": academic_check,
         "student": student_info,
         "assigned_staff": {
             "user_id": req.assigned_staff.user_id,
@@ -668,7 +708,7 @@ def request_supplements_view(request, request_id):
 
         config = configs_by_id.get(cid)
         if not config:
-            if procedure.type_id == 4 and cid == 4:
+            if (procedure.type_id if "procedure" in locals() else req.procedure_type_id) == 4 and cid == 4:
                 config = AttachmentConfig.objects.filter(config_id=4).first()
             if not config:
                 return _json_error("INVALID_ATTACHMENT", "config_id không thuộc thủ tục này.", status=400)
