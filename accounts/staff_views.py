@@ -17,7 +17,7 @@ from .notification_views import DEFAULT_LIMIT, MAX_LIMIT, _format_datetime, _par
 from .request_views import CLOSED_REQUEST_STATUSES
 from .services import (
     AcademicMSService, ExternalServiceError, build_qr_code_data,
-    compute_sla_metrics, generate_result_pdf, generate_verification_code,
+    compute_sla_metrics, generate_decision_pdf, generate_result_pdf, generate_verification_code,
 )
 from .views import _get_authenticated_user, _json_error, _read_json_object
 
@@ -863,4 +863,217 @@ def staff_revoke_approval_view(request, request_id):
         "success": True,
         "data": {"internal_status": req.internal_status},
         "message": "Đã thu hồi duyệt.",
+    })
+
+
+@csrf_exempt
+@require_http_methods(["PUT"])
+def staff_submit_to_head_view(request, request_id):
+    """
+    API: PUT /api/staff/requests/:id/submit-to-head — CV trình Trưởng phòng phê duyệt
+    """
+    user = _get_authenticated_user(request)
+    if not user:
+        return _json_error("UNAUTHORIZED", "Chưa đăng nhập.", status=401)
+
+    try:
+        req = Request.objects.select_related("procedure_type", "user", "user__student_registry").get(request_id=request_id)
+    except Request.DoesNotExist:
+        return _json_error("NOT_FOUND", "Không tìm thấy yêu cầu.", status=404)
+
+    if user.role != "staff" or req.assigned_staff_id != user.user_id:
+        return _json_error("FORBIDDEN", "Bạn không được phân công xử lý yêu cầu này.", status=403)
+
+    if req.internal_status != "CV đang thẩm định":
+        return _json_error("INVALID_STATE", "Yêu cầu không ở trạng thái CV đang thẩm định.", status=422)
+
+    # Kiểm tra điều kiện GPA nếu là thủ tục bảo lưu hoặc có trường gpa
+    form_data = req.form_data or {}
+    gpa_val = form_data.get("gpa")
+    if gpa_val is not None:
+        try:
+            if float(gpa_val) < 2.0:
+                return _json_error("INELIGIBLE_GPA", "GPA không đạt yêu cầu tối thiểu (2.0) để bảo lưu.", status=422)
+        except (ValueError, TypeError):
+            pass
+
+    body = _read_json_object(request) if request.body else {}
+    note = (body.get("note") or "").strip() if isinstance(body, dict) and isinstance(body.get("note"), str) else ""
+
+    with transaction.atomic():
+        status_before = req.internal_status
+        req.internal_status = "Chờ TP phê duyệt"
+        req.save(update_fields=["internal_status", "updated_at"])
+
+        StateAuditLog.objects.create(
+            request=req,
+            performed_by=user,
+            action="submit_to_head",
+            note=note or "CV đã thẩm định và trình Trưởng phòng phê duyệt.",
+            status_before=status_before,
+            status_after="Chờ TP phê duyệt",
+        )
+
+        dept_id = _active_department_id(req)
+        dept_heads = User.objects.filter(role="dept_head", department_id=dept_id, account_status="active")
+        for dh in dept_heads:
+            Notification.objects.create(
+                user=dh,
+                request=req,
+                title="Hồ sơ trình Trưởng phòng phê duyệt",
+                message=f"Chuyên viên {user.full_name} đã trình hồ sơ {req.request_code} để Trưởng phòng phê duyệt.",
+            )
+
+    return JsonResponse({
+        "success": True,
+        "data": {
+            "internal_status": req.internal_status,
+            "request_id": req.request_id,
+            "request_code": req.request_code,
+        },
+        "message": "Đã trình Trưởng phòng phê duyệt.",
+    })
+
+
+@csrf_exempt
+@require_http_methods(["PUT"])
+def staff_submit_to_principal_view(request, request_id):
+    """
+    API 4.2: PUT /api/staff/requests/:id/submit-to-principal — TP trình Hiệu trưởng ký số SmartCA
+    """
+    user = _get_authenticated_user(request)
+    if not user:
+        return _json_error("UNAUTHORIZED", "Chưa đăng nhập.", status=401)
+
+    if user.role != "dept_head":
+        return _json_error("FORBIDDEN", "Chỉ Trưởng phòng mới có quyền trình Hiệu trưởng.", status=403)
+
+    try:
+        req = Request.objects.select_related("procedure_type", "user", "user__student_registry").get(request_id=request_id)
+    except Request.DoesNotExist:
+        return _json_error("NOT_FOUND", "Không tìm thấy yêu cầu.", status=404)
+
+    active_dept_id = _active_department_id(req)
+    if user.department_id != active_dept_id:
+        return _json_error("FORBIDDEN", "Bạn không có quyền xử lý yêu cầu của phòng ban khác.", status=403)
+
+    if req.procedure_type.approval_levels != 3:
+        return _json_error("INVALID_APPROVAL_LEVEL", "Thủ tục này không yêu cầu phê duyệt cấp Hiệu trưởng.", status=422)
+
+    if req.internal_status != "Chờ TP phê duyệt":
+        return _json_error("INVALID_STATE", "Yêu cầu không ở trạng thái Chờ TP phê duyệt.", status=422)
+
+    body = _read_json_object(request) if request.body else {}
+    note = (body.get("note") or "").strip() if isinstance(body, dict) and isinstance(body.get("note"), str) else ""
+
+    now = timezone.now()
+    try:
+        with transaction.atomic():
+            # 1. Sinh bản thảo file PDF QĐ bảo lưu
+            verification_code = generate_verification_code(req.procedure_type, now=now)
+            pdf_path = generate_decision_pdf(req, verification_code, smartca_data=None)
+            qr_code_data = build_qr_code_data(verification_code)
+
+            # 2. Lưu Result
+            result, _ = Result.objects.update_or_create(
+                request=req,
+                defaults={
+                    "pdf_file_path": pdf_path,
+                    "verification_code": verification_code,
+                    "qr_code_data": qr_code_data,
+                },
+            )
+
+            # 3. Chuyển internal_status
+            status_before = req.internal_status
+            req.internal_status = "Chờ HT ký số"
+            req.save(update_fields=["internal_status", "updated_at"])
+
+            # 4. StateAuditLog: action = "submit_for_signature"
+            StateAuditLog.objects.create(
+                request=req,
+                performed_by=user,
+                action="submit_for_signature",
+                note=note or "Đã xác nhận GPA >= 2.0, minh chứng hợp lệ. Trình HT ký QĐ bảo lưu.",
+                status_before=status_before,
+                status_after="Chờ HT ký số",
+            )
+
+            # 5. Notification gửi cho HT (role='principal' hoặc user_id=50)
+            principals = list(User.objects.filter(role="principal", account_status="active"))
+            if not principals:
+                p50 = User.objects.filter(user_id=50).first()
+                if p50:
+                    principals = [p50]
+            for p_user in principals:
+                Notification.objects.create(
+                    user=p_user,
+                    request=req,
+                    title="Quyết định chờ ký số SmartCA",
+                    message=f"Trưởng phòng {user.full_name} đã trình Quyết định bảo lưu ({req.request_code}) chờ ký số.",
+                )
+    except Exception as e:
+        return _json_error("SUBMIT_FAILED", f"Lỗi khi tạo bản thảo quyết định trình ký: {str(e)}", status=500)
+
+    return JsonResponse({
+        "success": True,
+        "data": {"internal_status": "Chờ HT ký số"},
+        "message": "Đã trình Hiệu trưởng. Chờ ký số SmartCA.",
+    })
+
+
+@csrf_exempt
+@require_http_methods(["PUT"])
+def staff_return_to_staff_view(request, request_id):
+    """
+    API: PUT /api/staff/requests/:id/return-to-staff — TP trả lại hồ sơ cho CV thẩm định lại
+    """
+    user = _get_authenticated_user(request)
+    if not user:
+        return _json_error("UNAUTHORIZED", "Chưa đăng nhập.", status=401)
+
+    if user.role != "dept_head":
+        return _json_error("FORBIDDEN", "Chỉ Trưởng phòng mới có quyền trả lại hồ sơ cho chuyên viên.", status=403)
+
+    try:
+        req = Request.objects.select_related("procedure_type", "user", "assigned_staff").get(request_id=request_id)
+    except Request.DoesNotExist:
+        return _json_error("NOT_FOUND", "Không tìm thấy yêu cầu.", status=404)
+
+    active_dept_id = _active_department_id(req)
+    if user.department_id != active_dept_id:
+        return _json_error("FORBIDDEN", "Bạn không có quyền xử lý yêu cầu của phòng ban khác.", status=403)
+
+    if req.internal_status != "Chờ TP phê duyệt":
+        return _json_error("INVALID_STATE", "Yêu cầu không ở trạng thái Chờ TP phê duyệt.", status=422)
+
+    body = _read_json_object(request) if request.body else {}
+    note = (body.get("note") or "").strip() if isinstance(body, dict) and isinstance(body.get("note"), str) else ""
+
+    with transaction.atomic():
+        status_before = req.internal_status
+        req.internal_status = "CV đang thẩm định"
+        req.save(update_fields=["internal_status", "updated_at"])
+
+        StateAuditLog.objects.create(
+            request=req,
+            performed_by=user,
+            action="return_to_staff",
+            note=note or "Trưởng phòng trả lại yêu cầu để thẩm định lại.",
+            status_before=status_before,
+            status_after="CV đang thẩm định",
+        )
+
+        if req.assigned_staff:
+            Notification.objects.create(
+                user=req.assigned_staff,
+                request=req,
+                title="Hồ sơ được trả lại thẩm định",
+                message=f"Trưởng phòng {user.full_name} đã trả lại hồ sơ {req.request_code} để thẩm định lại. Ghi chú: {note}",
+            )
+
+    return JsonResponse({
+        "success": True,
+        "data": {"internal_status": req.internal_status},
+        "message": "Đã trả lại hồ sơ cho chuyên viên thẩm định.",
     })

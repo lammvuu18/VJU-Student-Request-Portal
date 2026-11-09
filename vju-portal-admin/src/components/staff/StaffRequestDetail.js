@@ -92,6 +92,21 @@ function StaffRequestDetail({ basePath = '/staff' }) {
 
   const handleApprove = () => runAction(() => api.staff.approve(request.request_id), 'Đã duyệt hồ sơ.');
 
+  const handleProgressToHead = () => runAction(
+    () => api.staff.submitToHead(request.request_id),
+    'Đã trình Trưởng phòng phê duyệt.'
+  );
+
+  const handleSubmitToPrincipal = () => runAction(
+    () => api.staff.submitToPrincipal(request.request_id),
+    'Đã trình Hiệu trưởng ký số SmartCA.'
+  );
+
+  const handleReturnToStaff = () => runAction(
+    () => api.staff.returnToStaff(request.request_id),
+    'Đã trả lại hồ sơ cho chuyên viên thẩm định.'
+  );
+
   const handleSupplementSubmit = async () => {
     if (!supplementNote.trim()) {
       showToast('Vui lòng nhập nội dung cần bổ sung.', true);
@@ -290,10 +305,26 @@ function StaffRequestDetail({ basePath = '/staff' }) {
             </button>
           </>
         )}
-        {isDeptHead && isReviewing && (
-          <button type="button" className="staff-btn-action-outline" disabled={busy} onClick={() => setShowRejectModal(true)}>
-            Từ chối
-          </button>
+        {isDeptHead && (request.internal_status === 'Chờ TP phê duyệt' || isReviewing) && (
+          <>
+            <button type="button" className="staff-btn-action-outline" disabled={busy} onClick={() => setShowRejectModal(true)}>
+              Từ chối
+            </button>
+            {request.internal_status === 'Chờ TP phê duyệt' && (
+              <button type="button" className="staff-btn-action-outline" disabled={busy} onClick={handleReturnToStaff}>
+                Trả chuyên viên
+              </button>
+            )}
+            {request.type_id === 4 ? (
+              <button type="button" className="staff-btn-action-primary" disabled={busy} onClick={handleSubmitToPrincipal}>
+                {busy ? 'Đang xử lý...' : 'Trình Hiệu trưởng ký số →'}
+              </button>
+            ) : (
+              <button type="button" className="staff-btn-action-primary" disabled={busy} onClick={handleApprove}>
+                {busy ? 'Đang xử lý...' : 'Phê duyệt →'}
+              </button>
+            )}
+          </>
         )}
         {!isDeptHead && isReviewing && (
           <>
@@ -303,9 +334,15 @@ function StaffRequestDetail({ basePath = '/staff' }) {
             <button type="button" className="staff-btn-action-outline" disabled={busy} onClick={() => setShowSupplementModal(true)}>
               Yêu cầu bổ sung
             </button>
-            <button type="button" className="staff-btn-action-primary" disabled={busy} onClick={handleApprove}>
-              {busy ? 'Đang xử lý...' : 'Phê duyệt →'}
-            </button>
+            {request.type_id === 4 ? (
+              <button type="button" className="staff-btn-action-primary" disabled={busy} onClick={handleProgressToHead}>
+                {busy ? 'Đang xử lý...' : 'Trình Trưởng phòng →'}
+              </button>
+            ) : (
+              <button type="button" className="staff-btn-action-primary" disabled={busy} onClick={handleApprove}>
+                {busy ? 'Đang xử lý...' : 'Phê duyệt →'}
+              </button>
+            )}
           </>
         )}
         {isApproved && (

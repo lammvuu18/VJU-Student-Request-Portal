@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import RejectRequestModal from '../common/RejectRequestModal';
 import { allRequests } from '../../data/mockData';
@@ -14,11 +14,8 @@ function PrincipalDecisionDetail() {
     (r) => r.id === id || r.request_code === id || String(r.request_id) === String(id)
   );
 
-  const requestCode = id || foundReq?.request_code || foundReq?.id || 'VJU-2026-0842';
-  const procedure = foundReq?.procedure || foundReq?.type_name || 'Cấp bảng điểm';
-  const student = foundReq?.student || 'Nguyễn Minh Anh';
-  const mssv = foundReq?.mssv || '23110150';
-  const department = foundReq?.department || foundReq?.department_name || 'Phòng Đào tạo';
+  const [decisionData, setDecisionData] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   // State
   const [zoom, setZoom] = useState(100);
@@ -26,6 +23,37 @@ function PrincipalDecisionDetail() {
   const [isRejected, setIsRejected] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadData() {
+      try {
+        setLoading(true);
+        const res = await principalApi.getDecisionDetail(id).catch(() => null);
+        if (isMounted && res && res.data) {
+          setDecisionData(res.data);
+          if (res.data.internal_status === 'Đã duyệt — Có kết quả') {
+            setIsSigned(true);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load decision detail:', err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    loadData();
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
+
+  const requestCode = decisionData?.request_code || id || foundReq?.request_code || foundReq?.id || 'VJU-2026-0842';
+  const procedure = decisionData?.type_name || foundReq?.procedure || foundReq?.type_name || 'Cấp bảng điểm';
+  const student = decisionData?.student?.name || foundReq?.student || 'Nguyễn Minh Anh';
+  const mssv = decisionData?.student?.mssv || foundReq?.mssv || '23110150';
+  const department = decisionData?.department_name || foundReq?.department || foundReq?.department_name || 'Phòng Đào tạo';
+  const previewUrl = decisionData?.pdf_preview_url || `/api/results/${id}/preview`;
 
   const showToast = (msg) => {
     setToastMsg(msg);
@@ -42,31 +70,49 @@ function PrincipalDecisionDetail() {
 
   const handleSignSmartCA = async () => {
     try {
-      if (principalApi && principalApi.signSmartCA) {
-        await principalApi.signSmartCA({
-          request_code: requestCode,
-          provider: 'vnpt_smartca',
-        }).catch(() => {});
+      const targetId = decisionData?.request_id || foundReq?.request_id || id;
+      const res = await principalApi.signSmartCA(targetId, {
+        provider: 'vnpt_smartca',
+      });
+      setIsSigned(true);
+      showToast(res?.message || `Đã ký số SmartCA thành công quyết định ${requestCode}`);
+      if (res?.data) {
+        setDecisionData((prev) =>
+          prev
+            ? {
+                ...prev,
+                internal_status: res.data.internal_status || 'Đã duyệt — Có kết quả',
+                result: {
+                  ...(prev.result || {}),
+                  smartca_transaction_id: res.data.smartca_transaction_id,
+                  signed_at: res.data.signed_at,
+                },
+              }
+            : null
+        );
       }
-    } catch {}
-
-    setIsSigned(true);
-    showToast(`Đã ký số SmartCA thành công quyết định ${requestCode}`);
+    } catch (err) {
+      showToast(err?.message || 'Lỗi khi thực hiện ký số SmartCA');
+    }
   };
 
   const handleRejectSubmit = async (data) => {
     try {
-      if (principalApi && principalApi.returnToHead) {
-        await principalApi.returnToHead(requestCode, {
-          reason: data?.reason,
-          notes: data?.notes,
-        }).catch(() => {});
+      const targetId = decisionData?.request_id || foundReq?.request_id || id;
+      await principalApi.returnToHead(targetId, {
+        note: data?.notes || data?.reason || '',
+      });
+      setShowRejectModal(false);
+      setIsRejected(true);
+      showToast(`Đã từ chối ký và trả lại hồ sơ ${requestCode} cho Trưởng phòng`);
+      if (decisionData) {
+        setDecisionData((prev) =>
+          prev ? { ...prev, internal_status: 'Chờ TP phê duyệt' } : null
+        );
       }
-    } catch {}
-
-    setShowRejectModal(false);
-    setIsRejected(true);
-    showToast(`Đã từ chối ký và trả lại hồ sơ ${requestCode} cho Trưởng phòng`);
+    } catch (err) {
+      showToast(err?.message || 'Lỗi khi trả lại hồ sơ');
+    }
   };
 
   return (

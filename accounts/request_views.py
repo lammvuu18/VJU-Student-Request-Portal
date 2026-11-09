@@ -6,13 +6,14 @@ import re
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.db import transaction
+from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from .models import (
-    AccessLog, Attachment, Feedback, Notification, ProcedureType,
+    AccessLog, Attachment, AttachmentConfig, Feedback, Notification, ProcedureType,
     Request, Result, StateAuditLog, User,
 )
 from .notification_views import DEFAULT_LIMIT, MAX_LIMIT, _format_datetime, _parse_positive_int
@@ -255,6 +256,12 @@ def _student_create_request(request):
     if procedure.type_id == 2 or "giới thiệu" in procedure.name.lower():
         cleaned_form_data["result_preference"] = "Bản cứng"
 
+    # Thủ tục bảo lưu KQHT (type_id = 4): auto-fill GPA từ Academic MS nếu chưa có
+    if procedure.type_id == 4 and ("gpa" not in cleaned_form_data or cleaned_form_data.get("gpa") is None):
+        reg = getattr(user, "student_registry", None)
+        mssv = reg.mssv if reg else ""
+        cleaned_form_data["gpa"] = AcademicMSService.get_student_gpa(mssv)
+
     form_fields = list(procedure.form_fields.all().order_by("display_order", "field_id"))
     for field in form_fields:
         if field.auto_fill_field:
@@ -315,7 +322,10 @@ def _student_create_request(request):
 
         config = configs_by_id.get(cid)
         if not config:
-            return _json_error("INVALID_ATTACHMENT", "config_id không thuộc thủ tục này.", status=400)
+            if procedure.type_id == 4 and cid == 4:
+                config = AttachmentConfig.objects.filter(config_id=4).first()
+            if not config:
+                return _json_error("INVALID_ATTACHMENT", "config_id không thuộc thủ tục này.", status=400)
 
         err_code, err_msg, mime_type = validate_uploaded_file(uploaded_file, config)
         if err_code:
@@ -658,7 +668,10 @@ def request_supplements_view(request, request_id):
 
         config = configs_by_id.get(cid)
         if not config:
-            return _json_error("INVALID_ATTACHMENT", "config_id không thuộc thủ tục này.", status=400)
+            if procedure.type_id == 4 and cid == 4:
+                config = AttachmentConfig.objects.filter(config_id=4).first()
+            if not config:
+                return _json_error("INVALID_ATTACHMENT", "config_id không thuộc thủ tục này.", status=400)
 
         err_code, err_msg, mime_type = validate_uploaded_file(uploaded_file, config)
         if err_code:
@@ -832,11 +845,10 @@ def result_download_view(request, result_id):
     if not user:
         return _json_error("UNAUTHORIZED", "Chưa đăng nhập.", status=401)
 
-    try:
-        result = Result.objects.select_related(
-            "request", "request__procedure_type"
-        ).get(result_id=result_id)
-    except Result.DoesNotExist:
+    result = Result.objects.select_related(
+        "request", "request__procedure_type"
+    ).filter(Q(result_id=result_id) | Q(request_id=result_id)).first()
+    if not result:
         return _json_error("NOT_FOUND", "Không tìm thấy kết quả.", status=404)
 
     req = result.request
@@ -846,6 +858,8 @@ def result_download_view(request, result_id):
     elif user.role in ("staff", "dept_head"):
         if not _can_staff_view_request(user, req):
             return _json_error("FORBIDDEN", "Bạn không có quyền tải kết quả này.", status=403)
+    elif user.role in ("principal", "admin"):
+        pass
     else:
         return _json_error("FORBIDDEN", "Bạn không có quyền tải kết quả này.", status=403)
 
@@ -883,6 +897,45 @@ def result_download_view(request, result_id):
     filename = f"{result.verification_code or req.request_code}.pdf"
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
+
+
+@require_http_methods(["GET"])
+def result_preview_view(request, result_id):
+    """
+    API: GET /api/results/:id/preview — Xem trước PDF kết quả (inline hiển thị trên trình duyệt / iframe)
+    """
+    user = _get_authenticated_user(request)
+    if not user:
+        return _json_error("UNAUTHORIZED", "Chưa đăng nhập.", status=401)
+
+    result = Result.objects.select_related(
+        "request", "request__procedure_type"
+    ).filter(Q(result_id=result_id) | Q(request_id=result_id)).first()
+    if not result:
+        return _json_error("NOT_FOUND", "Không tìm thấy kết quả.", status=404)
+
+    req = result.request
+    if user.role == "student":
+        if req.user_id != user.user_id:
+            return _json_error("FORBIDDEN", "Bạn không có quyền xem trước kết quả này.", status=403)
+    elif user.role in ("staff", "dept_head"):
+        if not _can_staff_view_request(user, req):
+            return _json_error("FORBIDDEN", "Bạn không có quyền xem trước kết quả này.", status=403)
+    elif user.role in ("principal", "admin"):
+        pass
+    else:
+        return _json_error("FORBIDDEN", "Bạn không có quyền xem trước kết quả này.", status=403)
+
+    if not result.pdf_file_path or not default_storage.exists(result.pdf_file_path):
+        return _json_error("NOT_FOUND", "File PDF không tồn tại trên hệ thống.", status=404)
+
+    with default_storage.open(result.pdf_file_path, "rb") as f:
+        pdf_bytes = f.read()
+
+    filename = f"{result.verification_code or req.request_code}.pdf"
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = f'inline; filename="{filename}"'
     return response
 
 

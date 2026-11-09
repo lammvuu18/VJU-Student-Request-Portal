@@ -664,6 +664,18 @@ export const staffApi = {
 
   revoke: async (requestId, note = '') =>
     putJson(`/staff/requests/${requestId}/revoke`, note ? { note } : {}),
+
+  // CV trình Trưởng phòng (quy trình 2-3 cấp)
+  submitToHead: async (requestId, note = '') =>
+    putJson(`/staff/requests/${requestId}/submit-to-head`, note ? { note } : {}),
+
+  // TP duyệt & trình Hiệu trưởng ký số SmartCA (quy trình 3 cấp)
+  submitToPrincipal: async (requestId, note = '') =>
+    putJson(`/staff/requests/${requestId}/submit-to-principal`, note ? { note } : {}),
+
+  // TP trả lại hồ sơ cho CV thẩm định lại
+  returnToStaff: async (requestId, note = '') =>
+    putJson(`/staff/requests/${requestId}/return-to-staff`, note ? { note } : {}),
 };
 
 // =============================================================================
@@ -679,26 +691,43 @@ export const principalApi = {
     }));
   },
 
-  signSmartCA: async (payload) => {
-    return apiFetch('/principal/sign-smartca', {
+  getDecisionDetail: async (requestId) => {
+    return apiFetch(`/principal/requests/${requestId}`, { method: 'GET' }, () => {
+      const found = mock.decisions.find(d => d.id === parseInt(requestId) || d.request_id === parseInt(requestId));
+      return {
+        success: true,
+        data: found || mock.decisions[0],
+      };
+    });
+  },
+
+  signSmartCA: async (requestIdOrPayload, payload = {}) => {
+    let reqId = requestIdOrPayload;
+    let body = payload;
+    if (typeof requestIdOrPayload === 'object' && requestIdOrPayload !== null) {
+      reqId = requestIdOrPayload.request_id || requestIdOrPayload.id;
+      body = requestIdOrPayload;
+    }
+    const endpoint = reqId ? `/principal/requests/${reqId}/sign` : '/principal/requests/sign';
+    return apiFetch(endpoint, {
       method: 'POST',
-      body: JSON.stringify(payload),
+      body: JSON.stringify(body),
     }, () => ({
       success: true,
       data: {
-        transaction_id: `VNPT-TXN-${Date.now()}`,
-        status: 'pending_push',
-        message: 'Vui lòng mở ứng dụng VNPT/Viettel SmartCA trên thiết bị để xác thực sinh trắc học hoàn tất ký số.',
-        expires_in_seconds: 180,
+        smartca_transaction_id: `MOCK-SMARTCA-${Date.now()}`,
+        internal_status: 'Đã duyệt — Có kết quả',
+        signed_at: new Date().toISOString(),
       },
-      message: 'Lệnh ký số đã được gửi đến thiết bị di động của Hiệu trưởng',
+      message: 'Ký số thành công.',
     }));
   },
 
-  returnToHead: async (requestId, payload) => {
+  returnToHead: async (requestId, payload = {}) => {
+    const bodyObj = typeof payload === 'string' ? { note: payload } : payload;
     return apiFetch(`/principal/requests/${requestId}/return-to-head`, {
       method: 'POST',
-      body: JSON.stringify(payload),
+      body: JSON.stringify(bodyObj),
     }, () => ({
       success: true,
       message: 'Đã trả lại hồ sơ cho Trưởng phòng kiểm tra lại',

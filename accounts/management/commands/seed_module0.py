@@ -70,9 +70,10 @@ FORM_FIELDS = [
     (304, 3, 'Học kỳ', 'semester', 'text', True, 'Nhập học kỳ', None, None, 4),
     (305, 3, 'Điểm hiện tại', 'current_grade', 'number', True, None, 'academic_ms.grade', None, 5),
     # field_id co y lech voi display_order de chung minh API sap xep theo display_order
-    (401, 4, 'Học kỳ bảo lưu', 'semester', 'text', True, None, None, None, 2),
-    (402, 4, 'Số kỳ bảo lưu', 'semester_count', 'number', True, None, None, None, 3),
+    (401, 4, 'Học kỳ bảo lưu', 'semester', 'text', False, None, None, None, 2),
+    (402, 4, 'Số kỳ bảo lưu', 'semester_count', 'number', False, None, None, None, 3),
     (403, 4, 'Lý do bảo lưu', 'reason', 'textarea', True, None, None, None, 1),
+    (404, 4, 'Điểm GPA tích lũy', 'gpa', 'number', False, None, 'academic_ms.gpa', None, 4),
     (501, 5, 'Đối tượng miễn giảm', 'beneficiary_type', 'text', True, None, None, None, 1),
     (701, 7, 'Trường của thủ tục ẩn', 'hidden_field', 'text', False, None, None, None, 1),
 ]
