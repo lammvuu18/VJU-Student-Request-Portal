@@ -7,3 +7,20 @@ staticfiles/
 media/
 docs/testing/*.postman_environment.json
 .venv/
+
+# Test files & scripts
+test_*.js
+*_test.js
+*test*.js
+test-results/
+*.pdf
+
+# Documents & Office (Excel, Word)
+*.xlsx
+*.xls
+*.doc
+*.docx
+~$*
+
+# Markdown documents
+*.md

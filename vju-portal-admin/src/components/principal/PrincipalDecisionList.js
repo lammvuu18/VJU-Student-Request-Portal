@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { principalApi } from '../../services/api';
 import './PrincipalPages.css';
 
 // 50 Requests/Decisions (9 initial matching Figma exact spec + 41 generated)
@@ -117,11 +118,42 @@ if (initialDecisions.length < 50) {
 function PrincipalDecisionList() {
   const navigate = useNavigate();
 
-  const [decisionsList] = useState(initialDecisions);
+  const [decisionsList, setDecisionsList] = useState(initialDecisions);
+  const [loading, setLoading] = useState(false);
   const [filterStatus, setFilterStatus] = useState('');
   const [filterDept, setFilterDept] = useState('');
   const [filterDeadline, setFilterDeadline] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadData() {
+      try {
+        setLoading(true);
+        const res = await principalApi.getPendingSignatures();
+        if (isMounted && res && res.data && Array.isArray(res.data) && res.data.length > 0) {
+          const liveItems = res.data.map((item) => ({
+            id: item.request_id,
+            code: item.request_code,
+            procedure: item.type_name,
+            student: item.student_name,
+            department: item.submitted_by || 'Phòng Đào tạo',
+            deadline: item.sub_sla_deadline ? new Date(item.sub_sla_deadline).toLocaleDateString('vi-VN') : '—',
+            status: 'Chờ ký',
+          }));
+          setDecisionsList(liveItems);
+        }
+      } catch (e) {
+        console.error('Failed to load pending signatures:', e);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    loadData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -354,7 +386,7 @@ function PrincipalDecisionList() {
                     <button
                       type="button"
                       className="btn-principal-view-detail"
-                      onClick={() => navigate(`/principal/decision/${row.code}`)}
+                      onClick={() => navigate(`/principal/decision/${row.id || row.code}`)}
                     >
                       Xem chi tiết
                     </button>
