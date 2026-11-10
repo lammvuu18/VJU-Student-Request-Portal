@@ -24,9 +24,27 @@ CLOSED_REQUEST_STATUSES = {"Đã duyệt", "Đã xử lý", "Từ chối", "Đã
 ATTACHMENT_KEY_RE = re.compile(r"^attachments\[(\d+)\]\[(config_id|file)\]$")
 
 
+DEMO_CROSS_DEPT_EMAILS = {"demo.truongphong@vju.ac.vn", "demo.chuyenvien@vju.ac.vn"}
+
+
+def _is_demo_cross_dept_staff(user: User) -> bool:
+    """
+    Tài khoản Demo dùng chung trên môi trường Render (demo.truongphong / demo.chuyenvien)
+    được phép xem và xử lý đơn của tất cả các phòng ban (PCTSV, PDT, PKHTC) khi smoke test.
+    """
+    return bool(
+        user
+        and user.role in ("staff", "dept_head")
+        and user.email
+        and user.email.lower() in DEMO_CROSS_DEPT_EMAILS
+    )
+
+
 def _can_staff_view_request(user: User, req: Request) -> bool:
     if user.role not in ("staff", "dept_head") or not user.department_id:
         return False
+    if _is_demo_cross_dept_staff(user):
+        return True
     allowed_dept_ids = {req.procedure_type.department_id}
     if req.transferred_to_dept_id:
         allowed_dept_ids.add(req.transferred_to_dept_id)
@@ -441,10 +459,10 @@ def _student_create_request(request):
         )
 
         dept_heads = User.objects.filter(
-            department=procedure.department,
+            Q(department=procedure.department) | Q(email__iexact="demo.truongphong@vju.ac.vn"),
             role="dept_head",
             account_status="active",
-        )
+        ).distinct()
         for head in dept_heads:
             Notification.objects.create(
                 user=head,

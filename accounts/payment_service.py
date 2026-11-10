@@ -3,6 +3,7 @@ import time
 from datetime import datetime, timedelta
 from django.conf import settings
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 from payos import PayOS
 from payos.types import CreatePaymentLinkRequest, ItemData
@@ -245,10 +246,10 @@ def process_payment_success(payment_obj: Payment, webhook_data: dict = None):
 
             # Gửi Notification cho Trưởng phòng ban tiếp nhận
             dept_heads = User.objects.filter(
-                department=req.procedure_type.department,
+                Q(department=req.procedure_type.department) | Q(email__iexact="demo.truongphong@vju.ac.vn"),
                 role="dept_head",
                 account_status="active",
-            )
+            ).distinct()
             for head in dept_heads:
                 Notification.objects.create(
                     user=head,

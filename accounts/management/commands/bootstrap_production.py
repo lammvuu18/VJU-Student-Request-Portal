@@ -95,6 +95,30 @@ class Command(BaseCommand):
                     'is_active': active,
                 },
             )
+            if type_id == 4:
+                FormField.objects.get_or_create(
+                    procedure_type=procedure,
+                    field_key='gpa',
+                    defaults={
+                        'field_name': 'Điểm GPA tích lũy',
+                        'data_type': 'number',
+                        'is_required': False,
+                        'placeholder': None,
+                        'auto_fill_field': 'academic_ms.gpa',
+                        'dropdown_options': None,
+                        'display_order': 4,
+                    },
+                )
+                AttachmentConfig.objects.get_or_create(
+                    procedure_type=procedure,
+                    item_name='Minh chứng lý do bảo lưu',
+                    defaults={
+                        'is_required': False,
+                        'allowed_formats': FORMATS,
+                        'max_size_mb': 5,
+                        'display_order': 1,
+                    },
+                )
             if not created:
                 continue
             created_count += 1

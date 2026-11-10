@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.db.models import Q
 from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
@@ -230,7 +231,11 @@ def principal_return_to_head_view(request, request_id):
         )
 
         dept_id = req.procedure_type.department_id
-        dept_heads = User.objects.filter(role="dept_head", department_id=dept_id, account_status="active")
+        dept_heads = User.objects.filter(
+            Q(department_id=dept_id) | Q(email__iexact="demo.truongphong@vju.ac.vn"),
+            role="dept_head",
+            account_status="active",
+        ).distinct()
         for dh in dept_heads:
             Notification.objects.create(
                 user=dh,

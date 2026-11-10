@@ -14,7 +14,7 @@ from .models import (
     AccessLog, Notification, RejectionReason, Request, Result, StateAuditLog, User,
 )
 from .notification_views import DEFAULT_LIMIT, MAX_LIMIT, _format_datetime, _parse_positive_int
-from .request_views import CLOSED_REQUEST_STATUSES
+from .request_views import CLOSED_REQUEST_STATUSES, _is_demo_cross_dept_staff
 from .services import (
     AcademicMSService, ExternalServiceError, build_qr_code_data,
     compute_sla_metrics, generate_decision_pdf, generate_result_pdf, generate_verification_code,
@@ -74,10 +74,16 @@ def staff_inbox_view(request):
         procedure_type__department_id=user.department_id,
     )
 
-    scoped_qs = (
-        Request.objects.filter(dept_filter, is_draft=False)
-        .select_related("procedure_type", "user", "user__student_registry", "assigned_staff")
-    )
+    if _is_demo_cross_dept_staff(user):
+        scoped_qs = (
+            Request.objects.filter(is_draft=False)
+            .select_related("procedure_type", "user", "user__student_registry", "assigned_staff")
+        )
+    else:
+        scoped_qs = (
+            Request.objects.filter(dept_filter, is_draft=False)
+            .select_related("procedure_type", "user", "user__student_registry", "assigned_staff")
+        )
     if user.role == "staff":
         scoped_qs = scoped_qs.filter(assigned_staff=user)
 
@@ -216,7 +222,7 @@ def staff_assign_request_view(request, request_id):
         return _json_error("NOT_FOUND", "Không tìm thấy yêu cầu.", status=404)
 
     active_dept_id = _active_department_id(req)
-    if user.department_id != active_dept_id:
+    if user.department_id != active_dept_id and not _is_demo_cross_dept_staff(user):
         return _json_error("FORBIDDEN", "Bạn không có quyền phân công yêu cầu của phòng ban khác.", status=403)
 
     is_waiting_assign = (
@@ -239,7 +245,7 @@ def staff_assign_request_view(request, request_id):
     if not staff or staff.role != "staff" or staff.account_status != "active":
         return _json_error("INVALID_STAFF", "Chuyên viên không tồn tại hoặc đã bị khóa.", status=422)
 
-    if staff.department_id != active_dept_id:
+    if staff.department_id != active_dept_id and not _is_demo_cross_dept_staff(staff):
         return _json_error("INVALID_STAFF", "Chuyên viên không thuộc phòng ban phụ trách.", status=422)
 
     now = timezone.now()
@@ -455,7 +461,7 @@ def staff_reject_request_view(request, request_id):
         if req.internal_status != "CV đang thẩm định":
             return _json_error("INVALID_STATE", "Yêu cầu không ở trạng thái CV đang thẩm định.", status=422)
     elif user.role == "dept_head":
-        if user.department_id != _active_department_id(req):
+        if user.department_id != _active_department_id(req) and not _is_demo_cross_dept_staff(user):
             return _json_error("FORBIDDEN", "Bạn không có quyền xử lý yêu cầu của phòng ban khác.", status=403)
         if req.internal_status not in ("Chờ TP phê duyệt", "CV đang thẩm định"):
             return _json_error("INVALID_STATE", "Trạng thái yêu cầu không hợp lệ để từ chối.", status=422)
@@ -643,7 +649,7 @@ def staff_assign_pickup_view(request, request_id):
         if req.assigned_staff_id != user.user_id:
             return _json_error("FORBIDDEN", "Bạn không được phân công xử lý yêu cầu này.", status=403)
     elif user.role == "dept_head":
-        if user.department_id != _active_department_id(req):
+        if user.department_id != _active_department_id(req) and not _is_demo_cross_dept_staff(user):
             return _json_error("FORBIDDEN", "Bạn không có quyền xử lý yêu cầu của phòng ban khác.", status=403)
     else:
         return _json_error("FORBIDDEN", "Bạn không có quyền thực hiện thao tác này.", status=403)
@@ -728,7 +734,7 @@ def staff_confirm_handover_view(request, request_id):
         if req.assigned_staff_id != user.user_id:
             return _json_error("FORBIDDEN", "Bạn không được phân công xử lý yêu cầu này.", status=403)
     elif user.role == "dept_head":
-        if user.department_id != _active_department_id(req):
+        if user.department_id != _active_department_id(req) and not _is_demo_cross_dept_staff(user):
             return _json_error("FORBIDDEN", "Bạn không có quyền xử lý yêu cầu của phòng ban khác.", status=403)
     else:
         return _json_error("FORBIDDEN", "Bạn không có quyền thực hiện thao tác này.", status=403)
@@ -799,7 +805,7 @@ def staff_revoke_approval_view(request, request_id):
         if req.assigned_staff_id != user.user_id:
             return _json_error("FORBIDDEN", "Bạn không được phân công xử lý yêu cầu này.", status=403)
     elif user.role == "dept_head":
-        if user.department_id != _active_department_id(req):
+        if user.department_id != _active_department_id(req) and not _is_demo_cross_dept_staff(user):
             return _json_error("FORBIDDEN", "Bạn không có quyền xử lý yêu cầu của phòng ban khác.", status=403)
     else:
         return _json_error("FORBIDDEN", "Bạn không có quyền thu hồi duyệt.", status=403)
@@ -915,7 +921,11 @@ def staff_submit_to_head_view(request, request_id):
         )
 
         dept_id = _active_department_id(req)
-        dept_heads = User.objects.filter(role="dept_head", department_id=dept_id, account_status="active")
+        dept_heads = User.objects.filter(
+            Q(department_id=dept_id) | Q(email__iexact="demo.truongphong@vju.ac.vn"),
+            role="dept_head",
+            account_status="active",
+        ).distinct()
         for dh in dept_heads:
             Notification.objects.create(
                 user=dh,
@@ -954,7 +964,7 @@ def staff_submit_to_principal_view(request, request_id):
         return _json_error("NOT_FOUND", "Không tìm thấy yêu cầu.", status=404)
 
     active_dept_id = _active_department_id(req)
-    if user.department_id != active_dept_id:
+    if user.department_id != active_dept_id and not _is_demo_cross_dept_staff(user):
         return _json_error("FORBIDDEN", "Bạn không có quyền xử lý yêu cầu của phòng ban khác.", status=403)
 
     if req.procedure_type.approval_levels != 3:
@@ -1041,7 +1051,7 @@ def staff_return_to_staff_view(request, request_id):
         return _json_error("NOT_FOUND", "Không tìm thấy yêu cầu.", status=404)
 
     active_dept_id = _active_department_id(req)
-    if user.department_id != active_dept_id:
+    if user.department_id != active_dept_id and not _is_demo_cross_dept_staff(user):
         return _json_error("FORBIDDEN", "Bạn không có quyền xử lý yêu cầu của phòng ban khác.", status=403)
 
     if req.internal_status != "Chờ TP phê duyệt":

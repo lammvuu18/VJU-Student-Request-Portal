@@ -459,3 +459,81 @@ class Module4TestCase(TestCase):
         self.assertEqual(ret_head_res.status_code, 200)
         req.refresh_from_db()
         self.assertEqual(req.internal_status, "Chờ TP phê duyệt")
+
+    def test_render_demo_accounts_can_process_preservation_workflow(self):
+        """
+        Kiểm tra luồng Smoke Test trên Render với tài khoản Demo (demo.truongphong / demo.chuyenvien):
+        SV nộp đơn Bảo lưu -> Trưởng phòng Demo thấy đơn trong danh sách -> phân công Chuyên viên Demo
+        -> Chuyên viên Demo thấy đơn và trình Trưởng phòng -> Trưởng phòng trình Hiệu trưởng -> ký số.
+        """
+        with patch.dict(
+            "os.environ",
+            {
+                "SEED_DEMO": "True",
+                "DEMO_PASSWORD": "demo-password-123",
+                "DEMO_STUDENT_EMAILS": "guenkokuain020411@gmail.com",
+            },
+        ):
+            call_command("seed_demo", stdout=StringIO())
+
+        demo_tp = User.objects.get(email="demo.truongphong@vju.ac.vn")
+        demo_cv = User.objects.get(email="demo.chuyenvien@vju.ac.vn")
+        demo_ht = User.objects.get(email="demo.hieutruong@vju.ac.vn")
+        demo_sv = User.objects.get(email="guenkokuain020411@gmail.com")
+
+        # 1. SV nộp đơn bảo lưu
+        create_res = self.client.post(
+            "/api/requests",
+            data={
+                "type_id": "4",
+                "form_data": json.dumps(
+                    {
+                        "reason": "Bảo lưu điều trị sức khỏe",
+                        "semester": "HK1 2026-2027",
+                        "semester_count": 1,
+                    },
+                    ensure_ascii=False,
+                ),
+            },
+            **self.auth(demo_sv),
+        )
+        self.assertEqual(create_res.status_code, 201, create_res.content.decode())
+        req_id = create_res.json()["data"]["request_id"]
+
+        # 2. Trưởng phòng Demo phải thấy đơn vừa nộp trong danh sách (GET /api/staff/inbox?scope=all)
+        inbox_tp = self.client.get("/api/staff/inbox?scope=all", **self.auth(demo_tp)).json()
+        inbox_ids = [item["request_id"] for item in inbox_tp["data"]]
+        self.assertIn(req_id, inbox_ids)
+
+        # 3. Trưởng phòng Demo phân công cho Chuyên viên Demo
+        assign_res = self.put_json(
+            f"/api/staff/requests/{req_id}/assign",
+            {"assigned_staff_id": demo_cv.user_id},
+            demo_tp,
+        )
+        self.assertEqual(assign_res.status_code, 200, assign_res.content.decode())
+
+        # 4. Chuyên viên Demo thấy đơn trong danh sách của mình
+        inbox_cv = self.client.get("/api/staff/inbox?scope=all", **self.auth(demo_cv)).json()
+        cv_ids = [item["request_id"] for item in inbox_cv["data"]]
+        self.assertIn(req_id, cv_ids)
+
+        # 5. Chuyên viên Demo trình Trưởng phòng
+        sub_head_res = self.put_json(
+            f"/api/staff/requests/{req_id}/submit-to-head",
+            {"note": "Đủ điều kiện bảo lưu"},
+            demo_cv,
+        )
+        self.assertEqual(sub_head_res.status_code, 200, sub_head_res.content.decode())
+
+        # 6. Trưởng phòng Demo trình Hiệu trưởng ký số
+        sub_prin_res = self.put_json(
+            f"/api/staff/requests/{req_id}/submit-to-principal",
+            {"note": "Đồng ý trình Hiệu trưởng ký QĐ"},
+            demo_tp,
+        )
+        self.assertEqual(sub_prin_res.status_code, 200, sub_prin_res.content.decode())
+
+        # 7. Hiệu trưởng Demo ký số
+        sign_res = self.post_json(f"/api/principal/requests/{req_id}/sign", {}, demo_ht)
+        self.assertEqual(sign_res.status_code, 200, sign_res.content.decode())

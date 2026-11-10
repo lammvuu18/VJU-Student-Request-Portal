@@ -2,17 +2,21 @@ import { useState, useEffect, useCallback } from 'react';
 import api from '../../services/api';
 import { formatDate } from '../../utils/format';
 
-// Nhãn và màu badge theo internal_status của backend (quy trình 1 cấp)
+// Nhãn và màu badge theo internal_status của backend (quy trình 1-3 cấp)
 export const INBOX_STATUS = {
   'Chờ phân công': { label: 'Chờ phân công', theme: 'yellow' },
   'CV đang thẩm định': { label: 'Đang thẩm định', theme: 'blue' },
   'Cần bổ sung': { label: 'Chờ bổ sung', theme: 'yellow' },
+  'Chờ TP phê duyệt': { label: 'Chờ TP phê duyệt', theme: 'yellow' },
+  'Chờ HT ký số': { label: 'Chờ HT ký số', theme: 'blue' },
   'Đã duyệt — Đang chuẩn bị kết quả': { label: 'Đã duyệt', theme: 'green' },
+  'Đã duyệt — Có kết quả': { label: 'Đã ký số', theme: 'green' },
 };
 
 // Đơn đã kết thúc (scope=closed), theo status của backend
 export const CLOSED_STATUS = {
   'Đã xử lý': { label: 'Hoàn thành', theme: 'green' },
+  'Đã duyệt': { label: 'Hoàn thành', theme: 'green' },
   'Từ chối': { label: 'Từ chối', theme: 'red' },
   'Đã hủy': { label: 'Đã hủy', theme: 'gray' },
 };

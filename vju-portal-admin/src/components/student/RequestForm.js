@@ -12,6 +12,7 @@ const resolveAutoFill = (key, user) => {
     'student.cohort': user.cohort,
     'student.major': user.major,
     'student.email': user.email,
+    'academic_ms.gpa': user.gpa ?? '3.2',
   };
   if (key in mapping) return mapping[key] || '';
   return null;
