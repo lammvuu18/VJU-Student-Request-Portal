@@ -665,9 +665,43 @@ export const staffApi = {
   revoke: async (requestId, note = '') =>
     putJson(`/staff/requests/${requestId}/revoke`, note ? { note } : {}),
 
-  // CV trình Trưởng phòng (quy trình 2-3 cấp)
-  submitToHead: async (requestId, note = '') =>
-    putJson(`/staff/requests/${requestId}/submit-to-head`, note ? { note } : {}),
+  // CV trình Trưởng phòng (quy trình 2-3 cấp, hỗ trợ cả đính kèm biên bản phúc khảo ở màn D4)
+  submitToHead: async (requestId, payload = '') => {
+    if (typeof FormData !== 'undefined' && payload instanceof FormData) {
+      return apiFetch(`/staff/requests/${requestId}/submit-to-head`, {
+        method: 'PUT',
+        body: payload,
+      });
+    }
+    if (payload && typeof payload === 'object') {
+      const uploadFile = payload.review_file || payload.file;
+      if (typeof File !== 'undefined' && uploadFile instanceof File) {
+        const fd = new FormData();
+        fd.append('review_file', uploadFile);
+        if (payload.note || payload.review_notes) {
+          fd.append('note', payload.note || payload.review_notes);
+        }
+        const reviewData = payload.review_data || {
+          grade_reviewer_1: payload.grade_reviewer_1 ?? payload.score_teacher_1,
+          grade_reviewer_2: payload.grade_reviewer_2 ?? payload.score_teacher_2,
+          final_grade: payload.final_grade ?? payload.final_score,
+          file_name: uploadFile.name,
+          note: payload.note || payload.review_notes || '',
+        };
+        fd.append('review_data', JSON.stringify(reviewData));
+        return apiFetch(`/staff/requests/${requestId}/submit-to-head`, {
+          method: 'PUT',
+          body: fd,
+        });
+      }
+      return putJson(`/staff/requests/${requestId}/submit-to-head`, payload);
+    }
+    return putJson(`/staff/requests/${requestId}/submit-to-head`, payload ? { note: payload } : {});
+  },
+
+  // TP phê duyệt (quy trình 2 cấp, VD: Phúc khảo điểm thi)
+  approveHead: async (requestId, note = '') =>
+    putJson(`/staff/requests/${requestId}/approve-head`, note ? { note } : {}),
 
   // TP duyệt & trình Hiệu trưởng ký số SmartCA (quy trình 3 cấp)
   submitToPrincipal: async (requestId, note = '') =>

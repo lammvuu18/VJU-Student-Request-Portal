@@ -50,6 +50,7 @@ urlpatterns = [
     path('staff/requests/<int:request_id>/confirm-handover', staff_views.staff_confirm_handover_view, name='staff_confirm_handover'),
     path('staff/requests/<int:request_id>/revoke', staff_views.staff_revoke_approval_view, name='staff_revoke_approval'),
     path('staff/requests/<int:request_id>/submit-to-head', staff_views.staff_submit_to_head_view, name='staff_submit_to_head'),
+    path('staff/requests/<int:request_id>/approve-head', staff_views.staff_approve_head_view, name='staff_approve_head'),
     path('staff/requests/<int:request_id>/submit-to-principal', staff_views.staff_submit_to_principal_view, name='staff_submit_to_principal'),
     path('staff/requests/<int:request_id>/return-to-staff', staff_views.staff_return_to_staff_view, name='staff_return_to_staff'),
     path('rejection-reasons', staff_views.rejection_reasons_view, name='rejection_reasons'),

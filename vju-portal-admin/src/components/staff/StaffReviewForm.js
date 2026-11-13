@@ -1,39 +1,68 @@
-import React, { useState, useRef } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { allRequests } from '../../data/mockData';
-import { staffApi } from '../../services/api';
+import api, { staffApi } from '../../services/api';
 import './StaffPages.css';
 
 function StaffReviewForm() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const [searchParams] = useSearchParams();
 
-  // Find request or fallback to mock appeal request VJU-2026-0835 / VJU-2026-0840
+  // Find request in mock data as fallback
   const foundReq = (allRequests || []).find(
     (r) => r.id === id || r.request_code === id || String(r.request_id) === String(id)
   );
 
-  const requestCode = id || foundReq?.request_code || foundReq?.id || 'VJU-2026-0835';
-  const backUrl = `/staff/request/${requestCode}`;
-
-  // Form states matching Figma spec
+  const [requestDetail, setRequestDetail] = useState(null);
   const [score1, setScore1] = useState('');
   const [score2, setScore2] = useState('');
   const [uploadedFile, setUploadedFile] = useState(null);
+  const [existingFileName, setExistingFileName] = useState('');
   const [opinion, setOpinion] = useState('');
-  const [toastMsg, setToastMsg] = useState('');
-  const [submitted, setSubmitted] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const fileInputRef = useRef(null);
 
+  useEffect(() => {
+    if (!id) return;
+    let active = true;
+    api.requests.getDetail(id)
+      .then((res) => {
+        if (!active || !res?.data) return;
+        setRequestDetail(res.data);
+        const rev = res.data.form_data?.review_data;
+        if (rev && typeof rev === 'object') {
+          if (rev.grade_reviewer_1 !== undefined && rev.grade_reviewer_1 !== null) {
+            setScore1(String(rev.grade_reviewer_1));
+          }
+          if (rev.grade_reviewer_2 !== undefined && rev.grade_reviewer_2 !== null) {
+            setScore2(String(rev.grade_reviewer_2));
+          }
+          if (rev.note) {
+            setOpinion(String(rev.note));
+          }
+          if (rev.file_name) {
+            setExistingFileName(String(rev.file_name));
+          }
+        }
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [id]);
+
+  const targetRequestId = requestDetail?.request_id || id || foundReq?.request_id || 'VJU-2026-0835';
+  const requestCode = requestDetail?.request_code || foundReq?.request_code || id || 'VJU-2026-0835';
+  const backUrl = `/staff/request/${targetRequestId}`;
+
   // Auto-calculated final score
   const calcFinalScore = () => {
+    if (score1 === '' || score2 === '') return null;
     const s1 = parseFloat(score1);
     const s2 = parseFloat(score2);
     if (!isNaN(s1) && !isNaN(s2)) {
       const avg = (s1 + s2) / 2;
-      return Number.isInteger(avg) ? avg.toFixed(1) : avg.toFixed(2);
+      return Number.isInteger(avg) ? avg.toFixed(1) : Number(avg.toFixed(2)).toString();
     }
     return null;
   };
@@ -47,37 +76,74 @@ function StaffReviewForm() {
     }
   };
 
-  const showToast = (msg) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(''), 4500);
+  const showToast = (msg, isError = false) => {
+    setToast({ message: msg, isError });
+    setTimeout(() => setToast(null), 4500);
   };
 
   const handleSubmitToHead = async () => {
-    try {
-      if (staffApi && staffApi.submitToHead) {
-        await staffApi.submitToHead(requestCode, {
-          score_teacher_1: score1,
-          score_teacher_2: score2,
-          final_score: finalScore,
-          file_name: uploadedFile?.name,
-          review_notes: opinion,
-        }).catch(() => {});
-      }
-    } catch {}
+    const s1 = parseFloat(score1);
+    const s2 = parseFloat(score2);
+    if (score1 === '' || isNaN(s1) || s1 < 0 || s1 > 10) {
+      showToast('Vui lòng nhập Điểm giáo viên 1 hợp lệ (từ 0 đến 10).', true);
+      return;
+    }
+    if (score2 === '' || isNaN(s2) || s2 < 0 || s2 > 10) {
+      showToast('Vui lòng nhập Điểm giáo viên 2 hợp lệ (từ 0 đến 10).', true);
+      return;
+    }
 
-    setSubmitted(true);
-    showToast(`Đã trình duyệt đơn phúc khảo ${requestCode} lên Trưởng phòng`);
+    const calculatedFinal = Number(((s1 + s2) / 2).toFixed(2));
+    const trimmedOpinion = opinion.trim();
+
+    setSubmitting(true);
+    try {
+      await staffApi.submitToHead(targetRequestId, {
+        grade_reviewer_1: s1,
+        grade_reviewer_2: s2,
+        final_grade: calculatedFinal,
+        file: uploadedFile,
+        file_name: uploadedFile?.name || existingFileName || '',
+        note: trimmedOpinion,
+        review_data: {
+          grade_reviewer_1: s1,
+          grade_reviewer_2: s2,
+          final_grade: calculatedFinal,
+          file_name: uploadedFile?.name || existingFileName || '',
+          note: trimmedOpinion,
+        },
+      });
+      showToast(`Đã trình duyệt đơn phúc khảo ${requestCode} lên Trưởng phòng`);
+      setTimeout(() => {
+        navigate(backUrl);
+      }, 900);
+    } catch (err) {
+      showToast(err.message || 'Không thể trình Trưởng phòng phê duyệt.', true);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
     <div className="staff-detail-container" style={{ position: 'relative' }}>
       {/* Toast Notification matching Figma spec */}
-      {toastMsg && (
-        <div className="depthead-toast-card">
-          <div className="depthead-toast-icon-circle">
-            <span className="depthead-toast-icon-check">✓</span>
+      {toast && (
+        <div
+          className="depthead-toast-card"
+          style={toast.isError ? { background: '#FEF2F2', borderColor: '#FCA5A5' } : undefined}
+        >
+          <div
+            className="depthead-toast-icon-circle"
+            style={toast.isError ? { background: '#B91C1C' } : undefined}
+          >
+            <span className="depthead-toast-icon-check">{toast.isError ? '!' : '✓'}</span>
           </div>
-          <span className="depthead-toast-text">{toastMsg}</span>
+          <span
+            className="depthead-toast-text"
+            style={toast.isError ? { color: '#B91C1C' } : undefined}
+          >
+            {toast.message}
+          </span>
         </div>
       )}
 
@@ -410,14 +476,18 @@ function StaffReviewForm() {
           >
             <div
               style={{
-                color: uploadedFile ? '#168039' : '#1F2937',
+                color: (uploadedFile || existingFileName) ? '#168039' : '#1F2937',
                 fontSize: 14,
                 fontFamily: 'Inter',
                 fontWeight: '500',
                 wordWrap: 'break-word',
               }}
             >
-              {uploadedFile ? `✓ ${uploadedFile.name}` : '↑ Tải file lên'}
+              {uploadedFile
+                ? `✓ ${uploadedFile.name}`
+                : existingFileName
+                  ? `✓ ${existingFileName} (Đổi file)`
+                  : '↑ Tải file lên'}
             </div>
           </button>
         </div>
@@ -545,6 +615,7 @@ function StaffReviewForm() {
 
         <button
           type="button"
+          disabled={submitting}
           onClick={handleSubmitToHead}
           style={{
             paddingLeft: 20,
@@ -558,14 +629,15 @@ function StaffReviewForm() {
             justifyContent: 'flex-start',
             alignItems: 'flex-start',
             display: 'flex',
-            cursor: 'pointer',
+            cursor: submitting ? 'not-allowed' : 'pointer',
+            opacity: submitting ? 0.7 : 1,
             transition: 'background 0.15s ease',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#931E22';
+            if (!submitting) e.currentTarget.style.background = '#931E22';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = '#AA2327';
+            if (!submitting) e.currentTarget.style.background = '#AA2327';
           }}
         >
           <div
@@ -577,7 +649,7 @@ function StaffReviewForm() {
               wordWrap: 'break-word',
             }}
           >
-            Trình duyệt TP →
+            {submitting ? 'Đang trình duyệt...' : 'Trình duyệt TP →'}
           </div>
         </button>
       </div>

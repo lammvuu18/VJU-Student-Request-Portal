@@ -60,6 +60,7 @@ export const TIMELINE_ACTION_LABELS = {
   cancel: 'Hủy yêu cầu',
   assign: 'Phân công chuyên viên',
   approve: 'Duyệt yêu cầu',
+  approve_head: 'Trưởng phòng phê duyệt',
   submit_to_head: 'Trình Trưởng phòng phê duyệt',
   submit_for_signature: 'Trình Hiệu trưởng ký số',
   return_to_staff: 'Trả lại chuyên viên thẩm định',
@@ -103,5 +104,10 @@ export const FIELD_LABELS = {
   return_semester: 'Học kỳ quay lại dự kiến',
   commitment: 'Cam kết của sinh viên',
   subject: 'Môn học',
+  course_code: 'Mã học phần',
   current_grade: 'Điểm hiện tại',
+  final_grade: 'Điểm sau phúc khảo',
+  grade_reviewer_1: 'Điểm giáo viên 1',
+  grade_reviewer_2: 'Điểm giáo viên 2',
+  review_note: 'Ý kiến thẩm định',
 };

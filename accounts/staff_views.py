@@ -1,17 +1,20 @@
 from datetime import datetime, timedelta
+import json
 from math import ceil
 
+from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.db import transaction
 from django.db.models import Q
 from django.http import JsonResponse
+from django.http.multipartparser import MultiPartParser
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from .models import (
-    AccessLog, Notification, RejectionReason, Request, Result, StateAuditLog, User,
+    AccessLog, Attachment, Notification, RejectionReason, Request, Result, StateAuditLog, User,
 )
 from .notification_views import DEFAULT_LIMIT, MAX_LIMIT, _format_datetime, _parse_positive_int
 from .request_views import CLOSED_REQUEST_STATUSES, _is_demo_cross_dept_staff
@@ -873,10 +876,11 @@ def staff_revoke_approval_view(request, request_id):
 
 
 @csrf_exempt
-@require_http_methods(["PUT"])
+@require_http_methods(["PUT", "POST"])
 def staff_submit_to_head_view(request, request_id):
     """
-    API: PUT /api/staff/requests/:id/submit-to-head — CV trình Trưởng phòng phê duyệt
+    API 3.5 / 4.1: PUT /api/staff/requests/:id/submit-to-head — CV trình Trưởng phòng phê duyệt
+    Hỗ trợ cả JSON và multipart/form-data (đính kèm biên bản phúc khảo ở màn D4).
     """
     user = _get_authenticated_user(request)
     if not user:
@@ -894,7 +898,7 @@ def staff_submit_to_head_view(request, request_id):
         return _json_error("INVALID_STATE", "Yêu cầu không ở trạng thái CV đang thẩm định.", status=422)
 
     # Kiểm tra điều kiện GPA nếu là thủ tục bảo lưu hoặc có trường gpa
-    form_data = req.form_data or {}
+    form_data = dict(req.form_data or {})
     gpa_val = form_data.get("gpa")
     if gpa_val is not None:
         try:
@@ -903,19 +907,132 @@ def staff_submit_to_head_view(request, request_id):
         except (ValueError, TypeError):
             pass
 
-    body = _read_json_object(request) if request.body else {}
-    note = (body.get("note") or "").strip() if isinstance(body, dict) and isinstance(body.get("note"), str) else ""
+    content_type = request.content_type or ""
+    uploaded_review_file = None
+    body = {}
+
+    if content_type.startswith("multipart/form-data"):
+        if request.method == "PUT":
+            try:
+                post_data, files_data = MultiPartParser(request.META, request, request.upload_handlers).parse()
+            except Exception:
+                return _json_error("INVALID_FORM_DATA", "Dữ liệu multipart không hợp lệ.", status=400)
+        else:
+            post_data, files_data = request.POST, request.FILES
+
+        uploaded_review_file = files_data.get("review_file") or files_data.get("file")
+        raw_review_data = post_data.get("review_data")
+        parsed_review = {}
+        if raw_review_data:
+            try:
+                parsed_review = json.loads(raw_review_data) if isinstance(raw_review_data, str) else dict(raw_review_data)
+            except ValueError:
+                parsed_review = {}
+        body = {
+            "note": post_data.get("note") or post_data.get("review_notes") or parsed_review.get("note") or "",
+            "review_data": parsed_review,
+            "grade_reviewer_1": post_data.get("grade_reviewer_1") or post_data.get("score_teacher_1"),
+            "grade_reviewer_2": post_data.get("grade_reviewer_2") or post_data.get("score_teacher_2"),
+            "final_grade": post_data.get("final_grade") or post_data.get("final_score"),
+            "file_name": post_data.get("file_name"),
+        }
+    else:
+        body = _read_json_object(request) if request.body else {}
+        if body is None:
+            return _json_error("INVALID_FORM_DATA", "Body JSON không hợp lệ.", status=400)
+
+    raw_note = body.get("note") if isinstance(body.get("note"), str) else body.get("review_notes")
+    note = (raw_note or "").strip() if isinstance(raw_note, str) else ""
+
+    raw_review = body.get("review_data") if isinstance(body.get("review_data"), dict) else {}
+    g1_raw = raw_review.get("grade_reviewer_1", raw_review.get("score_teacher_1", body.get("grade_reviewer_1", body.get("score_teacher_1"))))
+    g2_raw = raw_review.get("grade_reviewer_2", raw_review.get("score_teacher_2", body.get("grade_reviewer_2", body.get("score_teacher_2"))))
+    final_raw = raw_review.get("final_grade", raw_review.get("final_score", body.get("final_grade", body.get("final_score"))))
+    file_name_raw = raw_review.get("file_name", body.get("file_name"))
+    review_note_raw = raw_review.get("review_notes", raw_review.get("note", note))
+
+    review_data = dict(form_data.get("review_data") or {}) if isinstance(form_data.get("review_data"), dict) else {}
+    has_review_input = any(v is not None and str(v).strip() != "" for v in (g1_raw, g2_raw, final_raw, file_name_raw)) or uploaded_review_file is not None
+
+    if has_review_input or req.procedure_type_id == 3:
+        g1_val = None
+        g2_val = None
+        final_val = None
+        if g1_raw is not None and str(g1_raw).strip() != "":
+            try:
+                g1_val = float(g1_raw)
+            except (ValueError, TypeError):
+                return _json_error("INVALID_FORM_DATA", "Điểm giáo viên 1 phải là số hợp lệ.", status=400)
+            if g1_val < 0 or g1_val > 10:
+                return _json_error("INVALID_FORM_DATA", "Điểm giáo viên 1 phải nằm trong khoảng 0 - 10.", status=400)
+
+        if g2_raw is not None and str(g2_raw).strip() != "":
+            try:
+                g2_val = float(g2_raw)
+            except (ValueError, TypeError):
+                return _json_error("INVALID_FORM_DATA", "Điểm giáo viên 2 phải là số hợp lệ.", status=400)
+            if g2_val < 0 or g2_val > 10:
+                return _json_error("INVALID_FORM_DATA", "Điểm giáo viên 2 phải nằm trong khoảng 0 - 10.", status=400)
+
+        if final_raw is not None and str(final_raw).strip() != "":
+            try:
+                final_val = float(final_raw)
+            except (ValueError, TypeError):
+                return _json_error("INVALID_FORM_DATA", "Điểm cuối phải là số hợp lệ.", status=400)
+        elif g1_val is not None and g2_val is not None:
+            final_val = round((g1_val + g2_val) / 2.0, 2)
+
+        if g1_val is not None:
+            review_data["grade_reviewer_1"] = g1_val
+        if g2_val is not None:
+            review_data["grade_reviewer_2"] = g2_val
+        if final_val is not None:
+            review_data["final_grade"] = final_val
+        if file_name_raw:
+            review_data["file_name"] = str(file_name_raw).strip()
+        if review_note_raw:
+            review_data["note"] = str(review_note_raw).strip()
+        review_data["reviewed_by"] = user.full_name
+        review_data["reviewed_at"] = _format_datetime(timezone.now())
 
     with transaction.atomic():
+        if uploaded_review_file is not None:
+            uploaded_review_file.seek(0)
+            rel_path = f"attachments/req_{req.request_id}/review_{uploaded_review_file.name}"
+            saved_path = default_storage.save(rel_path, ContentFile(uploaded_review_file.read()))
+            att = Attachment.objects.create(
+                request=req,
+                config=None,
+                file_name=uploaded_review_file.name,
+                file_path=saved_path,
+                file_size=uploaded_review_file.size,
+                mime_type=getattr(uploaded_review_file, "content_type", None) or "application/octet-stream",
+                is_supplement=False,
+            )
+            review_data["file_name"] = uploaded_review_file.name
+            review_data["attachment_id"] = att.attachment_id
+            review_data["download_url"] = f"/api/attachments/{att.attachment_id}/download"
+
+        if review_data:
+            form_data["review_data"] = review_data
+            req.form_data = form_data
+
         status_before = req.internal_status
         req.internal_status = "Chờ TP phê duyệt"
-        req.save(update_fields=["internal_status", "updated_at"])
+        req.save(update_fields=["form_data", "internal_status", "updated_at"])
+
+        audit_note = note
+        if not audit_note and review_data.get("final_grade") is not None:
+            audit_note = (
+                f"Đã nhập kết quả chấm phúc khảo: GV1 = {review_data.get('grade_reviewer_1')}, "
+                f"GV2 = {review_data.get('grade_reviewer_2')}, Điểm cuối = {review_data.get('final_grade')}."
+            )
 
         StateAuditLog.objects.create(
             request=req,
             performed_by=user,
             action="submit_to_head",
-            note=note or "CV đã thẩm định và trình Trưởng phòng phê duyệt.",
+            note=audit_note or "CV đã thẩm định và trình Trưởng phòng phê duyệt.",
             status_before=status_before,
             status_after="Chờ TP phê duyệt",
         )
@@ -940,8 +1057,128 @@ def staff_submit_to_head_view(request, request_id):
             "internal_status": req.internal_status,
             "request_id": req.request_id,
             "request_code": req.request_code,
+            "review_data": review_data or None,
         },
         "message": "Đã trình Trưởng phòng phê duyệt.",
+    })
+
+
+@csrf_exempt
+@require_http_methods(["PUT"])
+def staff_approve_head_view(request, request_id):
+    """
+    API 3.6: PUT /api/staff/requests/:id/approve-head — Trưởng phòng phê duyệt (quy trình 2 cấp, VD: Phúc khảo điểm thi)
+    """
+    user = _get_authenticated_user(request)
+    if not user:
+        return _json_error("UNAUTHORIZED", "Chưa đăng nhập.", status=401)
+
+    if user.role != "dept_head":
+        return _json_error("FORBIDDEN", "Chỉ Trưởng phòng mới có quyền phê duyệt cấp phòng ban.", status=403)
+
+    try:
+        req = Request.objects.select_related("procedure_type", "user", "user__student_registry").get(request_id=request_id)
+    except Request.DoesNotExist:
+        return _json_error("NOT_FOUND", "Không tìm thấy yêu cầu.", status=404)
+
+    active_dept_id = _active_department_id(req)
+    if user.department_id != active_dept_id and not _is_demo_cross_dept_staff(user):
+        return _json_error("FORBIDDEN", "Bạn không có quyền xử lý yêu cầu của phòng ban khác.", status=403)
+
+    if req.procedure_type.approval_levels == 3:
+        return _json_error(
+            "INVALID_APPROVAL_LEVEL",
+            "Thủ tục này yêu cầu trình Hiệu trưởng ký số, không kết thúc ở cấp Trưởng phòng.",
+            status=422,
+        )
+
+    if req.internal_status not in ("Chờ TP phê duyệt", "CV đang thẩm định"):
+        return _json_error("INVALID_STATE", "Yêu cầu không ở trạng thái Chờ TP phê duyệt.", status=422)
+
+    body = _read_json_object(request) if request.body else {}
+    if body is None:
+        return _json_error("INVALID_FORM_DATA", "Body JSON không hợp lệ.", status=400)
+    note = (body.get("note") or "").strip() if isinstance(body, dict) and isinstance(body.get("note"), str) else ""
+
+    form_data = dict(req.form_data or {})
+    review_data = form_data.get("review_data") if isinstance(form_data.get("review_data"), dict) else {}
+
+    old_grade = form_data.get("current_grade", 6.0)
+    final_grade = review_data.get("final_grade", form_data.get("final_grade"))
+    if final_grade is None and req.procedure_type_id == 3:
+        return _json_error(
+            "MISSING_REVIEW_DATA",
+            "Chuyên viên chưa nhập điểm phúc khảo để Trưởng phòng phê duyệt.",
+            status=422,
+        )
+
+    reg = req.user.student_registry
+    mssv = reg.mssv if reg else form_data.get("mssv", "")
+    course_code = form_data.get("course_code") or form_data.get("subject") or ""
+
+    if final_grade is not None:
+        try:
+            AcademicMSService.updateGrade(mssv, course_code, float(final_grade))
+        except ExternalServiceError as e:
+            return _json_error("EXTERNAL_SERVICE_ERROR", str(e), status=503)
+
+    with transaction.atomic():
+        status_before = req.internal_status
+        if final_grade is not None:
+            form_data["final_grade"] = final_grade
+            req.form_data = form_data
+        req.status = "Đã xử lý"
+        req.internal_status = "Đã xử lý"
+        req.save(update_fields=["form_data", "status", "internal_status", "updated_at"])
+
+        default_note = (
+            f"Trưởng phòng phê duyệt kết quả phúc khảo: Điểm cũ {old_grade} → Mới {final_grade}."
+            if final_grade is not None
+            else "Trưởng phòng đã phê duyệt yêu cầu."
+        )
+        StateAuditLog.objects.create(
+            request=req,
+            performed_by=user,
+            action="approve_head",
+            note=note or default_note,
+            status_before=status_before,
+            status_after="Đã xử lý",
+        )
+
+        if final_grade is not None:
+            try:
+                is_lower = float(final_grade) < float(old_grade)
+            except (ValueError, TypeError):
+                is_lower = False
+
+            if is_lower:
+                notif_msg = (
+                    f"Kết quả phúc khảo ({req.request_code}): Điểm cũ {old_grade} → Mới {final_grade} "
+                    f"(Áp dụng điểm chấm lại theo quy chế đào tạo VJU)."
+                )
+            else:
+                notif_msg = f"Kết quả phúc khảo ({req.request_code}): Điểm cũ {old_grade} → Mới {final_grade}."
+            notif_title = "Kết quả phúc khảo điểm thi"
+        else:
+            notif_title = "Yêu cầu đã được phê duyệt"
+            notif_msg = f"Yêu cầu {req.request_code} của bạn đã được Trưởng phòng phê duyệt."
+
+        Notification.objects.create(
+            user=req.user,
+            request=req,
+            title=notif_title,
+            message=notif_msg,
+        )
+
+    return JsonResponse({
+        "success": True,
+        "data": {
+            "internal_status": req.internal_status,
+            "status": req.status,
+            "old_grade": old_grade,
+            "final_grade": final_grade,
+        },
+        "message": "Đã phê duyệt kết quả phúc khảo.",
     })
 
 

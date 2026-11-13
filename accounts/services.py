@@ -82,6 +82,21 @@ class AcademicMSService:
     def update_student_status(cls, mssv: str, status: str) -> dict:
         return cls.updateStudentStatus(mssv, status)
 
+    @classmethod
+    def updateGrade(cls, mssv: str, course_code: str, new_grade: float) -> dict:
+        if not mssv:
+            return {"success": False, "error": "MISSING_MSSV"}
+        return {
+            "success": True,
+            "mssv": mssv,
+            "course_code": course_code or "",
+            "new_grade": float(new_grade),
+        }
+
+    @classmethod
+    def update_grade(cls, mssv: str, course_code: str, new_grade: float) -> dict:
+        return cls.updateGrade(mssv, course_code, new_grade)
+
 
 class MockSmartCAService:
     """Mock Service cho dịch vụ ký số từ xa SmartCA (VNPT SmartCA / Viettel SmartCA)."""

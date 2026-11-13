@@ -90,7 +90,15 @@ function StaffRequestDetail({ basePath = '/staff' }) {
     runAction(() => api.staff.assign(request.request_id, Number(assigneeId)), 'Đã phân công chuyên viên.');
   };
 
-  const handleApprove = () => runAction(() => api.staff.approve(request.request_id), 'Đã duyệt hồ sơ.');
+  const handleApprove = () => {
+    if (isDeptHead || request?.type_id === 3) {
+      return runAction(
+        () => api.staff.approveHead(request.request_id),
+        'Đã phê duyệt hồ sơ.'
+      );
+    }
+    return runAction(() => api.staff.approve(request.request_id), 'Đã duyệt hồ sơ.');
+  };
 
   const handleProgressToHead = () => runAction(
     () => api.staff.submitToHead(request.request_id),
@@ -170,7 +178,12 @@ function StaffRequestDetail({ basePath = '/staff' }) {
   const isApproved = request.internal_status === APPROVED;
   const preference = request.result_preference || request.form_data?.result_preference;
   const needsHardCopy = preference === 'Bản cứng' || preference === 'Cả hai' || request.type_id === 2;
-  const formEntries = Object.entries(request.form_data || {}).filter(([, v]) => v !== '' && v !== null && v !== undefined);
+  const reviewData = (request.form_data && typeof request.form_data.review_data === 'object')
+    ? request.form_data.review_data
+    : null;
+  const formEntries = Object.entries(request.form_data || {}).filter(
+    ([key, v]) => key !== 'review_data' && v !== '' && v !== null && v !== undefined && typeof v !== 'object'
+  );
 
   const infoRows = [
     ['Mã yêu cầu', request.request_code],
@@ -310,6 +323,71 @@ function StaffRequestDetail({ basePath = '/staff' }) {
         )}
       </div>
 
+      {/* Kết quả thẩm định phúc khảo (Chuyên viên đã nhập ở màn D4) */}
+      {reviewData && (
+        <div className="staff-detail-card" style={{ marginTop: 16 }}>
+          <h2 className="staff-detail-section-title">Kết quả thẩm định phúc khảo</h2>
+          <div style={{ height: 16 }} />
+          <div className="staff-detail-divider" />
+
+          <div className="staff-detail-row">
+            <div className="staff-detail-label">Điểm giáo viên 1</div>
+            <div className="staff-detail-value" style={{ fontWeight: 600 }}>
+              {reviewData.grade_reviewer_1 !== undefined && reviewData.grade_reviewer_1 !== null
+                ? String(reviewData.grade_reviewer_1)
+                : '—'}
+            </div>
+          </div>
+          <div className="staff-detail-divider" />
+
+          <div className="staff-detail-row">
+            <div className="staff-detail-label">Điểm giáo viên 2</div>
+            <div className="staff-detail-value" style={{ fontWeight: 600 }}>
+              {reviewData.grade_reviewer_2 !== undefined && reviewData.grade_reviewer_2 !== null
+                ? String(reviewData.grade_reviewer_2)
+                : '—'}
+            </div>
+          </div>
+          <div className="staff-detail-divider" />
+
+          <div className="staff-detail-row">
+            <div className="staff-detail-label">Điểm cuối (Sau phúc khảo)</div>
+            <div className="staff-detail-value" style={{ fontWeight: 700, color: '#AA2327', fontSize: 15 }}>
+              {reviewData.final_grade !== undefined && reviewData.final_grade !== null
+                ? String(reviewData.final_grade)
+                : '—'}
+            </div>
+          </div>
+          <div className="staff-detail-divider" />
+
+          <div className="staff-detail-row">
+            <div className="staff-detail-label">Biên bản phúc khảo</div>
+            <div className="staff-detail-value">
+              {reviewData.download_url ? (
+                <button
+                  type="button"
+                  className="staff-detail-btn-doc"
+                  onClick={() => handleDownload(reviewData.download_url, reviewData.file_name || 'bien_ban_phuc_khao.pdf')}
+                >
+                  {reviewData.file_name || 'Biên bản phúc khảo'} ⤓
+                </button>
+              ) : (
+                <span>{reviewData.file_name || 'Không đính kèm'}</span>
+              )}
+            </div>
+          </div>
+          <div className="staff-detail-divider" />
+
+          <div className="staff-detail-row">
+            <div className="staff-detail-label">Ý kiến thẩm định</div>
+            <div className="staff-detail-value" style={{ whiteSpace: 'pre-wrap' }}>
+              {reviewData.note || '—'}
+            </div>
+          </div>
+          <div className="staff-detail-divider" />
+        </div>
+      )}
+
       {/* Lịch sử xử lý */}
       <div className="staff-detail-card" style={{ marginTop: 16 }}>
         <h2 className="staff-detail-section-title">Lịch sử xử lý</h2>
@@ -389,7 +467,16 @@ function StaffRequestDetail({ basePath = '/staff' }) {
             >
               Yêu cầu bổ sung
             </button>
-            {request.type_id === 4 ? (
+            {request.type_id === 3 ? (
+              <button
+                type="button"
+                className="staff-btn-action-primary"
+                disabled={busy}
+                onClick={() => navigate(`/staff/request/${request.request_id}/review`)}
+              >
+                Thẩm định →
+              </button>
+            ) : request.type_id === 4 ? (
               <button type="button" className="staff-btn-action-primary" disabled={busy} onClick={handleProgressToHead}>
                 {busy ? 'Đang xử lý...' : 'Trình Trưởng phòng →'}
               </button>

@@ -274,6 +274,14 @@ def _student_create_request(request):
     if procedure.type_id == 2 or "giới thiệu" in procedure.name.lower():
         cleaned_form_data["result_preference"] = "Bản cứng"
 
+    # Thủ tục phúc khảo điểm thi (type_id = 3): auto-fill điểm hiện tại từ Academic MS nếu chưa có
+    if procedure.type_id == 3 and ("current_grade" not in cleaned_form_data or cleaned_form_data.get("current_grade") is None):
+        reg = getattr(user, "student_registry", None)
+        mssv = reg.mssv if reg else ""
+        course_code = cleaned_form_data.get("course_code") or cleaned_form_data.get("subject") or ""
+        grade_res = AcademicMSService.get_grade(mssv, str(course_code))
+        cleaned_form_data["current_grade"] = grade_res.get("grade", 6.0) if isinstance(grade_res, dict) else 6.0
+
     # Thủ tục bảo lưu KQHT (type_id = 4): auto-fill GPA từ Academic MS nếu chưa có
     if procedure.type_id == 4 and ("gpa" not in cleaned_form_data or cleaned_form_data.get("gpa") is None):
         reg = getattr(user, "student_registry", None)
@@ -566,7 +574,7 @@ def request_detail_view(request, request_id):
         {
             "attachment_id": a.attachment_id,
             "config_id": a.config_id,
-            "item_name": a.config.item_name if a.config else None,
+            "item_name": a.config.item_name if a.config else ("Biên bản phúc khảo" if req.procedure_type_id == 3 else None),
             "file_name": a.file_name,
             "file_size": a.file_size,
             "mime_type": a.mime_type,

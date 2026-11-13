@@ -4,7 +4,7 @@ import Modal from '../common/Modal';
 import Button from '../common/Button';
 import api from '../../services/api';
 import {
-  formatDate, formatDateTime, formatFileSize, statusStyle, TIMELINE_ACTION_LABELS,
+  formatDate, formatDateTime, formatFileSize, statusStyle, FIELD_LABELS, TIMELINE_ACTION_LABELS,
 } from '../../utils/format';
 import './StudentPages.css';
 
@@ -190,7 +190,9 @@ function RequestDetail() {
   const needsSupplement = request.internal_status === 'Cần bổ sung';
   const canFeedback = request.status === DONE_STATUS;
   const isWaitingPayment = request.status === 'Chờ thanh toán' || request.internal_status === 'Chờ thanh toán';
-  const formEntries = Object.entries(request.form_data || {}).filter(([, v]) => v !== '' && v !== null && v !== undefined);
+  const formEntries = Object.entries(request.form_data || {}).filter(
+    ([key, v]) => key !== 'review_data' && v !== '' && v !== null && v !== undefined && typeof v !== 'object'
+  );
 
   const infoRows = [
     ['Tên sinh viên', student.full_name],
@@ -198,7 +200,7 @@ function RequestDetail() {
     ['Mã yêu cầu', request.request_code],
     ['Tên thủ tục', request.type_name],
     ['Phòng ban xử lý', request.department_name],
-    ...formEntries.map(([key, value]) => [fieldLabels[key] || key, String(value)]),
+    ...formEntries.map(([key, value]) => [fieldLabels[key] || FIELD_LABELS[key] || key, String(value)]),
     ['Ngày gửi', formatDateTime(request.created_at)],
     ['Hạn xử lý dự kiến', formatDate(request.sla_deadline)],
   ];
