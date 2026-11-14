@@ -211,7 +211,7 @@ def staff_department_members_view(request):
 @require_http_methods(["PUT"])
 def staff_assign_request_view(request, request_id):
     """
-    API 1.7: PUT /api/staff/requests/:id/assign — TP phân công CV (BR-20)
+    API 1.7: PUT /api/staff/requests/:id/assign — TP phân công hoặc thay đổi CV phụ trách (BR-20)
     """
     user = _get_authenticated_user(request)
     if not user:
@@ -220,7 +220,7 @@ def staff_assign_request_view(request, request_id):
         return _json_error("FORBIDDEN", "Chỉ Trưởng phòng mới có quyền phân công.", status=403)
 
     try:
-        req = Request.objects.select_related("procedure_type", "user").get(request_id=request_id)
+        req = Request.objects.select_related("procedure_type", "user", "assigned_staff").get(request_id=request_id)
     except Request.DoesNotExist:
         return _json_error("NOT_FOUND", "Không tìm thấy yêu cầu.", status=404)
 
@@ -228,12 +228,17 @@ def staff_assign_request_view(request, request_id):
     if user.department_id != active_dept_id and not _is_demo_cross_dept_staff(user):
         return _json_error("FORBIDDEN", "Bạn không có quyền phân công yêu cầu của phòng ban khác.", status=403)
 
-    is_waiting_assign = (
-        req.internal_status == "Chờ phân công"
+    assignable_statuses = {"Chờ phân công", "CV đang thẩm định", "Cần bổ sung", "Chờ TP phê duyệt"}
+    can_assign = (
+        req.internal_status in assignable_statuses
         or (req.internal_status and req.internal_status.endswith("chờ phân công"))
     )
-    if not is_waiting_assign or req.assigned_staff_id is not None:
-        return _json_error("INVALID_STATE", "Yêu cầu không ở trạng thái chờ phân công.", status=422)
+    if not can_assign:
+        return _json_error(
+            "INVALID_STATE",
+            "Không thể phân công hoặc thay đổi chuyên viên cho yêu cầu ở trạng thái này.",
+            status=422,
+        )
 
     body = _read_json_object(request)
     if body is None or "assigned_staff_id" not in body:
@@ -251,26 +256,53 @@ def staff_assign_request_view(request, request_id):
     if staff.department_id != active_dept_id and not _is_demo_cross_dept_staff(staff):
         return _json_error("INVALID_STAFF", "Chuyên viên không thuộc phòng ban phụ trách.", status=422)
 
+    old_staff = req.assigned_staff
+    is_reassignment = old_staff is not None and old_staff.user_id != staff.user_id
+    is_same_staff = old_staff is not None and old_staff.user_id == staff.user_id
+
+    if is_same_staff:
+        return JsonResponse({
+            "success": True,
+            "data": {
+                "internal_status": req.internal_status,
+                "assigned_staff": {
+                    "user_id": staff.user_id,
+                    "full_name": staff.full_name,
+                },
+            },
+            "message": f"Hồ sơ đang được phụ trách bởi CV {staff.full_name}.",
+        })
+
     now = timezone.now()
     with transaction.atomic():
         status_before = req.internal_status
         req.assigned_staff = staff
         req.assigned_by = user
         req.assigned_at = now
-        req.status = "Đang xử lý"
-        req.internal_status = "CV đang thẩm định"
+        if (
+            req.internal_status == "Chờ phân công"
+            or (req.internal_status and req.internal_status.endswith("chờ phân công"))
+            or req.internal_status == "Chờ TP phê duyệt"
+        ):
+            req.status = "Đang xử lý"
+            req.internal_status = "CV đang thẩm định"
         req.save(update_fields=[
             "assigned_staff", "assigned_by", "assigned_at",
             "status", "internal_status", "updated_at",
         ])
 
+        log_note = (
+            f"Đổi phân công từ CV {old_staff.full_name} sang CV {staff.full_name}"
+            if is_reassignment
+            else f"Phân công CV {staff.full_name}"
+        )
         StateAuditLog.objects.create(
             request=req,
             performed_by=user,
             action="assign",
-            note=f"Phân công CV {staff.full_name}",
+            note=log_note,
             status_before=status_before,
-            status_after="CV đang thẩm định",
+            status_after=req.internal_status,
         )
 
         Notification.objects.create(
@@ -279,12 +311,20 @@ def staff_assign_request_view(request, request_id):
             title="Được phân công xử lý yêu cầu mới",
             message=f"Bạn được phân công xử lý yêu cầu {req.request_code}.",
         )
-        Notification.objects.create(
-            user=req.user,
-            request=req,
-            title="Đơn đang được xử lý",
-            message=f"Đơn đang được xử lý ({req.request_code}).",
-        )
+        if is_reassignment and old_staff:
+            Notification.objects.create(
+                user=old_staff,
+                request=req,
+                title="Thay đổi phân công xử lý yêu cầu",
+                message=f"Yêu cầu {req.request_code} đã được chuyển phân công sang CV {staff.full_name}.",
+            )
+        elif not is_reassignment:
+            Notification.objects.create(
+                user=req.user,
+                request=req,
+                title="Đơn đang được xử lý",
+                message=f"Đơn đang được xử lý ({req.request_code}).",
+            )
 
     return JsonResponse({
         "success": True,
@@ -295,7 +335,11 @@ def staff_assign_request_view(request, request_id):
                 "full_name": staff.full_name,
             },
         },
-        "message": f"Đã phân công CV {staff.full_name}.",
+        "message": (
+            f"Đã chuyển phân công sang CV {staff.full_name}."
+            if is_reassignment
+            else f"Đã phân công CV {staff.full_name}."
+        ),
     })
 
 

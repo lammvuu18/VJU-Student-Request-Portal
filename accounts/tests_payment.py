@@ -39,8 +39,9 @@ class PaymentTestCase(TestCase):
 
     def _create_fee_request(self, user=None):
         u = user or self.sv_a
+        seq = Request.objects.count() + 1
         return Request.objects.create(
-            request_code=f"REQ-TEST-{int(timezone.now().timestamp())}",
+            request_code=f"REQ-TEST-{int(timezone.now().timestamp())}-{seq}",
             user=u,
             procedure_type=self.proc_fee,
             status="Chờ thanh toán",
@@ -323,4 +324,105 @@ class PaymentTestCase(TestCase):
         # Cũ đã bị failed
         p.refresh_from_db()
         self.assertEqual(p.status, "failed")
+
+    def test_overdue_24h_request_auto_cancelled_with_reason_on_list_and_detail(self):
+        req = self._create_fee_request()
+        Request.objects.filter(pk=req.pk).update(created_at=timezone.now() - timedelta(hours=25))
+
+        res = self.client.get(
+            f"/api/requests/{req.request_id}",
+            **self._auth_header(self.sv_a),
+        )
+        self.assertEqual(res.status_code, 200)
+        data = res.json()["data"]
+        self.assertEqual(data["status"], "Đã hủy")
+        self.assertEqual(data["internal_status"], "Đã hủy")
+        self.assertEqual(data["cancel_reason"], "Quá hạn thanh toán phí")
+
+        req.refresh_from_db()
+        self.assertEqual(req.status, "Đã hủy")
+        self.assertEqual(req.form_data.get("cancel_reason"), "Quá hạn thanh toán phí")
+
+        log = StateAuditLog.objects.filter(request=req, action="cancel").first()
+        self.assertIsNotNone(log)
+        self.assertIn("Quá hạn thanh toán phí", log.note)
+
+        notif = Notification.objects.filter(user=self.sv_a, request=req).order_by("-sent_at").first()
+        self.assertIsNotNone(notif)
+        self.assertIn("Quá hạn thanh toán phí", notif.message)
+
+    @patch("accounts.payment_service.get_payos_client")
+    def test_expired_qr_session_auto_cancels_request_with_reason_on_get_status(self, mock_client_getter):
+        mock_client = MagicMock()
+        mock_info = MagicMock()
+        mock_info.status = "EXPIRED"
+        mock_client.payment_requests.get.return_value = mock_info
+        mock_client_getter.return_value = mock_client
+
+        req = self._create_fee_request()
+        past_exp = (timezone.now() - timedelta(minutes=2)).isoformat()
+        p = Payment.objects.create(
+            request=req,
+            txn_id="999001",
+            amount=50000,
+            status="pending",
+            payment_url="https://pay.payos.vn/web/exp999",
+            callback_data={"qr_code": "EXP_QR", "expires_at": past_exp},
+            retry_count=1,
+        )
+
+        res = self.client.get(
+            f"/api/requests/{req.request_id}/payments",
+            **self._auth_header(self.sv_a),
+        )
+        self.assertEqual(res.status_code, 200)
+        data = res.json()["data"]
+        self.assertEqual(data["request_status"], "Đã hủy")
+        self.assertEqual(data["cancel_reason"], "Quá hạn thanh toán phí")
+
+        req.refresh_from_db()
+        p.refresh_from_db()
+        self.assertEqual(req.status, "Đã hủy")
+        self.assertEqual(req.internal_status, "Đã hủy")
+        self.assertEqual(req.form_data.get("cancel_reason"), "Quá hạn thanh toán phí")
+        self.assertEqual(p.status, "failed")
+
+    def test_overdue_payment_does_not_block_new_submission(self):
+        old_req = self._create_fee_request()
+        past_exp = (timezone.now() - timedelta(minutes=5)).isoformat()
+        Payment.objects.create(
+            request=old_req,
+            txn_id="888001",
+            amount=50000,
+            status="pending",
+            payment_url="https://pay.payos.vn/web/exp888",
+            callback_data={"qr_code": "EXP_QR", "expires_at": past_exp},
+            retry_count=1,
+        )
+
+        # Khi gọi danh sách đơn hoặc nộp đơn mới -> đơn cũ quá hạn tự động hủy kèm lý do "Quá hạn thanh toán phí"
+        list_res = self.client.get("/api/requests", **self._auth_header(self.sv_a))
+        self.assertEqual(list_res.status_code, 200)
+        old_req.refresh_from_db()
+        self.assertEqual(old_req.status, "Đã hủy")
+        self.assertEqual(old_req.form_data.get("cancel_reason"), "Quá hạn thanh toán phí")
+
+        new_req = self._create_fee_request()
+        self.assertEqual(new_req.status, "Chờ thanh toán")
+
+    def test_cancel_endpoint_supports_waiting_payment_with_reason(self):
+        req = self._create_fee_request()
+        res = self.client.put(
+            f"/api/requests/{req.request_id}/cancel",
+            data=json.dumps({"reason": "Quá hạn thanh toán phí"}),
+            content_type="application/json",
+            **self._auth_header(self.sv_a),
+        )
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()["data"]["status"], "Đã hủy")
+        self.assertEqual(res.json()["data"]["cancel_reason"], "Quá hạn thanh toán phí")
+        req.refresh_from_db()
+        self.assertEqual(req.status, "Đã hủy")
+        self.assertEqual(req.form_data.get("cancel_reason"), "Quá hạn thanh toán phí")
+
 

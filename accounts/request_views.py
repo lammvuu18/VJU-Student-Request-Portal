@@ -13,10 +13,16 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from .models import (
-    AccessLog, Attachment, AttachmentConfig, Feedback, Notification, ProcedureType,
+    AccessLog, Attachment, AttachmentConfig, Feedback, Notification, Payment, ProcedureType,
     Request, Result, StateAuditLog, User,
 )
 from .notification_views import DEFAULT_LIMIT, MAX_LIMIT, _format_datetime, _parse_positive_int
+from .payment_service import (
+    PAYMENT_EXPIRED_REASON,
+    auto_cancel_overdue_payments_for_user,
+    cancel_expired_payment_request,
+    check_and_cancel_overdue_payment,
+)
 from .services import AcademicMSService, calculate_sla_deadline, validate_uploaded_file
 from .views import _get_authenticated_user, _json_error, _read_json_object
 
@@ -160,6 +166,9 @@ def _student_request_list(request):
         return _json_error("INVALID_PARAM", "page và limit phải là số nguyên dương.", status=400)
     limit = min(limit, MAX_LIMIT)
 
+    # Tự động hủy các đơn Chờ thanh toán đã quá hạn của sinh viên trước khi lấy danh sách
+    auto_cancel_overdue_payments_for_user(user)
+
     qs = (
         Request.objects.filter(user=user, is_draft=False)
         .select_related("procedure_type", "procedure_type__department")
@@ -189,6 +198,7 @@ def _student_request_list(request):
             "department_name": r.procedure_type.department.name if r.procedure_type.department else None,
             "status": r.status,
             "internal_status": r.internal_status,
+            "cancel_reason": (r.form_data or {}).get("cancel_reason"),
             "created_at": _format_datetime(r.created_at),
             "sla_deadline": _format_datetime(r.sla_deadline),
             "is_fee_required": r.procedure_type.is_fee_required,
@@ -379,7 +389,9 @@ def _student_create_request(request):
                 status=400,
             )
 
-    # 6. Chống trùng (BR-04)
+    # 6. Tự động hủy đơn Chờ thanh toán đã quá hạn trước khi kiểm tra chống trùng (BR-04)
+    auto_cancel_overdue_payments_for_user(user)
+
     has_duplicate = (
         Request.objects.filter(user=user, procedure_type=procedure, is_draft=False)
         .exclude(status__in=CLOSED_REQUEST_STATUSES)
@@ -545,6 +557,10 @@ def request_detail_view(request, request_id):
     else:
         return _json_error("FORBIDDEN", "Bạn không có quyền xem yêu cầu này.", status=403)
 
+    # Nếu đơn đang Chờ thanh toán nhưng đã quá hạn thanh toán -> tự động hủy đơn kèm lý do
+    if req.internal_status == "Chờ thanh toán":
+        check_and_cancel_overdue_payment(req, check_session_expiry=True)
+
     reg = req.user.student_registry
     student_info = {
         "full_name": reg.full_name if reg else req.user.full_name,
@@ -620,6 +636,7 @@ def request_detail_view(request, request_id):
         "department_name": req.procedure_type.department.name if req.procedure_type.department else None,
         "status": req.status,
         "internal_status": req.internal_status,
+        "cancel_reason": (req.form_data or {}).get("cancel_reason"),
         "form_data": req.form_data or {},
         "result_preference": req.result_preference or (req.form_data or {}).get("result_preference"),
         "academic_check": academic_check,
@@ -653,44 +670,87 @@ def request_detail_view(request, request_id):
 @require_http_methods(["PUT"])
 def request_cancel_view(request, request_id):
     """
-    API 1.4: PUT /api/requests/:id/cancel — SV hủy đơn khi chưa phân công (BR-06)
+    API 1.4: PUT /api/requests/:id/cancel — SV hủy đơn khi chưa phân công hoặc hủy tự động khi quá hạn thanh toán (BR-06, BR-28)
     """
     user = _get_authenticated_user(request)
     if not user:
         return _json_error("UNAUTHORIZED", "Chưa đăng nhập.", status=401)
 
     try:
-        req = Request.objects.get(request_id=request_id)
+        req = Request.objects.select_related("procedure_type", "user").get(request_id=request_id)
     except Request.DoesNotExist:
         return _json_error("NOT_FOUND", "Không tìm thấy yêu cầu.", status=404)
 
     if user.role != "student" or req.user_id != user.user_id:
         return _json_error("FORBIDDEN", "Bạn không có quyền hủy yêu cầu này.", status=403)
 
-    if req.internal_status != "Chờ phân công":
+    body = _read_json_object(request) if request.body else {}
+    reason = ""
+    if isinstance(body, dict) and isinstance(body.get("reason"), str):
+        reason = body.get("reason").strip()
+
+    # Nếu frontend gọi auto-cancel với reason quá hạn mà đơn đã được hủy tự động trước đó thì trả 200 (idempotent)
+    if reason and req.status == "Đã hủy" and req.internal_status == "Đã hủy":
+        existing_reason = (req.form_data or {}).get("cancel_reason") or reason
+        return JsonResponse({
+            "success": True,
+            "data": {
+                "status": req.status,
+                "internal_status": req.internal_status,
+                "cancel_reason": existing_reason,
+            },
+            "message": "Đã hủy yêu cầu.",
+        })
+
+    if req.internal_status not in ("Chờ phân công", "Chờ thanh toán"):
         return _json_error(
             "CANNOT_CANCEL",
             "Không thể hủy — yêu cầu đã được phân công xử lý.",
             status=422,
         )
 
+    if req.internal_status == "Chờ thanh toán" and (
+        not reason or "quá hạn" in reason.lower()
+    ):
+        cancel_reason = reason or PAYMENT_EXPIRED_REASON
+        cancel_expired_payment_request(req, reason=cancel_reason)
+        return JsonResponse({
+            "success": True,
+            "data": {
+                "status": req.status,
+                "internal_status": req.internal_status,
+                "cancel_reason": cancel_reason,
+            },
+            "message": f"Đơn đã tự động bị hủy kèm lý do: {cancel_reason}.",
+        })
+
     with transaction.atomic():
+        Payment.objects.filter(request=req, status="pending").update(status="cancelled")
         status_before = req.internal_status
+        form_data = dict(req.form_data or {})
+        if reason:
+            form_data["cancel_reason"] = reason
+            req.form_data = form_data
         req.status = "Đã hủy"
         req.internal_status = "Đã hủy"
-        req.save(update_fields=["status", "internal_status", "updated_at"])
+        req.save(update_fields=["form_data", "status", "internal_status", "updated_at"])
 
         StateAuditLog.objects.create(
             request=req,
             performed_by=user,
             action="cancel",
-            note="Sinh viên hủy yêu cầu",
+            note=f"Sinh viên hủy yêu cầu: {reason}" if reason else "Sinh viên hủy yêu cầu",
             status_before=status_before,
             status_after="Đã hủy",
         )
 
     return JsonResponse({
         "success": True,
+        "data": {
+            "status": req.status,
+            "internal_status": req.internal_status,
+            "cancel_reason": reason or None,
+        },
         "message": "Đã hủy yêu cầu.",
     })
 

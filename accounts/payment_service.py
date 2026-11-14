@@ -15,6 +15,7 @@ from .services import calculate_sla_deadline
 logger = logging.getLogger(__name__)
 
 QR_EXPIRATION_SECONDS = 900  # 15 phút hiệu lực cho mỗi phiên mã QR VietQR
+PAYMENT_EXPIRED_REASON = "Quá hạn thanh toán phí"
 
 
 class PaymentError(Exception):
@@ -58,6 +59,122 @@ def generate_order_code(request_obj: Request) -> int:
     return int(f"{request_obj.request_id}{suffix:05d}")
 
 
+def cancel_expired_payment_request(request_obj: Request, reason: str = PAYMENT_EXPIRED_REASON) -> Request:
+    """
+    Tự động hủy đơn khi quá hạn thanh toán lệ phí (BR-28 / Jira spec):
+    - Chuyển trạng thái đơn -> "Đã hủy", internal_status -> "Đã hủy"
+    - Lưu lý do hủy vào form_data["cancel_reason"] = "Quá hạn thanh toán phí"
+    - Đánh dấu các giao dịch Payment đang pending sang "failed"
+    - Ghi StateAuditLog và gửi Notification cho sinh viên
+    """
+    if request_obj.status == "Đã hủy" and request_obj.internal_status == "Đã hủy":
+        return request_obj
+
+    with transaction.atomic():
+        Payment.objects.filter(request=request_obj, status="pending").update(status="failed")
+
+        status_before = request_obj.internal_status or request_obj.status
+        form_data = dict(request_obj.form_data or {})
+        form_data["cancel_reason"] = reason
+        request_obj.form_data = form_data
+        request_obj.status = "Đã hủy"
+        request_obj.internal_status = "Đã hủy"
+        request_obj.save(update_fields=["form_data", "status", "internal_status", "updated_at"])
+
+        StateAuditLog.objects.create(
+            request=request_obj,
+            performed_by=None,
+            action="cancel",
+            note=f"Tự động hủy đơn: {reason}",
+            status_before=status_before,
+            status_after="Đã hủy",
+        )
+
+        proc_name = request_obj.procedure_type.name if request_obj.procedure_type_id else "Thủ tục"
+        Notification.objects.create(
+            user=request_obj.user,
+            request=request_obj,
+            title="Đơn đã bị hủy do quá hạn thanh toán",
+            message=f"Yêu cầu {request_obj.request_code} ({proc_name}) đã tự động bị hủy. Lý do: {reason}.",
+        )
+
+    return request_obj
+
+
+def check_and_cancel_overdue_payment(request_obj: Request, check_session_expiry: bool = True) -> bool:
+    """
+    Kiểm tra xem đơn đang ở trạng thái 'Chờ thanh toán' có bị quá hạn thanh toán hay không.
+    Nếu quá hạn (quá 24h kể từ lúc tạo, hoặc quá 3 lần thất bại, hoặc phiên QR đã hết hạn mà chưa thanh toán),
+    tự động hủy đơn kèm lý do 'Quá hạn thanh toán phí'.
+    """
+    if request_obj.internal_status != "Chờ thanh toán" and request_obj.status != "Chờ thanh toán":
+        return False
+
+    if Payment.objects.filter(request=request_obj, status="completed").exists():
+        return False
+
+    now = timezone.now()
+    overall_deadline = request_obj.created_at + timedelta(hours=24)
+    if now >= overall_deadline:
+        cancel_expired_payment_request(request_obj, reason=PAYMENT_EXPIRED_REASON)
+        return True
+
+    failed_count = Payment.objects.filter(request=request_obj, status="failed").count()
+    if failed_count >= 3:
+        cancel_expired_payment_request(request_obj, reason=PAYMENT_EXPIRED_REASON)
+        return True
+
+    if check_session_expiry:
+        latest_payment = (
+            Payment.objects.filter(request=request_obj)
+            .order_by("-created_at", "-payment_id")
+            .first()
+        )
+        if latest_payment and latest_payment.status == "pending":
+            cb = latest_payment.callback_data or {}
+            raw_exp = cb.get("expires_at")
+            exp_dt = None
+            if raw_exp:
+                try:
+                    exp_dt = datetime.fromisoformat(raw_exp)
+                    if timezone.is_naive(exp_dt):
+                        exp_dt = timezone.make_aware(exp_dt)
+                except Exception:
+                    exp_dt = None
+
+            if exp_dt and now >= exp_dt:
+                # Đồng bộ lần cuối với PayOS phòng trường hợp SV vừa chuyển khoản xong
+                is_paid = sync_payment_status_from_payos(latest_payment)
+                latest_payment.refresh_from_db()
+                if is_paid or latest_payment.status == "completed":
+                    request_obj.refresh_from_db()
+                    return False
+                cancel_expired_payment_request(request_obj, reason=PAYMENT_EXPIRED_REASON)
+                return True
+
+    return False
+
+
+def auto_cancel_overdue_payments_for_user(user: User) -> int:
+    """
+    Quét và tự động hủy tất cả các đơn 'Chờ thanh toán' đã quá hạn của sinh viên.
+    """
+    if not user:
+        return 0
+    pending_reqs = list(
+        Request.objects.filter(
+            user=user,
+            is_draft=False,
+            internal_status="Chờ thanh toán",
+        ).select_related("procedure_type", "user")
+    )
+    cancelled_count = 0
+    for req in pending_reqs:
+        if check_and_cancel_overdue_payment(req, check_session_expiry=True):
+            cancelled_count += 1
+    return cancelled_count
+
+
 def create_payment_link(request_obj: Request, payment_method: str = "payos", return_url: str = None, cancel_url: str = None) -> dict:
     """
     Tạo link thanh toán PayOS cho Request (API 3.2, BR-27, BR-28, BR-29).
@@ -69,11 +186,13 @@ def create_payment_link(request_obj: Request, payment_method: str = "payos", ret
     now = timezone.now()
     overall_deadline = request_obj.created_at + timedelta(hours=24)
     if now >= overall_deadline:
-        raise PaymentError("Đơn đã quá hạn thanh toán (24 giờ).")
+        cancel_expired_payment_request(request_obj, reason=PAYMENT_EXPIRED_REASON)
+        raise PaymentError("Đơn đã tự động bị hủy do quá hạn thanh toán phí.")
 
-    # 2. Kiểm tra BR-29: Quá 3 lần thất bại -> Khóa thanh toán
+    # 2. Kiểm tra BR-29: Quá 3 lần thất bại -> Tự động hủy đơn & Khóa thanh toán
     failed_count = Payment.objects.filter(request=request_obj, status="failed").count()
     if failed_count >= 3:
+        cancel_expired_payment_request(request_obj, reason=PAYMENT_EXPIRED_REASON)
         raise PaymentLockedError("Đã thất bại 3 lần. Vui lòng liên hệ PKHTC.")
 
     # 3. Lấy số tiền từ thủ tục
@@ -310,6 +429,11 @@ def sync_payment_status_from_payos(payment_obj: Payment) -> bool:
         if info.status == "PAID":
             process_payment_success(payment_obj, webhook_data=info.model_dump())
             return True
+        elif info.status == "EXPIRED":
+            if payment_obj.status != "failed":
+                payment_obj.status = "failed"
+                payment_obj.save(update_fields=["status"])
+            cancel_expired_payment_request(payment_obj.request, reason=PAYMENT_EXPIRED_REASON)
         elif info.status == "CANCELLED":
             if payment_obj.status != "cancelled":
                 payment_obj.status = "cancelled"

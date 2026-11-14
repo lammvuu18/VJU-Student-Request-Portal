@@ -13,6 +13,7 @@ from .payment_service import (
     create_payment_link,
     verify_and_process_webhook,
     sync_payment_status_from_payos,
+    check_and_cancel_overdue_payment,
     PaymentError,
     PaymentLockedError,
     InvalidStateError,
@@ -113,6 +114,12 @@ def _payment_status(request, request_id: int):
         if is_completed:
             req.refresh_from_db()
 
+    # Nếu đơn vẫn đang Chờ thanh toán và đã quá hạn thanh toán -> tự động hủy đơn kèm lý do
+    if check_and_cancel_overdue_payment(req, check_session_expiry=True):
+        req.refresh_from_db()
+        if latest_payment:
+            latest_payment.refresh_from_db()
+
     fee_amount = int(req.procedure_type.fee_amount or 0)
     payment_deadline = req.created_at + timedelta(hours=24)
 
@@ -152,6 +159,7 @@ def _payment_status(request, request_id: int):
             "fee_amount": fee_amount,
             "request_status": req.status,
             "request_internal_status": req.internal_status,
+            "cancel_reason": (req.form_data or {}).get("cancel_reason"),
             "latest_payment": latest_data,
             "retry_count": latest_payment.retry_count if latest_payment else 0,
             "max_retries": 3,

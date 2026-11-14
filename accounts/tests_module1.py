@@ -390,11 +390,20 @@ class Module1TestCase(TestCase):
         self.assertEqual(assign_res.status_code, 200)
         self.assertEqual(assign_res.json()["data"]["internal_status"], "CV đang thẩm định")
 
-        # 1.7.4: Phân công lại đơn đã có CV -> 422 INVALID_STATE
-        self.assertEqual(
-            self.put_json(f"/api/staff/requests/{req_id}/assign", {"assigned_staff_id": self.cv2_pctsv.user_id}, self.tp_pctsv).status_code,
-            422,
+        # 1.7.4: Trưởng phòng có thể thay đổi phân công sang chuyên viên khác (CV2 -> 200 OK), sau đó đổi lại CV1 -> 200 OK
+        reassign_res = self.put_json(
+            f"/api/staff/requests/{req_id}/assign", {"assigned_staff_id": self.cv2_pctsv.user_id}, self.tp_pctsv
         )
+        self.assertEqual(reassign_res.status_code, 200)
+        self.assertEqual(reassign_res.json()["data"]["assigned_staff"]["user_id"], self.cv2_pctsv.user_id)
+        self.assertEqual(len(self.client.get("/api/staff/inbox", **self.auth(self.cv2_pctsv)).json()["data"]), 1)
+        self.assertEqual(len(self.client.get("/api/staff/inbox", **self.auth(self.cv1_pctsv)).json()["data"]), 0)
+
+        reassign_back = self.put_json(
+            f"/api/staff/requests/{req_id}/assign", {"assigned_staff_id": self.cv1_pctsv.user_id}, self.tp_pctsv
+        )
+        self.assertEqual(reassign_back.status_code, 200)
+        self.assertEqual(reassign_back.json()["data"]["assigned_staff"]["user_id"], self.cv1_pctsv.user_id)
 
         # 1.4.2: SV hủy đơn sau khi đã phân công -> 422 CANNOT_CANCEL
         cancel_after = self.client.put(f"/api/requests/{req_id}/cancel", **self.auth(self.sv_a))

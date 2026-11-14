@@ -110,4 +110,5 @@ export const FIELD_LABELS = {
   grade_reviewer_1: 'Điểm giáo viên 1',
   grade_reviewer_2: 'Điểm giáo viên 2',
   review_note: 'Ý kiến thẩm định',
+  cancel_reason: 'Lý do hủy',
 };

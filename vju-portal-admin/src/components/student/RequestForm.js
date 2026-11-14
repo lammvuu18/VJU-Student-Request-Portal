@@ -85,6 +85,8 @@ function RequestForm({ initialStep }) {
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentError, setPaymentError] = useState('');
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [paymentCancelled, setPaymentCancelled] = useState(false);
+  const [cancelReason, setCancelReason] = useState('Quá hạn thanh toán phí');
   const [checkingManual, setCheckingManual] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(null);
 
@@ -168,9 +170,56 @@ function RequestForm({ initialStep }) {
       });
   };
 
+  // Khi hết hạn đếm ngược thanh toán, tự động kiểm tra lần cuối và hủy đơn kèm lý do "Quá hạn thanh toán phí"
+  useEffect(() => {
+    if (currentStep !== 2 || !createdRequest?.request_id || paymentSuccess || paymentCancelled || !isExpired) return;
+    let active = true;
+    const handleAutoCancelOnExpiry = async () => {
+      try {
+        const statusRes = await api.payments.getStatus(createdRequest.request_id);
+        const latest = statusRes?.data?.latest_payment;
+        const reqStatus = statusRes?.data?.request_status;
+        if (latest?.status === 'completed' || reqStatus === 'Đã gửi') {
+          if (active) {
+            setPaymentSuccess(true);
+            setTimeout(() => {
+              navigate('/student/request/success', {
+                state: {
+                  procedure,
+                  request: { ...createdRequest, status: 'Đã gửi', internal_status: 'Chờ phân công' },
+                  message: 'Thanh toán lệ phí thành công! Hồ sơ đã được chuyển cán bộ thẩm định.',
+                },
+              });
+            }, 1200);
+          }
+          return;
+        }
+        if (reqStatus !== 'Đã hủy') {
+          await api.requests.cancel(createdRequest.request_id, { reason: 'Quá hạn thanh toán phí' });
+        }
+        if (active) {
+          setCancelReason(statusRes?.data?.cancel_reason || 'Quá hạn thanh toán phí');
+          setPaymentCancelled(true);
+        }
+      } catch (err) {
+        try {
+          await api.requests.cancel(createdRequest.request_id, { reason: 'Quá hạn thanh toán phí' });
+        } catch (_) {
+          // ignore
+        }
+        if (active) {
+          setCancelReason('Quá hạn thanh toán phí');
+          setPaymentCancelled(true);
+        }
+      }
+    };
+    handleAutoCancelOnExpiry();
+    return () => { active = false; };
+  }, [currentStep, createdRequest, paymentSuccess, paymentCancelled, isExpired, navigate, procedure]);
+
   // Polling tự động kiểm tra trạng thái thanh toán mỗi 2.5s (tạm dừng khi mã QR đã hết hạn)
   useEffect(() => {
-    if (currentStep !== 2 || !createdRequest || paymentSuccess || isExpired) return;
+    if (currentStep !== 2 || !createdRequest || paymentSuccess || paymentCancelled || isExpired) return;
 
     let isSubscribed = true;
     const intervalId = setInterval(async () => {
@@ -192,6 +241,11 @@ function RequestForm({ initialStep }) {
               });
             }, 1200);
           }
+        } else if (reqStatus === 'Đã hủy') {
+          if (isSubscribed) {
+            setCancelReason(res?.data?.cancel_reason || 'Quá hạn thanh toán phí');
+            setPaymentCancelled(true);
+          }
         }
       } catch (err) {
         // Polling âm thầm
@@ -202,7 +256,7 @@ function RequestForm({ initialStep }) {
       isSubscribed = false;
       clearInterval(intervalId);
     };
-  }, [currentStep, createdRequest, paymentSuccess, navigate, procedure]);
+  }, [currentStep, createdRequest, paymentSuccess, paymentCancelled, isExpired, navigate, procedure]);
 
   // Kiểm tra trạng thái chủ động khi người dùng bấm nút
   const handleCheckPaymentManual = async () => {
@@ -224,6 +278,9 @@ function RequestForm({ initialStep }) {
             },
           });
         }, 1000);
+      } else if (reqStatus === 'Đã hủy') {
+        setCancelReason(res?.data?.cancel_reason || 'Quá hạn thanh toán phí');
+        setPaymentCancelled(true);
       } else {
         alert('Hệ thống chưa nhận được tiền từ ngân hàng. Vui lòng kiểm tra lại sau giây lát.');
       }
@@ -303,6 +360,9 @@ function RequestForm({ initialStep }) {
       });
       setCreatedRequest(res.data);
       if (procedure.is_fee_required) {
+        setPaymentCancelled(false);
+        setPaymentSuccess(false);
+        setPaymentData(null);
         setCurrentStep(2);
         window.scrollTo({ top: 0, behavior: 'smooth' });
         // Khởi tạo link thanh toán PayOS ngay lập tức
@@ -463,6 +523,48 @@ function RequestForm({ initialStep }) {
                 <p style={{ color: '#4B5563', fontSize: 14, margin: 0 }}>
                   Đang chuyển tiếp về trang kết quả nộp hồ sơ...
                 </p>
+              </div>
+            ) : paymentCancelled ? (
+              <div style={{ textAlign: 'center', padding: '32px 20px' }}>
+                <div style={{
+                  width: 60, height: 60, borderRadius: '50%', background: '#FEE2E2',
+                  color: '#B91C1C', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 28, margin: '0 auto 14px', fontWeight: 'bold'
+                }}>
+                  ✕
+                </div>
+                <h3 style={{ color: '#B91C1C', margin: '0 0 8px 0', fontSize: 18, fontWeight: 700 }}>
+                  Đơn đã tự động bị hủy
+                </h3>
+                <div style={{
+                  background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 8,
+                  padding: '10px 14px', margin: '12px 0 16px', color: '#991B1B', fontSize: 13, fontWeight: 600
+                }}>
+                  Lý do hủy: {cancelReason || 'Quá hạn thanh toán phí'}
+                </div>
+                <p style={{ color: '#4B5563', fontSize: 13.5, margin: '0 0 20px 0', lineHeight: 1.5 }}>
+                  Phiên thanh toán đã hết thời gian hiệu lực và hệ thống chưa ghi nhận giao dịch. Đơn yêu cầu <strong>{orderCode}</strong> đã được chuyển sang trạng thái <strong>Đã hủy</strong>.
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
+                  {createdRequest?.request_id && (
+                    <button
+                      type="button"
+                      className="reqpayment-btn-submit"
+                      style={{ background: '#AA2327', color: '#FFFFFF' }}
+                      onClick={() => navigate(`/student/request/${createdRequest.request_id}`)}
+                    >
+                      Xem chi tiết đơn đã hủy →
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="reqpayment-btn-submit"
+                    style={{ background: '#FFFFFF', color: '#374151', border: '1px solid #D1D5DB' }}
+                    onClick={() => navigate('/student/dashboard')}
+                  >
+                    Về danh sách Yêu cầu của tôi
+                  </button>
+                </div>
               </div>
             ) : paymentLoading ? (
               <div style={{ textAlign: 'center', padding: '48px 24px', color: '#68717D' }}>

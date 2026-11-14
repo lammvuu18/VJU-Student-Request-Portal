@@ -475,7 +475,10 @@ export const requestApi = {
 
   getDetail: async (id) => apiFetch(`/requests/${id}`, { method: 'GET' }),
 
-  cancel: async (id) => apiFetch(`/requests/${id}/cancel`, { method: 'PUT' }),
+  cancel: async (id, payload = {}) => apiFetch(`/requests/${id}/cancel`, {
+    method: 'PUT',
+    ...(payload && Object.keys(payload).length > 0 ? { body: JSON.stringify(payload) } : {}),
+  }),
 
   // attachments: [{ config_id, file }]
   supplement: async (id, attachments = []) => {

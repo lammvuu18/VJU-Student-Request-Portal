@@ -57,6 +57,7 @@ function StudentDashboard() {
           procedure: r.type_name,
           date: formatDate(r.created_at),
           status: r.status,
+          cancel_reason: r.cancel_reason || null,
         })));
       })
       .catch((err) => isMounted && setLoadError(err.message || 'Không tải được danh sách yêu cầu.'))
@@ -329,10 +330,15 @@ function StudentDashboard() {
                       <td className="cell-proc">{req.procedure}</td>
                       <td className="cell-date">{req.date}</td>
                       <td>
-                        <div className="status-pill-wrapper">
+                        <div className="status-pill-wrapper" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3 }}>
                           <span className={`status-pill ${isRedPill ? 'pill-red' : 'pill-gray'}`}>
                             {statusLabel}
                           </span>
+                          {req.status === 'Đã hủy' && req.cancel_reason && (
+                            <span style={{ fontSize: 11, color: '#B91C1C', fontWeight: 500 }}>
+                              {req.cancel_reason}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td style={{ textAlign: 'center' }}>

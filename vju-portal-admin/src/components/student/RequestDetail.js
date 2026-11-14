@@ -141,6 +141,7 @@ function RequestDetail() {
         if (isMounted) {
           setPaymentError(err.message || 'Lỗi khi tạo link thanh toán.');
           setPaymentLoading(false);
+          load();
         }
       });
 
@@ -148,10 +149,16 @@ function RequestDetail() {
       try {
         const res = await api.payments.getStatus(request.request_id);
         const latest = res?.data?.latest_payment;
-        if (latest?.status === 'completed' || res?.data?.request_status === 'Đã gửi') {
+        const reqStatus = res?.data?.request_status;
+        if (latest?.status === 'completed' || reqStatus === 'Đã gửi') {
           clearInterval(intervalId);
           setShowPaymentModal(false);
           showToast('Thanh toán thành công! Hồ sơ đã được chuyển xử lý.');
+          load();
+        } else if (reqStatus === 'Đã hủy') {
+          clearInterval(intervalId);
+          setShowPaymentModal(false);
+          showToast(`Đơn đã tự động bị hủy — Lý do: ${res?.data?.cancel_reason || 'Quá hạn thanh toán phí'}`, true);
           load();
         }
       } catch (err) {
@@ -164,6 +171,43 @@ function RequestDetail() {
       clearInterval(intervalId);
     };
   }, [showPaymentModal, request, load]);
+
+  // Khi mã QR hết hạn trong Modal thanh toán, tự động hủy đơn kèm lý do "Quá hạn thanh toán phí"
+  useEffect(() => {
+    if (!showPaymentModal || !request?.request_id || !isExpired) return;
+    let active = true;
+    const autoCancelExpired = async () => {
+      try {
+        const statusRes = await api.payments.getStatus(request.request_id);
+        const latest = statusRes?.data?.latest_payment;
+        const reqStatus = statusRes?.data?.request_status;
+        if (latest?.status === 'completed' || reqStatus === 'Đã gửi') {
+          if (active) {
+            setShowPaymentModal(false);
+            showToast('Thanh toán thành công! Hồ sơ đã được chuyển xử lý.');
+            load();
+          }
+          return;
+        }
+        if (reqStatus !== 'Đã hủy') {
+          await api.requests.cancel(request.request_id, { reason: 'Quá hạn thanh toán phí' });
+        }
+      } catch (err) {
+        try {
+          await api.requests.cancel(request.request_id, { reason: 'Quá hạn thanh toán phí' });
+        } catch (_) {
+          // ignore
+        }
+      }
+      if (active) {
+        setShowPaymentModal(false);
+        showToast('Đơn đã tự động bị hủy — Lý do: Quá hạn thanh toán phí', true);
+        load();
+      }
+    };
+    autoCancelExpired();
+    return () => { active = false; };
+  }, [showPaymentModal, request, isExpired, load]);
 
   if (loadError) {
     return (
@@ -186,12 +230,13 @@ function RequestDetail() {
   const student = request.student || {};
   const result = request.result;
   const statusLabel = request.status === DONE_STATUS ? 'Hoàn thành' : request.status;
-  const canCancel = request.internal_status === 'Chờ phân công';
+  const canCancel = request.internal_status === 'Chờ phân công' || request.internal_status === 'Chờ thanh toán';
   const needsSupplement = request.internal_status === 'Cần bổ sung';
   const canFeedback = request.status === DONE_STATUS;
   const isWaitingPayment = request.status === 'Chờ thanh toán' || request.internal_status === 'Chờ thanh toán';
+  const cancelReason = request.cancel_reason || request.form_data?.cancel_reason || '';
   const formEntries = Object.entries(request.form_data || {}).filter(
-    ([key, v]) => key !== 'review_data' && v !== '' && v !== null && v !== undefined && typeof v !== 'object'
+    ([key, v]) => key !== 'review_data' && key !== 'cancel_reason' && v !== '' && v !== null && v !== undefined && typeof v !== 'object'
   );
 
   const infoRows = [
@@ -264,6 +309,23 @@ function RequestDetail() {
         </button>
       </div>
 
+      {/* Banner Đã hủy */}
+      {request.status === 'Đã hủy' && (
+        <div style={{
+          background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 8, padding: '16px 20px',
+          marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 4
+        }}>
+          <div style={{ fontWeight: 700, color: '#B91C1C', fontSize: 15 }}>
+            Đơn yêu cầu đã bị hủy
+          </div>
+          {cancelReason && (
+            <div style={{ color: '#991B1B', fontSize: 13.5 }}>
+              Lý do hủy: <strong>{cancelReason}</strong>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Banner Chờ thanh toán */}
       {isWaitingPayment && (
         <div style={{
@@ -311,6 +373,16 @@ function RequestDetail() {
           </div>
         </div>
         <div className="req-detail-divider" />
+
+        {cancelReason && (
+          <>
+            <div className="req-detail-row">
+              <div className="req-detail-label">Lý do hủy</div>
+              <div className="req-detail-value" style={{ color: '#B91C1C', fontWeight: 600 }}>{cancelReason}</div>
+            </div>
+            <div className="req-detail-divider" />
+          </>
+        )}
 
         <div className="req-detail-row">
           <div className="req-detail-label">Người phụ trách</div>

@@ -48,6 +48,7 @@ function StaffRequestDetail({ basePath = '/staff' }) {
         api.requests.getTimeline(id),
       ]);
       setRequest(detailRes.data);
+      setAssigneeId(detailRes.data?.assigned_staff?.user_id ? String(detailRes.data.assigned_staff.user_id) : '');
       setTimeline(timelineRes.data || []);
     } catch (err) {
       setLoadError(err.message || 'Không tải được hồ sơ.');
@@ -73,6 +74,11 @@ function StaffRequestDetail({ basePath = '/staff' }) {
       const res = await action();
       showToast(res?.message || successMessage);
       await load();
+      if (isDeptHead) {
+        api.staff.getDepartmentMembers()
+          .then(mRes => setMembers(mRes.data || []))
+          .catch(() => {});
+      }
       return true;
     } catch (err) {
       showToast(err.message, true);
@@ -176,6 +182,13 @@ function StaffRequestDetail({ basePath = '/staff' }) {
   const isWaitingAssign = request.internal_status === WAITING_ASSIGN;
   const isReviewing = request.internal_status === REVIEWING;
   const isApproved = request.internal_status === APPROVED;
+  const canAssignOrReassign = (
+    isWaitingAssign ||
+    isReviewing ||
+    request.internal_status === 'Cần bổ sung' ||
+    request.internal_status === 'Chờ TP phê duyệt' ||
+    (request.internal_status && request.internal_status.endsWith('chờ phân công'))
+  );
   const preference = request.result_preference || request.form_data?.result_preference;
   const needsHardCopy = preference === 'Bản cứng' || preference === 'Cả hai' || request.type_id === 2;
   const reviewData = (request.form_data && typeof request.form_data.review_data === 'object')
@@ -411,7 +424,7 @@ function StaffRequestDetail({ basePath = '/staff' }) {
 
       {/* Action Buttons Row */}
       <div className="staff-detail-actions-row">
-        {isDeptHead && isWaitingAssign && (
+        {isDeptHead && canAssignOrReassign && (
           <>
             <select
               value={assigneeId}
@@ -423,8 +436,13 @@ function StaffRequestDetail({ basePath = '/staff' }) {
                 <option key={m.user_id} value={m.user_id}>{m.full_name} ({m.current_workload} hồ sơ)</option>
               ))}
             </select>
-            <button type="button" className="staff-btn-action-primary" disabled={busy} onClick={handleAssign}>
-              {busy ? 'Đang xử lý...' : 'Phân công →'}
+            <button
+              type="button"
+              className={isWaitingAssign ? 'staff-btn-action-primary' : 'staff-btn-action-outline'}
+              disabled={busy}
+              onClick={handleAssign}
+            >
+              {busy ? 'Đang xử lý...' : (request.assigned_staff ? 'Đổi chuyên viên' : 'Phân công →')}
             </button>
           </>
         )}

@@ -5,7 +5,15 @@ import { useInbox, INBOX_STATUS_LABELS, CLOSED_STATUS_LABELS } from '../staff/us
 import './DeptHeadPages.css';
 
 const WAITING_ASSIGN = 'Chờ phân công';
+const ASSIGNABLE_STATUSES = ['Chờ phân công', 'CV đang thẩm định', 'Cần bổ sung', 'Chờ TP phê duyệt'];
 const UNASSIGNED_KEY = 'unassigned';
+
+const canChangeAssignee = (row) => Boolean(
+  row && (
+    ASSIGNABLE_STATUSES.includes(row.internalStatus) ||
+    (row.internalStatus && row.internalStatus.endsWith('chờ phân công'))
+  )
+);
 
 // SLA còn lại hiển thị theo ngày/giờ
 const slaText = (hours) => {
@@ -96,9 +104,8 @@ function DeptHeadRequestList() {
   const handleOpenAssigneeMenu = (e, rowCode) => {
     e.stopPropagation();
     const row = requests.find(r => r.id === rowCode);
-    // Backend chỉ cho phân công đơn đang chờ, không hỗ trợ đổi người phụ trách
-    if (!row || row.internalStatus !== WAITING_ASSIGN) {
-      showToast('Chỉ phân công được hồ sơ đang ở trạng thái "Chờ phân công".');
+    if (!canChangeAssignee(row)) {
+      showToast('Không thể thay đổi chuyên viên phụ trách đối với hồ sơ đã kết thúc.');
       return;
     }
     if (activeAssigneeRow === rowCode) {
@@ -393,10 +400,11 @@ function DeptHeadRequestList() {
                   <div
                     className={`depthead-assignee-select-btn ${!row.assignee ? 'depthead-assignee-select-btn--empty' : ''}`}
                     onClick={(e) => handleOpenAssigneeMenu(e, row.id)}
-                    title={row.internalStatus === WAITING_ASSIGN ? 'Bấm để phân công chuyên viên' : 'Hồ sơ đã được phân công'}
+                    style={{ cursor: canChangeAssignee(row) ? 'pointer' : 'default' }}
+                    title={canChangeAssignee(row) ? (row.assignee ? 'Bấm để thay đổi chuyên viên phụ trách' : 'Bấm để phân công chuyên viên') : 'Hồ sơ đã kết thúc'}
                   >
                     <span>{row.assignee || 'Chưa có ai'}</span>
-                    {row.internalStatus === WAITING_ASSIGN && <span>▾</span>}
+                    {canChangeAssignee(row) && <span>▾</span>}
                   </div>
                 </div>
 
@@ -521,15 +529,20 @@ function DeptHeadRequestList() {
             {members.length === 0 && (
               <div className="depthead-assignee-item" style={{ color: '#9CA3AF' }}>Phòng chưa có chuyên viên</div>
             )}
-            {members.map((m) => (
-              <div
-                key={m.user_id}
-                className="depthead-assignee-item"
-                onClick={() => handleSelectAssignee(activeAssigneeRow, m)}
-              >
-                {m.full_name} ({m.current_workload})
-              </div>
-            ))}
+            {members.map((m) => {
+              const activeRow = requests.find(r => r.id === activeAssigneeRow);
+              const isCurrentAssignee = activeRow?.assigneeId === m.user_id;
+              return (
+                <div
+                  key={m.user_id}
+                  className={`depthead-assignee-item ${isCurrentAssignee ? 'active' : ''}`}
+                  style={isCurrentAssignee ? { fontWeight: 600, color: '#AA2327', background: '#FEF2F2' } : undefined}
+                  onClick={() => handleSelectAssignee(activeAssigneeRow, m)}
+                >
+                  {isCurrentAssignee ? '✓ ' : ''}{m.full_name} ({m.current_workload})
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
