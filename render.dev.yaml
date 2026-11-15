@@ -1,7 +1,7 @@
 services:
   # 1. Backend Web Service (Django)
   - type: web
-    name: vju-onestop-dev
+    name: vju-student-request-api
     runtime: python
     plan: free
     branch: feature/fe-be-integration-module1
@@ -10,7 +10,7 @@ services:
     envVars:
       - key: DATABASE_URL
         fromDatabase:
-          name: vju-onestop-dev-db
+          name: vju-student-request-db
           property: connectionString
       - key: DJANGO_SECRET_KEY
         generateValue: true
@@ -29,15 +29,19 @@ services:
       - key: DEMO_STUDENT_EMAILS
         sync: false
       - key: CORS_ALLOWED_ORIGINS
-        value: "https://vju-portal-dev.onrender.com"
+        value: "https://vju-student-request.onrender.com"
       - key: VERIFY_BASE_URL
-        value: "https://vju-portal-dev.onrender.com/verify/"
+        value: "https://vju-student-request.onrender.com/verify/"
+      - key: PAYOS_RETURN_URL
+        value: "https://vju-student-request.onrender.com/student/dashboard"
+      - key: PAYOS_CANCEL_URL
+        value: "https://vju-student-request.onrender.com/student/dashboard"
       - key: PYTHON_VERSION
         value: "3.12.2"
 
   # 2. Frontend Static Site (React SPA)
   - type: web
-    name: vju-portal-dev
+    name: vju-student-request
     runtime: static
     branch: feature/fe-be-integration-module1
     rootDir: vju-portal-admin
@@ -51,13 +55,13 @@ services:
       - key: NODE_VERSION
         value: "18.20.0"
       - key: REACT_APP_API_BASE_URL
-        value: "https://vju-onestop-dev.onrender.com/api"
+        value: "https://vju-student-request-api.onrender.com/api"
       - key: REACT_APP_GOOGLE_CLIENT_ID
         value: "186840933192-5tp7uos3l3o8hlvgq621i0emi4e8oukr.apps.googleusercontent.com"
 
 databases:
   # 3. PostgreSQL Database
-  - name: vju-onestop-dev-db
+  - name: vju-student-request-db
     databaseName: vju_onestop_dev
     user: vju_dev
     plan: free
