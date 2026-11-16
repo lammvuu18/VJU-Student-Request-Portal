@@ -5,7 +5,14 @@ import { isInternshipProcedure } from '../../utils/format';
 import './StudentPages.css';
 
 // Giá trị tự điền lấy từ hồ sơ người dùng (backend vẫn ghi đè lại khi lưu)
-const resolveAutoFill = (key, user) => {
+const resolveAutoFill = (key, user, currentValues = {}) => {
+  if (key === 'academic_ms.grade') {
+    const subjectVal = String(
+      currentValues.subject || currentValues.course_code || currentValues.course_name || ''
+    ).trim();
+    if (!subjectVal) return '';
+    return user.current_grade ?? '6.0';
+  }
   const mapping = {
     'student.full_name': user.full_name || user.name,
     'student.mssv': user.mssv,
@@ -14,7 +21,6 @@ const resolveAutoFill = (key, user) => {
     'student.major': user.major,
     'student.email': user.email,
     'academic_ms.gpa': user.gpa ?? '3.2',
-    'academic_ms.grade': user.current_grade ?? '6.0',
   };
   if (key in mapping) return mapping[key] || '';
   return null;
@@ -801,13 +807,16 @@ function RequestForm({ initialStep }) {
     const required = isFieldRequired(field);
 
     if (field.auto_fill_field) {
-      const autoValue = resolveAutoFill(field.auto_fill_field, student);
+      const autoValue = resolveAutoFill(field.auto_fill_field, student, values);
+      const placeholderText = field.auto_fill_field === 'academic_ms.grade'
+        ? 'Tự động tra cứu từ hệ thống học vụ sau khi nhập môn học'
+        : 'Hệ thống tự động điền khi gửi';
       return (
         <input
           type="text"
           className="reqform-input"
           value={autoValue !== null ? autoValue : ''}
-          placeholder="Hệ thống tự động điền khi gửi"
+          placeholder={placeholderText}
           readOnly
           disabled
         />
