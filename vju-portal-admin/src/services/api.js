@@ -516,6 +516,14 @@ export const paymentApi = {
     return apiFetch(`/requests/${requestId}/payments`);
   },
 
+  // Giả lập thanh toán thành công khi test/demo (không cần chuyển khoản thật)
+  simulateSuccess: (requestId) => {
+    return apiFetch(`/requests/${requestId}/payments`, {
+      method: 'POST',
+      body: JSON.stringify({ simulate_success: true }),
+    });
+  },
+
   // Giữ lại hàm create cũ để tương thích ngược
   create: async (payload) => {
     if (payload?.request_id) {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import api, { getCurrentUser } from '../../services/api';
+import { isInternshipProcedure } from '../../utils/format';
 import './StudentPages.css';
 
 // Giá trị tự điền lấy từ hồ sơ người dùng (backend vẫn ghi đè lại khi lưu)
@@ -88,6 +89,7 @@ function RequestForm({ initialStep }) {
   const [paymentCancelled, setPaymentCancelled] = useState(false);
   const [cancelReason, setCancelReason] = useState('Quá hạn thanh toán phí');
   const [checkingManual, setCheckingManual] = useState(false);
+  const [simulatingPayment, setSimulatingPayment] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(null);
 
   const unitFee = (procedure && procedure.is_fee_required && procedure.fee_amount) || 0;
@@ -288,6 +290,29 @@ function RequestForm({ initialStep }) {
       alert(err.message || 'Lỗi khi kiểm tra thanh toán.');
     } finally {
       setCheckingManual(false);
+    }
+  };
+
+  const handleSimulatePaymentSuccess = async () => {
+    if (!createdRequest?.request_id) return;
+    setSimulatingPayment(true);
+    setPaymentError('');
+    try {
+      await api.payments.simulateSuccess(createdRequest.request_id);
+      setPaymentSuccess(true);
+      setTimeout(() => {
+        navigate('/student/request/success', {
+          state: {
+            procedure,
+            request: { ...createdRequest, status: 'Đã gửi', internal_status: 'Chờ phân công' },
+            message: 'Đã xác nhận thanh toán thử nghiệm thành công! Hồ sơ đã được chuyển tới Trưởng phòng chờ phân công.',
+          },
+        });
+      }, 900);
+    } catch (err) {
+      alert(err.message || 'Không thể giả lập thanh toán.');
+    } finally {
+      setSimulatingPayment(false);
     }
   };
 
@@ -584,19 +609,30 @@ function RequestForm({ initialStep }) {
             ) : paymentError ? (
               <div style={{ textAlign: 'center', padding: '30px 20px' }}>
                 <p style={{ color: '#B91C1C', marginBottom: 16 }}>{paymentError}</p>
-                <button
-                  type="button"
-                  className="reqpayment-btn-submit"
-                  onClick={() => {
-                    setPaymentLoading(true);
-                    setPaymentError('');
-                    api.payments.createForRequest(createdRequest.request_id)
-                      .then((res) => { setPaymentData(res.data); setPaymentLoading(false); })
-                      .catch((err) => { setPaymentError(err.message || 'Lỗi khởi tạo PayOS'); setPaymentLoading(false); });
-                  }}
-                >
-                  Thử lại →
-                </button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <button
+                    type="button"
+                    className="reqpayment-btn-submit"
+                    onClick={() => {
+                      setPaymentLoading(true);
+                      setPaymentError('');
+                      api.payments.createForRequest(createdRequest.request_id)
+                        .then((res) => { setPaymentData(res.data); setPaymentLoading(false); })
+                        .catch((err) => { setPaymentError(err.message || 'Lỗi khởi tạo PayOS'); setPaymentLoading(false); });
+                    }}
+                  >
+                    Thử lại →
+                  </button>
+                  <button
+                    type="button"
+                    className="reqpayment-btn-submit"
+                    style={{ background: '#ECFDF5', color: '#047857', border: '1px solid #6EE7B7', fontWeight: 600 }}
+                    onClick={handleSimulatePaymentSuccess}
+                    disabled={simulatingPayment}
+                  >
+                    {simulatingPayment ? 'Đang xử lý...' : '⚡ Giả lập thanh toán thành công (Test)'}
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="reqpayment-transfer-box">
@@ -710,6 +746,16 @@ function RequestForm({ initialStep }) {
                     disabled={checkingManual}
                   >
                     {checkingManual ? 'Đang kiểm tra...' : 'Kiểm tra trạng thái thanh toán'}
+                  </button>
+
+                  <button
+                    type="button"
+                    className="reqpayment-btn-submit"
+                    style={{ background: '#ECFDF5', color: '#047857', border: '1px solid #6EE7B7', fontWeight: 600 }}
+                    onClick={handleSimulatePaymentSuccess}
+                    disabled={simulatingPayment}
+                  >
+                    {simulatingPayment ? 'Đang xác nhận...' : '⚡ Giả lập thanh toán thành công (Test)'}
                   </button>
                 </div>
               </div>
@@ -881,7 +927,7 @@ function RequestForm({ initialStep }) {
         )}
 
         {/* Các trường form do admin cấu hình cho thủ tục */}
-        {procedure.type_id === 2 && (
+        {isInternshipProcedure(procedure) && (
           <div className="reqform-col full-width">
             <div className="reqform-label-row">
               <span className="reqform-label">Hình thức nhận kết quả</span>

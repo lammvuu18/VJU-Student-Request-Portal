@@ -95,6 +95,34 @@ class Command(BaseCommand):
                     'is_active': active,
                 },
             )
+            if type_id == 3 and not created:
+                updated_fields = []
+                if procedure.approval_levels != 2:
+                    procedure.approval_levels = 2
+                    updated_fields.append('approval_levels')
+                if not procedure.is_fee_required:
+                    procedure.is_fee_required = True
+                    updated_fields.append('is_fee_required')
+                if not procedure.fee_amount:
+                    procedure.fee_amount = fee
+                    updated_fields.append('fee_amount')
+                if updated_fields:
+                    procedure.save(update_fields=updated_fields)
+                for _, field_type, field_name, key, data_type, required, placeholder, auto_fill, opts, order in FORM_FIELDS:
+                    if field_type == 3:
+                        FormField.objects.get_or_create(
+                            procedure_type=procedure,
+                            field_key=key,
+                            defaults={
+                                'field_name': field_name,
+                                'data_type': data_type,
+                                'is_required': required,
+                                'placeholder': placeholder,
+                                'auto_fill_field': auto_fill,
+                                'dropdown_options': opts,
+                                'display_order': order,
+                            },
+                        )
             if type_id == 4:
                 FormField.objects.get_or_create(
                     procedure_type=procedure,

@@ -287,3 +287,101 @@ class Module3AppealWorkflowTests(TestCase):
         self.assertIsNotNone(notif)
         self.assertIn("Điểm cũ 6.0 → Mới 4.5", notif.message)
         self.assertIn("quy chế", notif.message.lower())
+
+    def test_appeal_workflow_when_type_id_shifted_to_4_like_render_and_simulate_payment(self):
+        """
+        Mô phỏng chính xác môi trường Render khi migration 0005 tạo thủ tục đầu tiên (type_id=1)
+        khiến 'Phúc khảo điểm thi' có type_id = 4 thay vì 3, kết hợp giả lập thanh toán (simulate_success):
+        - SV tạo đơn phúc khảo (type_id=4) -> tự động điền current_grade=6.0, không điền nhầm gpa
+        - SV bấm Giả lập thanh toán thành công (POST /api/requests/:id/payments với simulate_success=True)
+          -> đơn chuyển sang 'Chờ phân công' mà không cần chuyển khoản thật
+        - TP phân công CV -> CV nhập điểm ở màn D4 & trình TP -> TP thấy review_data & duyệt trực tiếp
+        """
+        shifted_appeal = ProcedureType.objects.create(
+            type_id=44,
+            department=self.proc_appeal.department,
+            name="Phúc khảo điểm thi (Render ID Shift)",
+            description="Thủ tục phúc khảo khi type_id khác 3 trên Render",
+            sla_total_days=7,
+            approval_levels=2,
+            result_type="PDF",
+            is_fee_required=True,
+            fee_amount=50000,
+            is_active=True,
+        )
+        for ff in self.proc_appeal.form_fields.all():
+            ff.pk = None
+            ff.field_id = None
+            ff.procedure_type = shifted_appeal
+            ff.save()
+
+        create_res = self.client.post(
+            "/api/requests",
+            data=json.dumps({
+                "type_id": shifted_appeal.type_id,
+                "form_data": {
+                    "subject": "Trí tuệ nhân tạo",
+                    "semester": "HK1 2026-2027",
+                },
+            }),
+            content_type="application/json",
+            **self._auth(self.demo_student),
+        )
+        self.assertEqual(create_res.status_code, 201, create_res.content)
+        req_id = create_res.json()["data"]["request_id"]
+        req = Request.objects.get(request_id=req_id)
+        self.assertEqual(req.internal_status, "Chờ thanh toán")
+        self.assertEqual(float(req.form_data.get("current_grade")), 6.0)
+        self.assertNotIn("gpa", req.form_data)
+
+        # Giả lập thanh toán thành công không cần chuyển khoản thật
+        sim_res = self.client.post(
+            f"/api/requests/{req_id}/payments",
+            data=json.dumps({"simulate_success": True}),
+            content_type="application/json",
+            **self._auth(self.demo_student),
+        )
+        self.assertEqual(sim_res.status_code, 200, sim_res.content)
+        self.assertEqual(sim_res.json()["data"]["status"], "completed")
+        self.assertEqual(sim_res.json()["data"]["request_internal_status"], "Chờ phân công")
+
+        # TP phân công cho CV
+        assign_res = self.client.put(
+            f"/api/staff/requests/{req_id}/assign",
+            data=json.dumps({"assigned_staff_id": self.demo_staff.user_id}),
+            content_type="application/json",
+            **self._auth(self.demo_head),
+        )
+        self.assertEqual(assign_res.status_code, 200)
+
+        # CV nhập điểm ở màn D4 và trình TP
+        submit_res = self.client.put(
+            f"/api/staff/requests/{req_id}/submit-to-head",
+            data=json.dumps({
+                "grade_reviewer_1": 8.0,
+                "grade_reviewer_2": 8.5,
+                "final_grade": 8.25,
+                "note": "Đã chấm phúc khảo lại, tăng từ 6.0 lên 8.25.",
+            }),
+            content_type="application/json",
+            **self._auth(self.demo_staff),
+        )
+        self.assertEqual(submit_res.status_code, 200)
+        self.assertEqual(submit_res.json()["data"]["internal_status"], "Chờ TP phê duyệt")
+
+        # TP xem chi tiết đơn -> có approval_levels=2 và review_data đầy đủ
+        detail_res = self.client.get(f"/api/requests/{req_id}", **self._auth(self.demo_head))
+        self.assertEqual(detail_res.status_code, 200)
+        detail_json = detail_res.json()["data"]
+        self.assertEqual(detail_json["approval_levels"], 2)
+        self.assertEqual(detail_json["form_data"]["review_data"]["final_grade"], 8.25)
+
+        # TP duyệt trực tiếp (không trình Hiệu trưởng)
+        approve_res = self.client.put(
+            f"/api/staff/requests/{req_id}/approve-head",
+            data=json.dumps({"note": "Đồng ý kết quả chấm lại 8.25."}),
+            content_type="application/json",
+            **self._auth(self.demo_head),
+        )
+        self.assertEqual(approve_res.status_code, 200)
+        self.assertEqual(approve_res.json()["data"]["status"], "Đã xử lý")

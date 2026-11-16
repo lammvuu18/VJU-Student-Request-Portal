@@ -11,6 +11,7 @@ from .models import Payment, Request, User
 from .notification_views import _format_datetime
 from .payment_service import (
     create_payment_link,
+    process_payment_success,
     verify_and_process_webhook,
     sync_payment_status_from_payos,
     check_and_cancel_overdue_payment,
@@ -57,6 +58,44 @@ def _payment_create(request, request_id: int):
     if body is None and request.body:
         return _json_error("INVALID_JSON", "Dữ liệu JSON không hợp lệ.", status=400)
     body = body or {}
+
+    # Hỗ trợ giả lập thanh toán thành công khi test/demo (không cần chuyển khoản thật)
+    if body.get("simulate_success") is True or body.get("action") == "simulate_success":
+        if req.internal_status != "Chờ thanh toán":
+            return _json_error(
+                "INVALID_STATE",
+                f"Đơn đang ở trạng thái '{req.status}', không thể xác nhận thanh toán.",
+                status=422,
+            )
+        fee_amount = int(req.procedure_type.fee_amount or 50000)
+        payment = req.payments.filter(status="pending").order_by("-created_at", "-payment_id").first()
+        if not payment:
+            payment = Payment.objects.create(
+                request=req,
+                txn_id=f"DEMO-{req.request_id}-{int(timezone.now().timestamp())}",
+                amount=fee_amount,
+                payment_method="VietQR (Test)",
+                status="pending",
+                retry_count=1,
+            )
+        process_payment_success(
+            payment,
+            webhook_data={"code": "00", "desc": "Simulated test payment", "simulated": True},
+        )
+        req.refresh_from_db()
+        payment.refresh_from_db()
+        return JsonResponse({
+            "success": True,
+            "data": {
+                "payment_id": payment.payment_id,
+                "txn_id": payment.txn_id,
+                "amount": int(payment.amount),
+                "status": payment.status,
+                "request_status": req.status,
+                "request_internal_status": req.internal_status,
+            },
+            "message": "Đã xác nhận thanh toán thử nghiệm thành công. Đơn đã được chuyển sang Chờ phân công.",
+        })
 
     payment_method = body.get("payment_method", "payos")
     return_url = body.get("return_url")

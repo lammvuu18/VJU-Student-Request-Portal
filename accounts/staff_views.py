@@ -17,7 +17,13 @@ from .models import (
     AccessLog, Attachment, Notification, RejectionReason, Request, Result, StateAuditLog, User,
 )
 from .notification_views import DEFAULT_LIMIT, MAX_LIMIT, _format_datetime, _parse_positive_int
-from .request_views import CLOSED_REQUEST_STATUSES, _is_demo_cross_dept_staff
+from .request_views import (
+    CLOSED_REQUEST_STATUSES,
+    _is_appeal_procedure,
+    _is_demo_cross_dept_staff,
+    _is_internship_procedure,
+    _is_preservation_procedure,
+)
 from .services import (
     AcademicMSService, ExternalServiceError, build_qr_code_data,
     compute_sla_metrics, generate_decision_pdf, generate_result_pdf, generate_verification_code,
@@ -136,7 +142,9 @@ def staff_inbox_view(request):
         data.append({
             "request_id": r.request_id,
             "request_code": r.request_code,
+            "type_id": r.procedure_type_id,
             "type_name": r.procedure_type.name,
+            "approval_levels": r.procedure_type.approval_levels,
             "student_name": reg.full_name if reg else r.user.full_name,
             "mssv": reg.mssv if reg else (r.form_data or {}).get("mssv"),
             "status": r.status,
@@ -394,7 +402,7 @@ def staff_approve_request_view(request, request_id):
         )
 
     student_status = status_info.get("status")
-    if req.procedure_type_id == 2:
+    if _is_internship_procedure(req.procedure_type):
         allowed_statuses = {"active"}
     else:
         allowed_statuses = {"active", "graduated"}
@@ -406,7 +414,7 @@ def staff_approve_request_view(request, request_id):
             status=422,
         )
 
-    if req.procedure_type_id == 2 or "giới thiệu" in req.procedure_type.name.lower():
+    if _is_internship_procedure(req.procedure_type):
         try:
             curriculum = AcademicMSService.get_student_curriculum(mssv)
             if not isinstance(curriculum, list):
@@ -943,8 +951,9 @@ def staff_submit_to_head_view(request, request_id):
 
     # Kiểm tra điều kiện GPA nếu là thủ tục bảo lưu hoặc có trường gpa
     form_data = dict(req.form_data or {})
+    is_appeal = _is_appeal_procedure(req.procedure_type)
     gpa_val = form_data.get("gpa")
-    if gpa_val is not None:
+    if gpa_val is not None and not is_appeal:
         try:
             if float(gpa_val) < 2.0:
                 return _json_error("INELIGIBLE_GPA", "GPA không đạt yêu cầu tối thiểu (2.0) để bảo lưu.", status=422)
@@ -998,7 +1007,7 @@ def staff_submit_to_head_view(request, request_id):
     review_data = dict(form_data.get("review_data") or {}) if isinstance(form_data.get("review_data"), dict) else {}
     has_review_input = any(v is not None and str(v).strip() != "" for v in (g1_raw, g2_raw, final_raw, file_name_raw)) or uploaded_review_file is not None
 
-    if has_review_input or req.procedure_type_id == 3:
+    if has_review_input or is_appeal:
         g1_val = None
         g2_val = None
         final_val = None
@@ -1129,7 +1138,8 @@ def staff_approve_head_view(request, request_id):
     if user.department_id != active_dept_id and not _is_demo_cross_dept_staff(user):
         return _json_error("FORBIDDEN", "Bạn không có quyền xử lý yêu cầu của phòng ban khác.", status=403)
 
-    if req.procedure_type.approval_levels == 3:
+    is_appeal = _is_appeal_procedure(req.procedure_type)
+    if req.procedure_type.approval_levels == 3 and not is_appeal:
         return _json_error(
             "INVALID_APPROVAL_LEVEL",
             "Thủ tục này yêu cầu trình Hiệu trưởng ký số, không kết thúc ở cấp Trưởng phòng.",
@@ -1149,7 +1159,7 @@ def staff_approve_head_view(request, request_id):
 
     old_grade = form_data.get("current_grade", 6.0)
     final_grade = review_data.get("final_grade", form_data.get("final_grade"))
-    if final_grade is None and req.procedure_type_id == 3:
+    if final_grade is None and is_appeal:
         return _json_error(
             "MISSING_REVIEW_DATA",
             "Chuyên viên chưa nhập điểm phúc khảo để Trưởng phòng phê duyệt.",
@@ -1248,7 +1258,7 @@ def staff_submit_to_principal_view(request, request_id):
     if user.department_id != active_dept_id and not _is_demo_cross_dept_staff(user):
         return _json_error("FORBIDDEN", "Bạn không có quyền xử lý yêu cầu của phòng ban khác.", status=403)
 
-    if req.procedure_type.approval_levels != 3:
+    if _is_appeal_procedure(req.procedure_type) or req.procedure_type.approval_levels != 3:
         return _json_error("INVALID_APPROVAL_LEVEL", "Thủ tục này không yêu cầu phê duyệt cấp Hiệu trưởng.", status=422)
 
     if req.internal_status != "Chờ TP phê duyệt":

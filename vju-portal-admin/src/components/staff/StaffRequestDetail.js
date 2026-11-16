@@ -5,6 +5,7 @@ import RejectRequestModal from '../common/RejectRequestModal';
 import api, { getSavedRole, normalizeRole } from '../../services/api';
 import {
   formatDate, formatDateTime, formatFileSize, statusStyle, FIELD_LABELS, TIMELINE_ACTION_LABELS,
+  isAppealProcedure, isPreservationProcedure, isInternshipProcedure,
 } from '../../utils/format';
 import './StaffPages.css';
 
@@ -97,7 +98,7 @@ function StaffRequestDetail({ basePath = '/staff' }) {
   };
 
   const handleApprove = () => {
-    if (isDeptHead || request?.type_id === 3) {
+    if (isDeptHead || isAppealProcedure(request) || Number(request?.approval_levels) === 2) {
       return runAction(
         () => api.staff.approveHead(request.request_id),
         'Đã phê duyệt hồ sơ.'
@@ -189,13 +190,22 @@ function StaffRequestDetail({ basePath = '/staff' }) {
     request.internal_status === 'Chờ TP phê duyệt' ||
     (request.internal_status && request.internal_status.endsWith('chờ phân công'))
   );
+  const isAppeal = isAppealProcedure(request);
+  const isPreservation = isPreservationProcedure(request);
+  const isInternship = isInternshipProcedure(request);
   const preference = request.result_preference || request.form_data?.result_preference;
-  const needsHardCopy = preference === 'Bản cứng' || preference === 'Cả hai' || request.type_id === 2;
+  const needsHardCopy = preference === 'Bản cứng' || preference === 'Cả hai' || isInternship;
   const reviewData = (request.form_data && typeof request.form_data.review_data === 'object')
     ? request.form_data.review_data
     : null;
   const formEntries = Object.entries(request.form_data || {}).filter(
-    ([key, v]) => key !== 'review_data' && v !== '' && v !== null && v !== undefined && typeof v !== 'object'
+    ([key, v]) =>
+      key !== 'review_data' &&
+      !(isAppeal && key === 'gpa') &&
+      v !== '' &&
+      v !== null &&
+      v !== undefined &&
+      typeof v !== 'object'
   );
 
   const infoRows = [
@@ -398,6 +408,19 @@ function StaffRequestDetail({ basePath = '/staff' }) {
             </div>
           </div>
           <div className="staff-detail-divider" />
+
+          {reviewData.reviewed_by && (
+            <>
+              <div className="staff-detail-row">
+                <div className="staff-detail-label">Chuyên viên thẩm định</div>
+                <div className="staff-detail-value">
+                  {reviewData.reviewed_by}
+                  {reviewData.reviewed_at ? ` (${formatDateTime(reviewData.reviewed_at)})` : ''}
+                </div>
+              </div>
+              <div className="staff-detail-divider" />
+            </>
+          )}
         </div>
       )}
 
@@ -452,18 +475,20 @@ function StaffRequestDetail({ basePath = '/staff' }) {
               Từ chối
             </button>
             {request.internal_status === 'Chờ TP phê duyệt' && (
-              <button type="button" className="staff-btn-action-outline" disabled={busy} onClick={handleReturnToStaff}>
-                Trả chuyên viên
-              </button>
-            )}
-            {request.type_id === 4 ? (
-              <button type="button" className="staff-btn-action-primary" disabled={busy} onClick={handleSubmitToPrincipal}>
-                {busy ? 'Đang xử lý...' : 'Trình Hiệu trưởng ký số →'}
-              </button>
-            ) : (
-              <button type="button" className="staff-btn-action-primary" disabled={busy} onClick={handleApprove}>
-                {busy ? 'Đang xử lý...' : 'Phê duyệt →'}
-              </button>
+              <>
+                <button type="button" className="staff-btn-action-outline" disabled={busy} onClick={handleReturnToStaff}>
+                  Trả chuyên viên
+                </button>
+                {(isPreservation || (Number(request.approval_levels) === 3 && !isAppeal)) ? (
+                  <button type="button" className="staff-btn-action-primary" disabled={busy} onClick={handleSubmitToPrincipal}>
+                    {busy ? 'Đang xử lý...' : 'Trình Hiệu trưởng ký số →'}
+                  </button>
+                ) : (
+                  <button type="button" className="staff-btn-action-primary" disabled={busy} onClick={handleApprove}>
+                    {busy ? 'Đang xử lý...' : 'Phê duyệt →'}
+                  </button>
+                )}
+              </>
             )}
           </>
         )}
@@ -477,7 +502,7 @@ function StaffRequestDetail({ basePath = '/staff' }) {
               className="staff-btn-action-outline"
               disabled={busy}
               onClick={() => {
-                if (request.type_id === 2 && request.academic_check && !request.academic_check.course_in_curriculum && !supplementNote) {
+                if (isInternship && request.academic_check && !request.academic_check.course_in_curriculum && !supplementNote) {
                   setSupplementNote('HP không trong CTĐT, vui lòng bổ sung xác nhận từ Khoa.');
                 }
                 setShowSupplementModal(true);
@@ -485,7 +510,7 @@ function StaffRequestDetail({ basePath = '/staff' }) {
             >
               Yêu cầu bổ sung
             </button>
-            {request.type_id === 3 ? (
+            {isAppeal ? (
               <button
                 type="button"
                 className="staff-btn-action-primary"
@@ -494,7 +519,7 @@ function StaffRequestDetail({ basePath = '/staff' }) {
               >
                 Thẩm định →
               </button>
-            ) : request.type_id === 4 ? (
+            ) : (isPreservation || Number(request.approval_levels) >= 2) ? (
               <button type="button" className="staff-btn-action-primary" disabled={busy} onClick={handleProgressToHead}>
                 {busy ? 'Đang xử lý...' : 'Trình Trưởng phòng →'}
               </button>

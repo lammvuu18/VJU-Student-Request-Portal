@@ -112,3 +112,30 @@ export const FIELD_LABELS = {
   review_note: 'Ý kiến thẩm định',
   cancel_reason: 'Lý do hủy',
 };
+
+const getProcNameLower = (item) =>
+  String(item?.type_name || item?.name || item?.procedure || '').trim().toLowerCase();
+
+export const isAppealProcedure = (item) => {
+  const name = getProcNameLower(item);
+  if (name) return name.includes('phúc khảo');
+  return Number(item?.type_id ?? item?.id) === 3;
+};
+
+export const isPreservationProcedure = (item) => {
+  const name = getProcNameLower(item);
+  if (name) return name.includes('bảo lưu');
+  return Number(item?.type_id ?? item?.id) === 4;
+};
+
+export const isInternshipProcedure = (item) => {
+  const name = getProcNameLower(item);
+  if (name) return name.includes('giới thiệu') || name.includes('thực tập');
+  return Number(item?.type_id ?? item?.id) === 2;
+};
+
+export const isStudentCertProcedure = (item) => {
+  const name = getProcNameLower(item);
+  if (name) return name.includes('xác nhận sinh viên');
+  return Number(item?.type_id ?? item?.id) === 1;
+};

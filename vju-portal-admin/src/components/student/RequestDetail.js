@@ -5,6 +5,7 @@ import Button from '../common/Button';
 import api from '../../services/api';
 import {
   formatDate, formatDateTime, formatFileSize, statusStyle, FIELD_LABELS, TIMELINE_ACTION_LABELS,
+  isAppealProcedure,
 } from '../../utils/format';
 import './StudentPages.css';
 
@@ -109,6 +110,21 @@ function RequestDetail() {
     } catch (err) {
       setShowCancelModal(false);
       showToast(err.message, true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSimulatePayment = async () => {
+    if (!request?.request_id) return;
+    setBusy(true);
+    try {
+      await api.payments.simulateSuccess(request.request_id);
+      setShowPaymentModal(false);
+      showToast('Đã xác nhận thanh toán thử nghiệm thành công! Hồ sơ đã được chuyển xử lý.');
+      await load();
+    } catch (err) {
+      showToast(err.message || 'Không thể giả lập thanh toán.', true);
     } finally {
       setBusy(false);
     }
@@ -234,9 +250,17 @@ function RequestDetail() {
   const needsSupplement = request.internal_status === 'Cần bổ sung';
   const canFeedback = request.status === DONE_STATUS;
   const isWaitingPayment = request.status === 'Chờ thanh toán' || request.internal_status === 'Chờ thanh toán';
+  const isAppeal = isAppealProcedure(request);
   const cancelReason = request.cancel_reason || request.form_data?.cancel_reason || '';
   const formEntries = Object.entries(request.form_data || {}).filter(
-    ([key, v]) => key !== 'review_data' && key !== 'cancel_reason' && v !== '' && v !== null && v !== undefined && typeof v !== 'object'
+    ([key, v]) =>
+      key !== 'review_data' &&
+      key !== 'cancel_reason' &&
+      !(isAppeal && key === 'gpa') &&
+      v !== '' &&
+      v !== null &&
+      v !== undefined &&
+      typeof v !== 'object'
   );
 
   const infoRows = [
@@ -539,7 +563,18 @@ function RequestDetail() {
         ) : paymentError ? (
           <div style={{ textAlign: 'center', padding: '20px 10px' }}>
             <p style={{ color: '#B91C1C', marginBottom: 16 }}>{paymentError}</p>
-            <Button variant="secondary" onClick={() => setShowPaymentModal(false)}>Đóng</Button>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <Button variant="secondary" onClick={() => setShowPaymentModal(false)}>Đóng</Button>
+              <button
+                type="button"
+                className="btn-req-action-primary"
+                style={{ background: '#ECFDF5', color: '#047857', border: '1px solid #6EE7B7', padding: '8px 16px', fontWeight: 600 }}
+                onClick={handleSimulatePayment}
+                disabled={busy}
+              >
+                {busy ? 'Đang xác nhận...' : '⚡ Giả lập thanh toán thành công (Test)'}
+              </button>
+            </div>
           </div>
         ) : paymentData ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
@@ -605,8 +640,17 @@ function RequestDetail() {
               <div><span>Mã giao dịch / Nội dung:</span> <strong>{paymentData.txn_id}</strong></div>
             </div>
 
-            <div style={{ display: 'flex', gap: 10, width: '100%', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: 10, width: '100%', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
               <Button variant="secondary" onClick={() => setShowPaymentModal(false)}>Đóng</Button>
+              <button
+                type="button"
+                className="btn-req-action-primary"
+                style={{ background: '#ECFDF5', color: '#047857', border: '1px solid #6EE7B7', padding: '8px 16px', fontWeight: 600 }}
+                onClick={handleSimulatePayment}
+                disabled={busy}
+              >
+                {busy ? 'Đang xác nhận...' : '⚡ Giả lập thanh toán (Test)'}
+              </button>
               {paymentData.payment_url && (
                 <a
                   href={paymentData.payment_url}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../services/api';
+import { isInternshipProcedure, isStudentCertProcedure } from '../../utils/format';
 import { procedures } from '../../data/mockData';
 import './StudentPages.css';
 
@@ -132,11 +133,11 @@ function ProcedureDetail() {
   ];
 
   const getResultTypeDisplay = () => {
-    if (procedure.id === 1) {
-      return 'PDF ký số / Bản giấy tại phòng';
-    }
-    if (procedure.id === 2 || procedure.type_id === 2) {
+    if (isInternshipProcedure(procedure)) {
       return 'Bản cứng bắt buộc (nhận trực tiếp tại phòng PCTSV)';
+    }
+    if (isStudentCertProcedure(procedure)) {
+      return 'PDF ký số / Bản giấy tại phòng';
     }
     return procedure.result_type || 'PDF ký số / Bản giấy tại phòng';
   };

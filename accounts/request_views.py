@@ -33,6 +33,42 @@ ATTACHMENT_KEY_RE = re.compile(r"^attachments\[(\d+)\]\[(config_id|file)\]$")
 DEMO_CROSS_DEPT_EMAILS = {"demo.truongphong@vju.ac.vn", "demo.chuyenvien@vju.ac.vn"}
 
 
+def _proc_name_lower(proc) -> str:
+    if not proc:
+        return ""
+    if isinstance(proc, str):
+        return proc.strip().lower()
+    return (getattr(proc, "name", "") or "").strip().lower()
+
+
+def _is_student_cert_procedure(proc) -> bool:
+    name = _proc_name_lower(proc)
+    if name:
+        return "xác nhận sinh viên" in name
+    return getattr(proc, "type_id", None) == 1
+
+
+def _is_internship_procedure(proc) -> bool:
+    name = _proc_name_lower(proc)
+    if name:
+        return "giới thiệu" in name or "thực tập" in name
+    return getattr(proc, "type_id", None) == 2
+
+
+def _is_appeal_procedure(proc) -> bool:
+    name = _proc_name_lower(proc)
+    if name:
+        return "phúc khảo" in name
+    return getattr(proc, "type_id", None) == 3
+
+
+def _is_preservation_procedure(proc) -> bool:
+    name = _proc_name_lower(proc)
+    if name:
+        return "bảo lưu" in name
+    return getattr(proc, "type_id", None) == 4
+
+
 def _is_demo_cross_dept_staff(user: User) -> bool:
     """
     Tài khoản Demo dùng chung trên môi trường Render (demo.truongphong / demo.chuyenvien)
@@ -123,7 +159,7 @@ def _is_conditionally_required(field, form_data: dict, procedure: ProcedureType)
             return form_data.get(req_if["field_key"]) == req_if["value"]
         return all(form_data.get(k) == v for k, v in req_if.items())
 
-    if procedure.type_id == 1 and field.field_key in ("ho_khau", "noi_dk_nvqs"):
+    if _is_student_cert_procedure(procedure) and field.field_key in ("ho_khau", "noi_dk_nvqs"):
         return form_data.get("purpose") == "Tạm hoãn NVQS"
     return False
 
@@ -281,11 +317,11 @@ def _student_create_request(request):
     cleaned_form_data = dict(parsed_form_data)
 
     # Thủ tục giấy giới thiệu thực tập (type_id = 2) luôn nhận Bản cứng
-    if procedure.type_id == 2 or "giới thiệu" in procedure.name.lower():
+    if _is_internship_procedure(procedure):
         cleaned_form_data["result_preference"] = "Bản cứng"
 
     # Thủ tục phúc khảo điểm thi (type_id = 3): auto-fill điểm hiện tại từ Academic MS nếu chưa có
-    if procedure.type_id == 3 and ("current_grade" not in cleaned_form_data or cleaned_form_data.get("current_grade") is None):
+    if _is_appeal_procedure(procedure) and ("current_grade" not in cleaned_form_data or cleaned_form_data.get("current_grade") is None):
         reg = getattr(user, "student_registry", None)
         mssv = reg.mssv if reg else ""
         course_code = cleaned_form_data.get("course_code") or cleaned_form_data.get("subject") or ""
@@ -293,7 +329,7 @@ def _student_create_request(request):
         cleaned_form_data["current_grade"] = grade_res.get("grade", 6.0) if isinstance(grade_res, dict) else 6.0
 
     # Thủ tục bảo lưu KQHT (type_id = 4): auto-fill GPA từ Academic MS nếu chưa có
-    if procedure.type_id == 4 and ("gpa" not in cleaned_form_data or cleaned_form_data.get("gpa") is None):
+    if _is_preservation_procedure(procedure) and ("gpa" not in cleaned_form_data or cleaned_form_data.get("gpa") is None):
         reg = getattr(user, "student_registry", None)
         mssv = reg.mssv if reg else ""
         cleaned_form_data["gpa"] = AcademicMSService.get_student_gpa(mssv)
@@ -342,7 +378,7 @@ def _student_create_request(request):
                         status=400,
                     )
 
-    if procedure.type_id == 2:
+    if _is_internship_procedure(procedure):
         from_str = cleaned_form_data.get("internship_from")
         to_str = cleaned_form_data.get("internship_to")
         if from_str and to_str:
@@ -369,7 +405,7 @@ def _student_create_request(request):
 
         config = configs_by_id.get(cid)
         if not config:
-            if (procedure.type_id if "procedure" in locals() else req.procedure_type_id) == 4 and cid == 4:
+            if _is_preservation_procedure(procedure if "procedure" in locals() else req.procedure_type) and cid == 4:
                 config = AttachmentConfig.objects.filter(config_id=4).first()
             if not config:
                 return _json_error("INVALID_ATTACHMENT", "config_id không thuộc thủ tục này.", status=400)
@@ -590,7 +626,7 @@ def request_detail_view(request, request_id):
         {
             "attachment_id": a.attachment_id,
             "config_id": a.config_id,
-            "item_name": a.config.item_name if a.config else ("Biên bản phúc khảo" if req.procedure_type_id == 3 else None),
+            "item_name": a.config.item_name if a.config else ("Biên bản phúc khảo" if _is_appeal_procedure(req.procedure_type) else None),
             "file_name": a.file_name,
             "file_size": a.file_size,
             "mime_type": a.mime_type,
@@ -610,11 +646,11 @@ def request_detail_view(request, request_id):
             "student_status": academic_status,
             "is_status_eligible": (
                 academic_status == "active"
-                if req.procedure_type_id == 2
+                if _is_internship_procedure(req.procedure_type)
                 else academic_status in ("active", "graduated")
             ),
         }
-        if req.procedure_type_id == 2 or "giới thiệu" in req.procedure_type.name.lower():
+        if _is_internship_procedure(req.procedure_type):
             curriculum = AcademicMSService.get_student_curriculum(mssv) if mssv else []
             course_name = ((req.form_data or {}).get("course_name") or "").strip()
             matched_course = next(
@@ -633,6 +669,7 @@ def request_detail_view(request, request_id):
         "request_code": req.request_code,
         "type_id": req.procedure_type_id,
         "type_name": req.procedure_type.name,
+        "approval_levels": req.procedure_type.approval_levels,
         "department_name": req.procedure_type.department.name if req.procedure_type.department else None,
         "status": req.status,
         "internal_status": req.internal_status,
@@ -794,7 +831,7 @@ def request_supplements_view(request, request_id):
 
         config = configs_by_id.get(cid)
         if not config:
-            if (procedure.type_id if "procedure" in locals() else req.procedure_type_id) == 4 and cid == 4:
+            if _is_preservation_procedure(procedure if "procedure" in locals() else req.procedure_type) and cid == 4:
                 config = AttachmentConfig.objects.filter(config_id=4).first()
             if not config:
                 return _json_error("INVALID_ATTACHMENT", "config_id không thuộc thủ tục này.", status=400)
