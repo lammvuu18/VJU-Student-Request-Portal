@@ -24,3 +24,6 @@ test-results/
 
 # Markdown documents
 *.md
+
+# AI Assistant & PRP plans/reports
+.claude/
