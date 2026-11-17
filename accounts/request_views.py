@@ -13,9 +13,10 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from .models import (
-    AccessLog, Attachment, AttachmentConfig, Feedback, Notification, Payment, ProcedureType,
+    AccessLog, Attachment, AttachmentConfig, Department, Feedback, Notification, Payment, ProcedureType,
     Request, Result, StateAuditLog, User,
 )
+from .refund_service import payout_to_dict
 from .notification_views import DEFAULT_LIMIT, MAX_LIMIT, _format_datetime, _parse_positive_int
 from .payment_service import (
     PAYMENT_EXPIRED_REASON,
@@ -23,14 +24,14 @@ from .payment_service import (
     cancel_expired_payment_request,
     check_and_cancel_overdue_payment,
 )
-from .services import AcademicMSService, calculate_sla_deadline, validate_uploaded_file
+from .services import (
+    AcademicMSService, ExternalServiceError, FinanceMSService, calculate_sla_deadline,
+    format_vnd, procedure_kind, validate_uploaded_file,
+)
 from .views import _get_authenticated_user, _json_error, _read_json_object
 
 CLOSED_REQUEST_STATUSES = {"Đã duyệt", "Đã xử lý", "Từ chối", "Đã hủy"}
 ATTACHMENT_KEY_RE = re.compile(r"^attachments\[(\d+)\]\[(config_id|file)\]$")
-
-
-DEMO_CROSS_DEPT_EMAILS = {"demo.truongphong@vju.ac.vn", "demo.chuyenvien@vju.ac.vn"}
 
 
 def _proc_name_lower(proc) -> str:
@@ -69,28 +70,71 @@ def _is_preservation_procedure(proc) -> bool:
     return getattr(proc, "type_id", None) == 4
 
 
-def _is_demo_cross_dept_staff(user: User) -> bool:
-    """
-    Tài khoản Demo dùng chung trên môi trường Render (demo.truongphong / demo.chuyenvien)
-    được phép xem và xử lý đơn của tất cả các phòng ban (PCTSV, PDT, PKHTC) khi smoke test.
-    """
-    return bool(
-        user
-        and user.role in ("staff", "dept_head")
-        and user.email
-        and user.email.lower() in DEMO_CROSS_DEPT_EMAILS
-    )
+def _is_exemption_procedure(proc) -> bool:
+    """Miễn giảm học phí: PCTSV xác minh đối tượng rồi chuyển Phòng KHTC thẩm định, HT ký."""
+    if _proc_name_lower(proc):
+        return procedure_kind(proc) == "exemption"
+    return getattr(proc, "type_id", None) == 5
+
+
+def _is_refund_procedure(proc) -> bool:
+    """Hoàn trả học phí: chỉ Phòng KHTC xử lý, sau khi HT ký thì chi qua Internet Banking."""
+    if _proc_name_lower(proc):
+        return procedure_kind(proc) == "refund"
+    return getattr(proc, "type_id", None) == 6
+
+
+# Đơn miễn giảm do PCTSV xác minh xong thì chuyển sang phòng này thẩm định
+EXEMPTION_TRANSFER_DEPT_CODE = "PKHTC"
+
+
+def _active_department_id(req: Request):
+    """Phòng đang giữ đơn: phòng nhận chuyển (nếu đã chuyển) hoặc phòng phụ trách thủ tục."""
+    return req.transferred_to_dept_id or req.procedure_type.department_id
 
 
 def _can_staff_view_request(user: User, req: Request) -> bool:
+    """
+    Cán bộ chỉ xem được đơn của phòng mình: phòng phụ trách thủ tục hoặc phòng nhận chuyển.
+    Đơn miễn giảm sau khi chuyển sang KHTC vẫn hiện ở PCTSV (chỉ xem), phòng khác không thấy.
+    """
     if user.role not in ("staff", "dept_head") or not user.department_id:
         return False
-    if _is_demo_cross_dept_staff(user):
-        return True
     allowed_dept_ids = {req.procedure_type.department_id}
     if req.transferred_to_dept_id:
         allowed_dept_ids.add(req.transferred_to_dept_id)
     return user.department_id in allowed_dept_ids
+
+
+def _can_staff_act_on_request(user: User, req: Request) -> bool:
+    """Chỉ phòng đang giữ đơn mới thao tác; chuyên viên phải là người được phân công."""
+    if user.role not in ("staff", "dept_head") or user.department_id != _active_department_id(req):
+        return False
+    if user.role == "staff":
+        return req.assigned_staff_id == user.user_id
+    return True
+
+
+REFUND_MAX_AMOUNT = 200_000_000
+BANK_ACCOUNT_RE = re.compile(r"^\d{6,20}$")
+
+
+def _validate_refund_form(form_data: dict):
+    """Trả về thông báo lỗi nếu dữ liệu đơn hoàn trả không hợp lệ, ngược lại None."""
+    try:
+        amount = float(form_data.get("amount"))
+    except (TypeError, ValueError):
+        return "Số tiền đề nghị hoàn phải là số."
+    if amount <= 0 or amount != int(amount):
+        return "Số tiền đề nghị hoàn phải là số nguyên dương (đơn vị đồng)."
+    if amount > REFUND_MAX_AMOUNT:
+        return f"Số tiền đề nghị hoàn không được vượt quá {REFUND_MAX_AMOUNT:,} đ.".replace(",", ".")
+    account_no = re.sub(r"\s+", "", str(form_data.get("bank_account_no") or ""))
+    if not BANK_ACCOUNT_RE.match(account_no):
+        return "Số tài khoản nhận chỉ gồm chữ số, dài 6–20 ký tự."
+    form_data["bank_account_no"] = account_no
+    form_data["amount"] = int(amount)
+    return None
 
 
 def _extract_attachments_from_request(http_request):
@@ -378,6 +422,11 @@ def _student_create_request(request):
                         status=400,
                     )
 
+    if _is_refund_procedure(procedure):
+        refund_error = _validate_refund_form(cleaned_form_data)
+        if refund_error:
+            return _json_error("INVALID_FORM_DATA", refund_error, status=400)
+
     if _is_internship_procedure(procedure):
         from_str = cleaned_form_data.get("internship_from")
         to_str = cleaned_form_data.get("internship_to")
@@ -515,10 +564,10 @@ def _student_create_request(request):
         )
 
         dept_heads = User.objects.filter(
-            Q(department=procedure.department) | Q(email__iexact="demo.truongphong@vju.ac.vn"),
+            department=procedure.department,
             role="dept_head",
             account_status="active",
-        ).distinct()
+        )
         for head in dept_heads:
             Notification.objects.create(
                 user=head,
@@ -608,6 +657,9 @@ def request_detail_view(request, request_id):
     }
 
     result_obj = Result.objects.select_related("signed_by").filter(request=req).first()
+    # Bản thảo quyết định đang chờ Hiệu trưởng ký chưa có hiệu lực, sinh viên không được xem
+    if user.role == "student" and result_obj and not result_obj.signed_at:
+        result_obj = None
     result_data = None
     if result_obj:
         result_data = {
@@ -664,13 +716,52 @@ def request_detail_view(request, request_id):
     except Exception:
         academic_check = None
 
+    active_dept = req.transferred_to_dept or req.procedure_type.department
+    is_staff_viewer = user.role in ("staff", "dept_head")
+
+    # Đơn miễn giảm do PCTSV giữ, chưa chuyển: CV xác minh xong thì chuyển Phòng KHTC
+    transfer_target = None
+    if _is_exemption_procedure(req.procedure_type) and not req.transferred_to_dept_id:
+        target = Department.objects.filter(code=EXEMPTION_TRANSFER_DEPT_CODE, is_active=True).first()
+        if target:
+            transfer_target = {"dept_id": target.dept_id, "name": target.name}
+
+    # Cán bộ thẩm định đơn hoàn trả: đối chiếu học phí đã đóng trên Finance MS
+    finance_check = None
+    if is_staff_viewer and _is_refund_procedure(req.procedure_type):
+        form_data = req.form_data or {}
+        try:
+            paid = FinanceMSService.get_tuition_paid(mssv, str(form_data.get("refund_semester") or ""))
+            requested = int(float(form_data.get("amount") or 0))
+            finance_check = {
+                **paid,
+                "requested_amount": requested,
+                "amount_paid_text": format_vnd(paid["amount_paid"]),
+                "requested_amount_text": format_vnd(requested),
+                "is_amount_valid": 0 < requested <= paid["amount_paid"],
+            }
+        except (ExternalServiceError, TypeError, ValueError):
+            finance_check = {"error": "Finance MS không phản hồi."}
+
+    refund_data = None
+    payout = getattr(req, "refund_payout", None) if _is_refund_procedure(req.procedure_type) else None
+    if payout:
+        refund_data = payout_to_dict(payout)
+
     data = {
         "request_id": req.request_id,
         "request_code": req.request_code,
         "type_id": req.procedure_type_id,
         "type_name": req.procedure_type.name,
+        "procedure_kind": procedure_kind(req.procedure_type),
         "approval_levels": req.procedure_type.approval_levels,
-        "department_name": req.procedure_type.department.name if req.procedure_type.department else None,
+        # Phòng đang xử lý đơn (đơn miễn giảm đã chuyển thì là Phòng KHTC)
+        "department_name": active_dept.name if active_dept else None,
+        "origin_department_name": req.procedure_type.department.name if req.procedure_type.department else None,
+        "viewer_can_act": _can_staff_act_on_request(user, req) if is_staff_viewer else None,
+        "transfer_target": transfer_target,
+        "finance_check": finance_check,
+        "refund": refund_data,
         "status": req.status,
         "internal_status": req.internal_status,
         "cancel_reason": (req.form_data or {}).get("cancel_reason"),
@@ -1018,6 +1109,8 @@ def result_download_view(request, result_id):
     if user.role == "student":
         if req.user_id != user.user_id:
             return _json_error("FORBIDDEN", "Bạn không có quyền tải kết quả này.", status=403)
+        if not result.signed_at:
+            return _json_error("NOT_FOUND", "Quyết định chưa được ký, chưa có kết quả.", status=404)
     elif user.role in ("staff", "dept_head"):
         if not _can_staff_view_request(user, req):
             return _json_error("FORBIDDEN", "Bạn không có quyền tải kết quả này.", status=403)
@@ -1082,6 +1175,8 @@ def result_preview_view(request, result_id):
     if user.role == "student":
         if req.user_id != user.user_id:
             return _json_error("FORBIDDEN", "Bạn không có quyền xem trước kết quả này.", status=403)
+        if not result.signed_at:
+            return _json_error("NOT_FOUND", "Quyết định chưa được ký, chưa có kết quả.", status=404)
     elif user.role in ("staff", "dept_head"):
         if not _can_staff_view_request(user, req):
             return _json_error("FORBIDDEN", "Bạn không có quyền xem trước kết quả này.", status=403)

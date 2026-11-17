@@ -38,6 +38,7 @@ urlpatterns = [
 
     # Payment Gateway Webhook
     path('webhooks/payos', payment_views.payos_webhook_view, name='payos_webhook'),
+    path('webhooks/banking', staff_views.banking_webhook_view, name='banking_webhook'),
 
     # Module 1-2 & Module 4: Staff & Department Head workflow
     path('staff/inbox', staff_views.staff_inbox_view, name='staff_inbox'),
@@ -53,6 +54,10 @@ urlpatterns = [
     path('staff/requests/<int:request_id>/approve-head', staff_views.staff_approve_head_view, name='staff_approve_head'),
     path('staff/requests/<int:request_id>/submit-to-principal', staff_views.staff_submit_to_principal_view, name='staff_submit_to_principal'),
     path('staff/requests/<int:request_id>/return-to-staff', staff_views.staff_return_to_staff_view, name='staff_return_to_staff'),
+    # Miễn giảm học phí: PCTSV chuyển Phòng KHTC; Hoàn trả học phí: lập lại lệnh chi / giả lập ngân hàng
+    path('staff/requests/<int:request_id>/transfer', staff_views.staff_transfer_request_view, name='staff_transfer_request'),
+    path('staff/requests/<int:request_id>/refund/retry', staff_views.staff_retry_refund_payout_view, name='staff_retry_refund_payout'),
+    path('staff/requests/<int:request_id>/refund/simulate-bank', staff_views.staff_simulate_bank_callback_view, name='staff_simulate_bank_callback'),
     path('rejection-reasons', staff_views.rejection_reasons_view, name='rejection_reasons'),
 
     # Module 4: Principal Decision & SmartCA Signing

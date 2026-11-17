@@ -365,10 +365,10 @@ def process_payment_success(payment_obj: Payment, webhook_data: dict = None):
 
             # Gửi Notification cho Trưởng phòng ban tiếp nhận
             dept_heads = User.objects.filter(
-                Q(department=req.procedure_type.department) | Q(email__iexact="demo.truongphong@vju.ac.vn"),
+                department=req.procedure_type.department,
                 role="dept_head",
                 account_status="active",
-            ).distinct()
+            )
             for head in dept_heads:
                 Notification.objects.create(
                     user=head,

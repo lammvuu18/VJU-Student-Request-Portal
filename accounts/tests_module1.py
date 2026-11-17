@@ -232,7 +232,11 @@ class Module1TestCase(TestCase):
         self.assertEqual(res.json()["error"]["code"], "INVALID_FORM_DATA")
 
         # 1.1.13: Thiếu đính kèm bắt buộc (type_id = 5)
-        res = self.submit_request(type_id=5, form_data={"beneficiary_type": "Hộ nghèo"})
+        res = self.submit_request(type_id=5, form_data={
+            "beneficiary_type": "Sinh viên thuộc hộ nghèo",
+            "exemption_semester": "HK1 2026-2027",
+            "discount_level": "Miễn 100% học phí",
+        })
         self.assertEqual(res.status_code, 400)
         self.assertEqual(res.json()["error"]["code"], "MISSING_ATTACHMENT")
 

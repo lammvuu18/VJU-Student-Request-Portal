@@ -55,6 +55,8 @@ class Module3AppealWorkflowTests(TestCase):
             },
         ):
             call_command("seed_demo", stdout=StringIO())
+        # Hồ sơ mẫu của seed_demo tạo trong ngày: đơn đang xử lý chặn nộp trùng và chạm giới hạn 5 đơn/ngày
+        Request.objects.filter(request_code__startswith="DEMO-").delete()
 
     def setUp(self):
         self.client = Client()

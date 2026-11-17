@@ -288,6 +288,41 @@ class Payment(models.Model):
     class Meta:
         db_table = 'payment'
 
+class RefundPayout(models.Model):
+    """
+    Tiến trình chi hoàn trả học phí sau khi Hiệu trưởng ký quyết định:
+    Finance MS ghi nhận khoản hoàn → Internet Banking lập lệnh chi → ngân hàng xác nhận qua webhook.
+    """
+    STATUS_CHOICES = [
+        ('pending_finance', 'Chờ Finance MS ghi nhận'),
+        ('pending_bank', 'Chờ ngân hàng xác nhận'),
+        ('succeeded', 'Đã chuyển khoản'),
+        ('failed', 'Chi thất bại'),
+    ]
+
+    payout_id = models.AutoField(primary_key=True)
+    request = models.OneToOneField(Request, on_delete=models.CASCADE, related_name='refund_payout')
+    amount = models.DecimalField(max_digits=14, decimal_places=0, verbose_name="Số tiền hoàn (VNĐ)")
+    bank_name = models.CharField(max_length=100, verbose_name="Ngân hàng nhận")
+    bank_account_no = models.CharField(max_length=30, verbose_name="Số tài khoản nhận")
+    account_holder = models.CharField(max_length=150, verbose_name="Chủ tài khoản")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending_finance')
+    finance_ref = models.CharField(max_length=50, blank=True, null=True, verbose_name="Mã ghi nhận Finance MS")
+    finance_recorded_at = models.DateTimeField(null=True, blank=True)
+    payout_order_id = models.CharField(max_length=50, blank=True, null=True, unique=True, verbose_name="Mã lệnh chi")
+    payout_created_at = models.DateTimeField(null=True, blank=True)
+    bank_txn_id = models.CharField(max_length=50, blank=True, null=True, verbose_name="Mã giao dịch ngân hàng")
+    bank_confirmed_at = models.DateTimeField(null=True, blank=True)
+    failure_reason = models.TextField(blank=True, null=True)
+    attempt_count = models.IntegerField(default=0, verbose_name="Số lần lập lệnh chi")
+    webhook_payload = models.JSONField(blank=True, null=True, verbose_name="Dữ liệu webhook gần nhất")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'refund_payout'
+
+
 class Attachment(models.Model):
     attachment_id = models.AutoField(primary_key=True)
     request = models.ForeignKey(Request, on_delete=models.CASCADE, related_name='attachments')

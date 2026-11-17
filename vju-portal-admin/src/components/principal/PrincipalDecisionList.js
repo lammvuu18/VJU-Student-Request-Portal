@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { principalApi } from '../../services/api';
+import { principalApi, USE_MOCK } from '../../services/api';
 import './PrincipalPages.css';
 
 // 50 Requests/Decisions (9 initial matching Figma exact spec + 41 generated)
@@ -118,7 +118,8 @@ if (initialDecisions.length < 50) {
 function PrincipalDecisionList() {
   const navigate = useNavigate();
 
-  const [decisionsList, setDecisionsList] = useState(initialDecisions);
+  // Dữ liệu mẫu chỉ dùng khi bật REACT_APP_USE_MOCK; bình thường chờ danh sách thật từ backend
+  const [decisionsList, setDecisionsList] = useState(USE_MOCK ? initialDecisions : []);
   const [loading, setLoading] = useState(false);
   const [filterStatus, setFilterStatus] = useState('');
   const [filterDept, setFilterDept] = useState('');
@@ -131,13 +132,14 @@ function PrincipalDecisionList() {
       try {
         setLoading(true);
         const res = await principalApi.getPendingSignatures();
-        if (isMounted && res && res.data && Array.isArray(res.data) && res.data.length > 0) {
+        // Có dữ liệu thật thì dùng (kể cả danh sách rỗng), không hiển thị quyết định mẫu
+        if (isMounted && res && Array.isArray(res.data)) {
           const liveItems = res.data.map((item) => ({
             id: item.request_id,
             code: item.request_code,
             procedure: item.type_name,
             student: item.student_name,
-            department: item.submitted_by || 'Phòng Đào tạo',
+            department: item.department_name || item.submitted_by || '—',
             deadline: item.sub_sla_deadline ? new Date(item.sub_sla_deadline).toLocaleDateString('vi-VN') : '—',
             status: 'Chờ ký',
           }));
@@ -183,7 +185,8 @@ function PrincipalDecisionList() {
   }, []);
 
   const statusOptions = ['Tất cả', 'Chờ ký', 'Đã ký', 'Từ chối'];
-  const deptOptions = ['Tất cả', 'Phòng Đào tạo', 'Phòng CTSV', 'Phòng KHTC'];
+  // Phòng ban lấy theo dữ liệu đang hiển thị để bộ lọc khớp tên phòng thật
+  const deptOptions = ['Tất cả', ...Array.from(new Set(decisionsList.map((d) => d.department).filter(Boolean)))];
   const deadlineOptions = ['Tất cả', 'Hôm nay', 'Tuần này', 'Tháng này'];
 
   // Filter decisions
@@ -398,7 +401,9 @@ function PrincipalDecisionList() {
 
             {paginatedDecisions.length === 0 && (
               <div style={{ padding: '24px 8px', textAlign: 'center', color: '#6B7280', fontSize: 13 }}>
-                Không tìm thấy quyết định nào phù hợp với bộ lọc.
+                {loading
+                  ? 'Đang tải danh sách quyết định...'
+                  : (decisionsList.length === 0 ? 'Chưa có quyết định nào chờ ký.' : 'Không tìm thấy quyết định nào phù hợp với bộ lọc.')}
               </div>
             )}
           </div>

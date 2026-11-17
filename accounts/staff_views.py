@@ -13,16 +13,27 @@ from django.utils.dateparse import parse_date, parse_datetime
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
+from django.conf import settings
+
 from .models import (
-    AccessLog, Attachment, Notification, RejectionReason, Request, Result, StateAuditLog, User,
+    AccessLog, Attachment, Department, Notification, RefundPayout, RejectionReason, Request, Result,
+    StateAuditLog, User,
 )
 from .notification_views import DEFAULT_LIMIT, MAX_LIMIT, _format_datetime, _parse_positive_int
+from .refund_service import (
+    STATUS_PAYOUT_FAILED, STATUS_WAITING_BANK, WebhookError, handle_bank_webhook, payout_to_dict,
+    retry_refund_payout, simulate_bank_callback,
+)
 from .request_views import (
     CLOSED_REQUEST_STATUSES,
+    EXEMPTION_TRANSFER_DEPT_CODE,
+    _active_department_id,
+    _can_staff_act_on_request,
     _is_appeal_procedure,
-    _is_demo_cross_dept_staff,
+    _is_exemption_procedure,
     _is_internship_procedure,
     _is_preservation_procedure,
+    _is_refund_procedure,
 )
 from .services import (
     AcademicMSService, ExternalServiceError, build_qr_code_data,
@@ -34,10 +45,8 @@ INBOX_TERMINAL_STATUSES = {"Đã xử lý", "Từ chối", "Đã hủy", "Chờ 
 # Đơn đã kết thúc, cán bộ xem lại qua scope=closed. "Chờ thanh toán" chưa tới tay cán bộ nên không thuộc nhóm nào
 INBOX_CLOSED_STATUSES = {"Đã xử lý", "Từ chối", "Đã hủy"}
 INBOX_SCOPES = ("open", "closed", "all")
-
-
-def _active_department_id(req: Request):
-    return req.transferred_to_dept_id or req.procedure_type.department_id
+# Theo api-contract 9.8; kết thúc bằng "chờ phân công" để TP phòng nhận phân công được
+EXEMPTION_TRANSFERRED_STATUS = "Đã chuyển PKHTC — chờ phân công"
 
 
 def _parse_iso_datetime(value: str):
@@ -78,30 +87,26 @@ def staff_inbox_view(request):
     if scope not in INBOX_SCOPES:
         return _json_error("INVALID_PARAM", "scope phải là open, closed hoặc all.", status=400)
 
-    dept_filter = Q(transferred_to_dept_id=user.department_id) | Q(
-        transferred_to_dept__isnull=True,
-        procedure_type__department_id=user.department_id,
+    # Đơn của phòng: phòng phụ trách thủ tục hoặc phòng nhận chuyển. Đơn miễn giảm đã chuyển sang KHTC
+    # vẫn nằm trong danh sách PCTSV (chỉ xem); phòng không liên quan không thấy
+    dept_filter = Q(procedure_type__department_id=user.department_id) | Q(
+        transferred_to_dept_id=user.department_id,
     )
-
-    if _is_demo_cross_dept_staff(user):
-        scoped_qs = (
-            Request.objects.filter(is_draft=False)
-            .select_related("procedure_type", "user", "user__student_registry", "assigned_staff")
-        )
-    else:
-        scoped_qs = (
-            Request.objects.filter(dept_filter, is_draft=False)
-            .select_related("procedure_type", "user", "user__student_registry", "assigned_staff")
-        )
+    scoped_qs = (
+        Request.objects.filter(dept_filter, is_draft=False)
+        .select_related("procedure_type", "user", "user__student_registry", "assigned_staff", "transferred_to_dept")
+    )
     if user.role == "staff":
-        scoped_qs = scoped_qs.filter(assigned_staff=user)
+        # CV thấy đơn đang được giao và đơn mình đã từng xử lý (VD: đã chuyển sang phòng khác)
+        handled_ids = StateAuditLog.objects.filter(performed_by=user).values("request_id")
+        scoped_qs = scoped_qs.filter(Q(assigned_staff=user) | Q(request_id__in=handled_ids))
 
     base_qs = scoped_qs.exclude(status__in=INBOX_TERMINAL_STATUSES)
 
     now = timezone.now()
 
-    # Tính summary trên toàn bộ tập đơn đang chờ xử lý trong inbox của user
-    all_inbox_items = list(base_qs)
+    # Summary chỉ đếm đơn user đang phải xử lý, bỏ qua đơn đã chuyển sang phòng khác
+    all_inbox_items = [item for item in base_qs if _can_staff_act_on_request(user, item)]
     overdue_count = 0
     due_today_count = 0
     for item in all_inbox_items:
@@ -139,6 +144,7 @@ def staff_inbox_view(request):
         is_closed = r.status in INBOX_CLOSED_STATUSES
         # Đơn đã kết thúc không còn tính SLA
         rem_hours, is_overdue, _ = (None, False, False) if is_closed else compute_sla_metrics(r, now=now)
+        transferred_away = bool(r.transferred_to_dept_id) and r.transferred_to_dept_id != user.department_id
         data.append({
             "request_id": r.request_id,
             "request_code": r.request_code,
@@ -150,6 +156,9 @@ def staff_inbox_view(request):
             "status": r.status,
             "internal_status": r.internal_status,
             "is_closed": is_closed,
+            # Đơn đã chuyển sang phòng khác hoặc không còn giao cho CV này: chỉ xem, không thao tác
+            "is_read_only": not _can_staff_act_on_request(user, r),
+            "transferred_to_dept_name": r.transferred_to_dept.name if transferred_away else None,
             "assigned_staff": {
                 "user_id": r.assigned_staff.user_id,
                 "full_name": r.assigned_staff.full_name,
@@ -233,7 +242,7 @@ def staff_assign_request_view(request, request_id):
         return _json_error("NOT_FOUND", "Không tìm thấy yêu cầu.", status=404)
 
     active_dept_id = _active_department_id(req)
-    if user.department_id != active_dept_id and not _is_demo_cross_dept_staff(user):
+    if user.department_id != active_dept_id:
         return _json_error("FORBIDDEN", "Bạn không có quyền phân công yêu cầu của phòng ban khác.", status=403)
 
     assignable_statuses = {"Chờ phân công", "CV đang thẩm định", "Cần bổ sung", "Chờ TP phê duyệt"}
@@ -261,7 +270,7 @@ def staff_assign_request_view(request, request_id):
     if not staff or staff.role != "staff" or staff.account_status != "active":
         return _json_error("INVALID_STAFF", "Chuyên viên không tồn tại hoặc đã bị khóa.", status=422)
 
-    if staff.department_id != active_dept_id and not _is_demo_cross_dept_staff(staff):
+    if staff.department_id != active_dept_id:
         return _json_error("INVALID_STAFF", "Chuyên viên không thuộc phòng ban phụ trách.", status=422)
 
     old_staff = req.assigned_staff
@@ -516,7 +525,7 @@ def staff_reject_request_view(request, request_id):
         if req.internal_status != "CV đang thẩm định":
             return _json_error("INVALID_STATE", "Yêu cầu không ở trạng thái CV đang thẩm định.", status=422)
     elif user.role == "dept_head":
-        if user.department_id != _active_department_id(req) and not _is_demo_cross_dept_staff(user):
+        if user.department_id != _active_department_id(req):
             return _json_error("FORBIDDEN", "Bạn không có quyền xử lý yêu cầu của phòng ban khác.", status=403)
         if req.internal_status not in ("Chờ TP phê duyệt", "CV đang thẩm định"):
             return _json_error("INVALID_STATE", "Trạng thái yêu cầu không hợp lệ để từ chối.", status=422)
@@ -704,7 +713,7 @@ def staff_assign_pickup_view(request, request_id):
         if req.assigned_staff_id != user.user_id:
             return _json_error("FORBIDDEN", "Bạn không được phân công xử lý yêu cầu này.", status=403)
     elif user.role == "dept_head":
-        if user.department_id != _active_department_id(req) and not _is_demo_cross_dept_staff(user):
+        if user.department_id != _active_department_id(req):
             return _json_error("FORBIDDEN", "Bạn không có quyền xử lý yêu cầu của phòng ban khác.", status=403)
     else:
         return _json_error("FORBIDDEN", "Bạn không có quyền thực hiện thao tác này.", status=403)
@@ -789,7 +798,7 @@ def staff_confirm_handover_view(request, request_id):
         if req.assigned_staff_id != user.user_id:
             return _json_error("FORBIDDEN", "Bạn không được phân công xử lý yêu cầu này.", status=403)
     elif user.role == "dept_head":
-        if user.department_id != _active_department_id(req) and not _is_demo_cross_dept_staff(user):
+        if user.department_id != _active_department_id(req):
             return _json_error("FORBIDDEN", "Bạn không có quyền xử lý yêu cầu của phòng ban khác.", status=403)
     else:
         return _json_error("FORBIDDEN", "Bạn không có quyền thực hiện thao tác này.", status=403)
@@ -860,7 +869,7 @@ def staff_revoke_approval_view(request, request_id):
         if req.assigned_staff_id != user.user_id:
             return _json_error("FORBIDDEN", "Bạn không được phân công xử lý yêu cầu này.", status=403)
     elif user.role == "dept_head":
-        if user.department_id != _active_department_id(req) and not _is_demo_cross_dept_staff(user):
+        if user.department_id != _active_department_id(req):
             return _json_error("FORBIDDEN", "Bạn không có quyền xử lý yêu cầu của phòng ban khác.", status=403)
     else:
         return _json_error("FORBIDDEN", "Bạn không có quyền thu hồi duyệt.", status=403)
@@ -948,6 +957,13 @@ def staff_submit_to_head_view(request, request_id):
 
     if req.internal_status != "CV đang thẩm định":
         return _json_error("INVALID_STATE", "Yêu cầu không ở trạng thái CV đang thẩm định.", status=422)
+
+    if _is_exemption_procedure(req.procedure_type) and not req.transferred_to_dept_id:
+        return _json_error(
+            "TRANSFER_REQUIRED",
+            "Hồ sơ miễn giảm học phí phải chuyển sang Phòng Kế hoạch Tài chính thẩm định trước khi trình Trưởng phòng.",
+            status=422,
+        )
 
     # Kiểm tra điều kiện GPA nếu là thủ tục bảo lưu hoặc có trường gpa
     form_data = dict(req.form_data or {})
@@ -1090,12 +1106,11 @@ def staff_submit_to_head_view(request, request_id):
             status_after="Chờ TP phê duyệt",
         )
 
-        dept_id = _active_department_id(req)
         dept_heads = User.objects.filter(
-            Q(department_id=dept_id) | Q(email__iexact="demo.truongphong@vju.ac.vn"),
+            department_id=_active_department_id(req),
             role="dept_head",
             account_status="active",
-        ).distinct()
+        )
         for dh in dept_heads:
             Notification.objects.create(
                 user=dh,
@@ -1135,7 +1150,7 @@ def staff_approve_head_view(request, request_id):
         return _json_error("NOT_FOUND", "Không tìm thấy yêu cầu.", status=404)
 
     active_dept_id = _active_department_id(req)
-    if user.department_id != active_dept_id and not _is_demo_cross_dept_staff(user):
+    if user.department_id != active_dept_id:
         return _json_error("FORBIDDEN", "Bạn không có quyền xử lý yêu cầu của phòng ban khác.", status=403)
 
     is_appeal = _is_appeal_procedure(req.procedure_type)
@@ -1255,7 +1270,7 @@ def staff_submit_to_principal_view(request, request_id):
         return _json_error("NOT_FOUND", "Không tìm thấy yêu cầu.", status=404)
 
     active_dept_id = _active_department_id(req)
-    if user.department_id != active_dept_id and not _is_demo_cross_dept_staff(user):
+    if user.department_id != active_dept_id:
         return _json_error("FORBIDDEN", "Bạn không có quyền xử lý yêu cầu của phòng ban khác.", status=403)
 
     if _is_appeal_procedure(req.procedure_type) or req.procedure_type.approval_levels != 3:
@@ -1291,11 +1306,15 @@ def staff_submit_to_principal_view(request, request_id):
             req.save(update_fields=["internal_status", "updated_at"])
 
             # 4. StateAuditLog: action = "submit_for_signature"
+            if _is_preservation_procedure(req.procedure_type):
+                default_note = "Đã xác nhận GPA >= 2.0, minh chứng hợp lệ. Trình HT ký QĐ bảo lưu."
+            else:
+                default_note = f"Hồ sơ đã thẩm định đầy đủ. Trình Hiệu trưởng ký quyết định {req.procedure_type.name.lower()}."
             StateAuditLog.objects.create(
                 request=req,
                 performed_by=user,
                 action="submit_for_signature",
-                note=note or "Đã xác nhận GPA >= 2.0, minh chứng hợp lệ. Trình HT ký QĐ bảo lưu.",
+                note=note or default_note,
                 status_before=status_before,
                 status_after="Chờ HT ký số",
             )
@@ -1311,7 +1330,7 @@ def staff_submit_to_principal_view(request, request_id):
                     user=p_user,
                     request=req,
                     title="Quyết định chờ ký số SmartCA",
-                    message=f"Trưởng phòng {user.full_name} đã trình Quyết định bảo lưu ({req.request_code}) chờ ký số.",
+                    message=f"Trưởng phòng {user.full_name} đã trình quyết định {req.procedure_type.name.lower()} ({req.request_code}) chờ ký số.",
                 )
     except Exception as e:
         return _json_error("SUBMIT_FAILED", f"Lỗi khi tạo bản thảo quyết định trình ký: {str(e)}", status=500)
@@ -1342,7 +1361,7 @@ def staff_return_to_staff_view(request, request_id):
         return _json_error("NOT_FOUND", "Không tìm thấy yêu cầu.", status=404)
 
     active_dept_id = _active_department_id(req)
-    if user.department_id != active_dept_id and not _is_demo_cross_dept_staff(user):
+    if user.department_id != active_dept_id:
         return _json_error("FORBIDDEN", "Bạn không có quyền xử lý yêu cầu của phòng ban khác.", status=403)
 
     if req.internal_status != "Chờ TP phê duyệt":
@@ -1378,3 +1397,212 @@ def staff_return_to_staff_view(request, request_id):
         "data": {"internal_status": req.internal_status},
         "message": "Đã trả lại hồ sơ cho chuyên viên thẩm định.",
     })
+
+
+@csrf_exempt
+@require_http_methods(["PUT"])
+def staff_transfer_request_view(request, request_id):
+    """
+    PUT /api/staff/requests/:id/transfer — CV Phòng CTSV xác minh xong đơn miễn giảm học phí,
+    chuyển sang Phòng Kế hoạch Tài chính. Đơn về trạng thái "PKHTC chờ phân công" để TP KHTC phân công.
+    Body: { "to_department_id": 3 (tùy chọn, phải là Phòng KHTC), "note": "..." (bắt buộc) }
+    """
+    user = _get_authenticated_user(request)
+    if not user:
+        return _json_error("UNAUTHORIZED", "Chưa đăng nhập.", status=401)
+
+    try:
+        req = Request.objects.select_related("procedure_type", "user", "assigned_staff").get(request_id=request_id)
+    except Request.DoesNotExist:
+        return _json_error("NOT_FOUND", "Không tìm thấy yêu cầu.", status=404)
+
+    if user.role != "staff" or user.department_id != req.procedure_type.department_id:
+        return _json_error("FORBIDDEN", "Bạn không được phân công xử lý yêu cầu này.", status=403)
+
+    # Release 1: mỗi đơn chỉ chuyển phòng ban 1 lần (BR-25)
+    if req.transferred_to_dept_id:
+        return _json_error("ALREADY_TRANSFERRED", "Yêu cầu đã được chuyển phòng ban 1 lần (giới hạn Release 1).", status=422)
+
+    if req.assigned_staff_id != user.user_id:
+        return _json_error("FORBIDDEN", "Bạn không được phân công xử lý yêu cầu này.", status=403)
+
+    if not _is_exemption_procedure(req.procedure_type):
+        return _json_error("INVALID_STATE", "Thủ tục này không có bước chuyển phòng ban.", status=422)
+
+    if req.internal_status != "CV đang thẩm định":
+        return _json_error("INVALID_STATE", "Yêu cầu không ở trạng thái CV đang thẩm định.", status=422)
+
+    body = _read_json_object(request)
+    if body is None:
+        return _json_error("INVALID_FORM_DATA", "Dữ liệu gửi lên không hợp lệ.", status=400)
+    note = body.get("note").strip() if isinstance(body.get("note"), str) else ""
+    if not note:
+        return _json_error("INVALID_FORM_DATA", "Vui lòng nhập ghi chú chuyển (phần đã xác minh).", status=400)
+
+    target = Department.objects.filter(code=EXEMPTION_TRANSFER_DEPT_CODE, is_active=True).first()
+    if not target:
+        return _json_error("INVALID_STATE", "Không tìm thấy Phòng Kế hoạch Tài chính.", status=422)
+    to_dept_raw = body.get("to_department_id")
+    if to_dept_raw not in (None, ""):
+        try:
+            to_dept_id = int(to_dept_raw)
+        except (TypeError, ValueError):
+            to_dept_id = None
+        if to_dept_id != target.dept_id:
+            return _json_error(
+                "INVALID_DEPARTMENT",
+                "Hồ sơ miễn giảm học phí chỉ được chuyển sang Phòng Kế hoạch Tài chính.",
+                status=422,
+            )
+
+    now = timezone.now()
+    with transaction.atomic():
+        status_before = req.internal_status
+        req.transferred_to_dept = target
+        req.transferred_at = now
+        req.assigned_staff = None
+        req.assigned_by = None
+        req.assigned_at = None
+        req.status = "Đang xử lý"
+        req.internal_status = EXEMPTION_TRANSFERRED_STATUS
+        req.save(update_fields=[
+            "transferred_to_dept", "transferred_at", "assigned_staff", "assigned_by", "assigned_at",
+            "status", "internal_status", "updated_at",
+        ])
+
+        StateAuditLog.objects.create(
+            request=req,
+            performed_by=user,
+            action="transfer",
+            note=f"Chuyển sang {target.name}: {note}",
+            status_before=status_before,
+            status_after=EXEMPTION_TRANSFERRED_STATUS,
+        )
+
+        for head in User.objects.filter(department=target, role="dept_head", account_status="active"):
+            Notification.objects.create(
+                user=head,
+                request=req,
+                title="Có hồ sơ chuyển đến chờ phân công",
+                message=f"Phòng CTSV đã chuyển hồ sơ {req.request_code} ({req.procedure_type.name}) sang phòng chờ phân công thẩm định.",
+            )
+        Notification.objects.create(
+            user=req.user,
+            request=req,
+            title="Hồ sơ đã chuyển Phòng Kế hoạch Tài chính",
+            message=f"Phòng CTSV đã xác minh đối tượng và chuyển hồ sơ {req.request_code} sang {target.name} thẩm định.",
+        )
+
+    return JsonResponse({
+        "success": True,
+        "data": {
+            "internal_status": req.internal_status,
+            "transferred_to_dept": {"dept_id": target.dept_id, "name": target.name},
+        },
+        "message": f"Đã chuyển hồ sơ sang {target.name}.",
+    })
+
+
+def _load_refund_request_for_finance(request, request_id):
+    """Kiểm tra quyền thao tác chi hoàn trả: CV phụ trách hoặc TP của phòng đang giữ đơn hoàn trả."""
+    user = _get_authenticated_user(request)
+    if not user:
+        return None, None, _json_error("UNAUTHORIZED", "Chưa đăng nhập.", status=401)
+    try:
+        req = Request.objects.select_related("procedure_type", "user", "assigned_staff").get(request_id=request_id)
+    except Request.DoesNotExist:
+        return user, None, _json_error("NOT_FOUND", "Không tìm thấy yêu cầu.", status=404)
+    if not _is_refund_procedure(req.procedure_type):
+        return user, req, _json_error("INVALID_STATE", "Hồ sơ không phải đơn hoàn trả học phí.", status=422)
+    if not _can_staff_act_on_request(user, req):
+        return user, req, _json_error("FORBIDDEN", "Bạn không có quyền xử lý chi hoàn trả của hồ sơ này.", status=403)
+    if not RefundPayout.objects.filter(request=req).exists():
+        return user, req, _json_error("INVALID_STATE", "Hồ sơ chưa có lệnh chi hoàn trả.", status=422)
+    return user, req, None
+
+
+@csrf_exempt
+@require_http_methods(["PUT"])
+def staff_retry_refund_payout_view(request, request_id):
+    """PUT /api/staff/requests/:id/refund/retry — Phòng KHTC lập lại lệnh chi khi lần trước thất bại."""
+    user, req, error = _load_refund_request_for_finance(request, request_id)
+    if error:
+        return error
+    if req.internal_status != STATUS_PAYOUT_FAILED:
+        return _json_error("INVALID_STATE", "Chỉ lập lại lệnh chi khi lần chi trước thất bại.", status=422)
+
+    with transaction.atomic():
+        payout = retry_refund_payout(req, user)
+
+    req.refresh_from_db()
+    return JsonResponse({
+        "success": True,
+        "data": {"internal_status": req.internal_status, "refund": payout_to_dict(payout)},
+        "message": (
+            "Đã lập lại lệnh chi. Chờ ngân hàng xác nhận."
+            if req.internal_status == STATUS_WAITING_BANK
+            else "Lập lệnh chi chưa thành công, vui lòng thử lại sau."
+        ),
+    })
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def staff_simulate_bank_callback_view(request, request_id):
+    """
+    POST /api/staff/requests/:id/refund/simulate-bank — Môi trường demo (BANKING_SANDBOX_ENABLED):
+    giả lập ngân hàng gửi webhook kết quả chuyển khoản. Body: { "outcome": "success" | "failed", "reason": "..." }
+    """
+    if not getattr(settings, "BANKING_SANDBOX_ENABLED", False):
+        return _json_error("FORBIDDEN", "Chế độ giả lập ngân hàng đang tắt.", status=403)
+
+    user, req, error = _load_refund_request_for_finance(request, request_id)
+    if error:
+        return error
+    if req.internal_status != STATUS_WAITING_BANK:
+        return _json_error("INVALID_STATE", "Hồ sơ không ở trạng thái chờ ngân hàng xác nhận.", status=422)
+
+    body = _read_json_object(request) if request.body else {}
+    if body is None:
+        return _json_error("INVALID_FORM_DATA", "Body JSON không hợp lệ.", status=400)
+    outcome = body.get("outcome", "success")
+    if outcome not in ("success", "failed"):
+        return _json_error("INVALID_FORM_DATA", "outcome phải là success hoặc failed.", status=400)
+    reason = body.get("reason").strip() if isinstance(body.get("reason"), str) else ""
+
+    payout = RefundPayout.objects.get(request=req)
+    try:
+        result = simulate_bank_callback(payout, outcome == "success", reason)
+    except WebhookError as exc:
+        return _json_error(exc.code, exc.message, status=exc.status)
+
+    req.refresh_from_db()
+    payout.refresh_from_db()
+    return JsonResponse({
+        "success": True,
+        "data": {
+            "internal_status": req.internal_status,
+            "status": req.status,
+            "webhook": result,
+            "refund": payout_to_dict(payout),
+        },
+        "message": (
+            "Ngân hàng đã xác nhận chuyển khoản thành công."
+            if outcome == "success"
+            else "Ngân hàng báo chi thất bại."
+        ),
+    })
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def banking_webhook_view(request):
+    """
+    POST /api/webhooks/banking — Ngân hàng báo kết quả lệnh chi hoàn trả.
+    Header X-Bank-Signature = HMAC-SHA256(BANKING_WEBHOOK_SECRET, raw body). Gọi lặp lại không ghi trùng.
+    """
+    try:
+        result = handle_bank_webhook(request.body, request.headers.get("X-Bank-Signature", ""))
+    except WebhookError as exc:
+        return _json_error(exc.code, exc.message, status=exc.status)
+    return JsonResponse({"success": True, "data": result})

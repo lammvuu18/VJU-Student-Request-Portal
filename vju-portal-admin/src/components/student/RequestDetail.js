@@ -2,9 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Modal from '../common/Modal';
 import Button from '../common/Button';
+import RefundProgressCard from '../common/RefundProgressCard';
 import api from '../../services/api';
 import {
-  formatDate, formatDateTime, formatFileSize, statusStyle, FIELD_LABELS, TIMELINE_ACTION_LABELS,
+  formatDate, formatDateTime, formatFileSize, formatFieldValue, statusStyle, FIELD_LABELS, TIMELINE_ACTION_LABELS,
   isAppealProcedure,
 } from '../../utils/format';
 import './StudentPages.css';
@@ -269,7 +270,7 @@ function RequestDetail() {
     ['Mã yêu cầu', request.request_code],
     ['Tên thủ tục', request.type_name],
     ['Phòng ban xử lý', request.department_name],
-    ...formEntries.map(([key, value]) => [fieldLabels[key] || FIELD_LABELS[key] || key, String(value)]),
+    ...formEntries.map(([key, value]) => [fieldLabels[key] || FIELD_LABELS[key] || key, formatFieldValue(key, value)]),
     ['Ngày gửi', formatDateTime(request.created_at)],
     ['Hạn xử lý dự kiến', formatDate(request.sla_deadline)],
   ];
@@ -435,6 +436,13 @@ function RequestDetail() {
         </div>
         <div className="req-detail-divider" />
       </div>
+
+      {/* Hoàn trả học phí: tiến trình chuyển khoản sau khi Hiệu trưởng ký */}
+      <RefundProgressCard
+        refund={request.refund}
+        cardClassName="req-detail-card"
+        titleClassName="req-detail-card-title"
+      />
 
       {/* Kết quả */}
       {result && (

@@ -149,6 +149,102 @@ class MockSmartCAService:
         }
 
 
+class FinanceMSService:
+    """
+    Mock Service cho hệ thống tài chính (Finance MS): tra cứu học phí đã đóng và ghi nhận khoản hoàn trả.
+    Môi trường thật sẽ gọi API của phần mềm kế toán; ở đây trả dữ liệu cố định để demo.
+    """
+
+    TUITION_PER_SEMESTER = 15_750_000
+    REFUND_LEDGER_ACCOUNT = "3388 - Phải trả người học"
+
+    @classmethod
+    def get_tuition_paid(cls, mssv: str, semester: str = "") -> dict:
+        if not mssv:
+            raise ExternalServiceError("Thiếu MSSV khi tra cứu Finance MS")
+        return {
+            "mssv": mssv,
+            "semester": semester or "",
+            "tuition_due": cls.TUITION_PER_SEMESTER,
+            "amount_paid": cls.TUITION_PER_SEMESTER,
+            "receipt_no": f"BL-{mssv}-{(semester or 'HK').replace(' ', '')}",
+        }
+
+    @classmethod
+    def record_refund(cls, request_obj, amount) -> dict:
+        reg = getattr(request_obj.user, "student_registry", None)
+        mssv = reg.mssv if reg else (request_obj.form_data or {}).get("mssv")
+        if not mssv:
+            raise ExternalServiceError("Finance MS từ chối ghi nhận: thiếu MSSV")
+        now = timezone.now()
+        return {
+            "refund_ref": f"FMS-RF-{timezone.localtime(now).strftime('%Y%m%d')}-{request_obj.request_id:05d}",
+            "recorded_at": now,
+            "ledger_account": cls.REFUND_LEDGER_ACCOUNT,
+            "amount": int(amount),
+        }
+
+
+class InternetBankingService:
+    """
+    Mock Service cho Internet Banking doanh nghiệp: lập lệnh chi và ký/kiểm tra chữ ký webhook.
+    Ngân hàng gửi kết quả chuyển khoản về /api/webhooks/banking kèm header X-Bank-Signature
+    = HMAC-SHA256(BANKING_WEBHOOK_SECRET, raw body).
+    """
+
+    SOURCE_ACCOUNT = "0011 0040 12345 — Trường ĐH Việt Nhật (Vietcombank)"
+
+    @classmethod
+    def create_payout_order(cls, payout) -> dict:
+        now = timezone.now()
+        stamp = timezone.localtime(now).strftime("%Y%m%d%H%M%S")
+        return {
+            "order_id": f"IB-{stamp}-{payout.payout_id}-{payout.attempt_count}",
+            "status": "pending",
+            "source_account": cls.SOURCE_ACCOUNT,
+            "created_at": now,
+        }
+
+    @classmethod
+    def sign_payload(cls, raw_body: bytes) -> str:
+        import hashlib
+        import hmac
+        secret = (getattr(settings, "BANKING_WEBHOOK_SECRET", "") or "").encode("utf-8")
+        return hmac.new(secret, raw_body, hashlib.sha256).hexdigest()
+
+    @classmethod
+    def verify_signature(cls, raw_body: bytes, signature: str) -> bool:
+        import hmac
+        if not signature:
+            return False
+        return hmac.compare_digest(cls.sign_payload(raw_body), signature.strip())
+
+    @classmethod
+    def build_webhook_payload(cls, payout, succeeded: bool, failure_reason: str = "") -> dict:
+        now = timezone.now()
+        payload = {
+            "event": "payout.succeeded" if succeeded else "payout.failed",
+            "order_id": payout.payout_order_id,
+            "amount": int(payout.amount),
+            "beneficiary_account": payout.bank_account_no,
+            "beneficiary_bank": payout.bank_name,
+            "occurred_at": now.isoformat(),
+        }
+        if succeeded:
+            payload["bank_txn_id"] = f"FT{timezone.localtime(now).strftime('%y%m%d%H%M%S')}{payout.payout_id:04d}"
+        else:
+            payload["failure_reason"] = failure_reason or "Tài khoản thụ hưởng không hợp lệ"
+        return payload
+
+
+def format_vnd(amount) -> str:
+    try:
+        value = int(round(float(amount)))
+    except (TypeError, ValueError):
+        return str(amount)
+    return f"{value:,}".replace(",", ".") + " đ"
+
+
 def getStudentStatus(mssv: str) -> dict:
     return AcademicMSService.get_student_status(mssv)
 
@@ -518,9 +614,123 @@ def update_student_status(mssv: str, status: str) -> dict:
     return AcademicMSService.update_student_status(mssv, status)
 
 
+def procedure_kind(proc) -> str:
+    """Phân loại thủ tục theo tên (type_id trên Render có thể lệch so với seed dev)."""
+    name = (getattr(proc, "name", "") or "").strip().lower()
+    if "miễn giảm" in name or "miễn, giảm" in name:
+        return "exemption"
+    if "hoàn trả" in name:
+        return "refund"
+    if "bảo lưu" in name:
+        return "preservation"
+    if "phúc khảo" in name:
+        return "appeal"
+    return "other"
+
+
+def _decision_content(req, kind: str, student_name: str, mssv: str, class_name: str, cohort: str, major: str) -> dict:
+    """Nội dung riêng của từng loại quyết định trình Hiệu trưởng ký."""
+    form_data = req.form_data or {}
+    student_line = f"   • Mã số sinh viên: {mssv}            Lớp: {class_name}        Khóa: {cohort}"
+
+    if kind == "exemption":
+        semester = form_data.get("exemption_semester") or form_data.get("semester") or "học kỳ hiện tại"
+        level = form_data.get("discount_level") or "Miễn giảm theo quy định"
+        beneficiary = form_data.get("beneficiary_type") or "Đối tượng chính sách"
+        return {
+            "subject": "Về việc miễn, giảm học phí cho sinh viên",
+            "considers": [
+                "- Căn cứ Quyết định thành lập Trường Đại học Việt Nhật thuộc Đại học Quốc gia Hà Nội;",
+                "- Căn cứ Nghị định số 81/2021/NĐ-CP quy định về cơ chế thu, quản lý học phí và chính sách miễn, giảm học phí;",
+                f"- Xét đơn đề nghị miễn, giảm học phí của sinh viên {student_name} và kết quả xác minh của Phòng Công tác Sinh viên;",
+                "- Theo đề nghị của Trưởng phòng Kế hoạch Tài chính,",
+            ],
+            "articles": [
+                f"Điều 1. {level} {semester} cho sinh viên {student_name.upper()}.",
+                student_line,
+                f"   • Ngành đào tạo: {major}",
+                f"   • Đối tượng được hưởng: {beneficiary}",
+                "Điều 2. Phòng Kế hoạch Tài chính điều chỉnh khoản phải thu học phí của sinh viên theo mức được miễn, giảm tại Điều 1.",
+                "Điều 3. Trưởng phòng Công tác Sinh viên, Trưởng phòng Kế hoạch Tài chính và sinh viên có tên tại Điều 1 chịu trách nhiệm thi hành.",
+            ],
+            "archive": "- Lưu: VT, CTSV, KHTC.",
+        }
+
+    if kind == "refund":
+        semester = form_data.get("refund_semester") or form_data.get("semester") or "học kỳ hiện tại"
+        reason = form_data.get("refund_reason") or form_data.get("reason") or "Theo đề nghị của sinh viên"
+        bank_line = (
+            f"   • Hình thức: chuyển khoản tới tài khoản số {form_data.get('bank_account_no', '')} "
+            f"tại {form_data.get('bank_name', '')}, chủ tài khoản {form_data.get('account_holder', '')}"
+        )
+        return {
+            "subject": "Về việc hoàn trả học phí cho sinh viên",
+            "considers": [
+                "- Căn cứ Quyết định thành lập Trường Đại học Việt Nhật thuộc Đại học Quốc gia Hà Nội;",
+                "- Căn cứ Quy chế chi tiêu nội bộ và quy định thu, hoàn trả học phí hiện hành của Trường;",
+                f"- Xét đơn đề nghị hoàn trả học phí của sinh viên {student_name} và chứng từ đóng học phí kèm theo;",
+                "- Theo đề nghị của Trưởng phòng Kế hoạch Tài chính,",
+            ],
+            "articles": [
+                f"Điều 1. Hoàn trả cho sinh viên {student_name.upper()} số tiền {format_vnd(form_data.get('amount', 0))} học phí {semester}.",
+                student_line,
+                f"   • Lý do hoàn trả: {reason}",
+                bank_line,
+                "Điều 2. Phòng Kế hoạch Tài chính ghi nhận khoản hoàn trả và thực hiện chi qua hệ thống Internet Banking của Trường.",
+                "Điều 3. Trưởng phòng Kế hoạch Tài chính, các đơn vị liên quan và sinh viên có tên tại Điều 1 chịu trách nhiệm thi hành.",
+            ],
+            "archive": "- Lưu: VT, KHTC.",
+        }
+
+    suspend_from = form_data.get("suspend_from") or form_data.get("semester") or "Học kỳ 2, năm học 2026-2027"
+    suspend_to = form_data.get("suspend_to") or "Hết năm học 2026-2027"
+    return_semester = form_data.get("return_semester") or "HK1 2027-2028"
+    reason = form_data.get("reason") or "Lý do cá nhân / sức khỏe"
+    gpa = form_data.get("gpa") or "3.2"
+    return {
+        "subject": "Về việc cho phép sinh viên tạm dừng và bảo lưu kết quả học tập",
+        "considers": [
+            "- Căn cứ Quyết định thành lập Trường Đại học Việt Nhật thuộc Đại học Quốc gia Hà Nội;",
+            "- Căn cứ Quy chế đào tạo đại học hiện hành của Đại học Quốc gia Hà Nội;",
+            f"- Xét Đơn xin bảo lưu kết quả học tập của sinh viên {student_name} (Điểm GPA: {gpa});",
+            "- Theo đề nghị của Trưởng phòng Đào tạo và Quản trị người học,",
+        ],
+        "articles": [
+            f"Điều 1. Cho phép sinh viên {student_name.upper()} được tạm dừng và bảo lưu kết quả học tập.",
+            student_line,
+            f"   • Ngành đào tạo: {major}",
+            f"   • Thời gian bảo lưu: Từ {suspend_from} đến {suspend_to}",
+            f"   • Thời điểm quay trở lại học tập: {return_semester}",
+            f"   • Lý do: {reason}",
+            "Điều 2. Trong thời gian bảo lưu, sinh viên phải thực hiện đúng các quy định hiện hành.",
+            "Điều 3. Trưởng phòng Đào tạo, các đơn vị liên quan và sinh viên chịu trách nhiệm thi hành.",
+        ],
+        "archive": "- Lưu: VT, ĐT.",
+    }
+
+
+def _wrap_text(text: str, font_name: str, font_size: float, max_width: float) -> list:
+    """Ngắt dòng theo độ rộng thực của font để câu dài không tràn khỏi trang A4."""
+    indent = text[: len(text) - len(text.lstrip())]
+    words = text.split()
+    lines, current = [], ""
+    for word in words:
+        candidate = f"{current} {word}".strip()
+        prefix = indent if not lines else indent + "    "
+        if current and pdfmetrics.stringWidth(prefix + candidate, font_name, font_size) > max_width:
+            lines.append(current)
+            current = word
+        else:
+            current = candidate
+    if current:
+        lines.append(current)
+    return [(indent if i == 0 else indent + "    ") + line for i, line in enumerate(lines)] or [text]
+
+
 def generate_decision_pdf(req, verification_code: str, smartca_data: dict = None) -> str:
     """
-    Tạo file PDF Quyết định bảo lưu kết quả học tập (A4, layout chính thức VJU).
+    Tạo file PDF Quyết định trình Hiệu trưởng ký (A4, layout chính thức VJU).
+    Nội dung theo loại thủ tục: bảo lưu KQHT, miễn giảm học phí, hoàn trả học phí.
     - Nếu smartca_data is None: Bản thảo trình ký (có khung watermark "[BẢN THẢO TRÌNH KÝ]").
     - Nếu smartca_data được truyền: Đóng dấu mộc chữ ký số điện tử của Hiệu trưởng.
     """
@@ -532,11 +742,9 @@ def generate_decision_pdf(req, verification_code: str, smartca_data: dict = None
     cohort = reg.cohort if reg else form_data.get("cohort", "")
     major = reg.major if reg else form_data.get("major", "")
 
-    suspend_from = form_data.get("suspend_from") or form_data.get("semester") or "Học kỳ 2, năm học 2026-2027"
-    suspend_to = form_data.get("suspend_to") or "Hết năm học 2026-2027"
-    return_semester = form_data.get("return_semester") or "HK1 2027-2028"
-    reason = form_data.get("reason") or "Lý do cá nhân / sức khỏe"
-    gpa = form_data.get("gpa") or "3.2"
+    content = _decision_content(
+        req, procedure_kind(req.procedure_type), student_name, mssv, class_name, cohort, major,
+    )
 
     qr_url = build_qr_code_data(verification_code)
     qr_img = qrcode.make(qr_url)
@@ -572,7 +780,9 @@ def generate_decision_pdf(req, verification_code: str, smartca_data: dict = None
     c.setFont(font_name, 13)
     c.drawCentredString(width / 2, height - 120, "QUYẾT ĐỊNH")
     c.setFont(font_name, 11)
-    c.drawCentredString(width / 2, height - 138, "Về việc cho phép sinh viên tạm dừng và bảo lưu kết quả học tập")
+    c.drawCentredString(width / 2, height - 138, content["subject"])
+
+    text_width = width - 100
 
     # Căn cứ
     c.setFont(font_name, 10)
@@ -580,15 +790,11 @@ def generate_decision_pdf(req, verification_code: str, smartca_data: dict = None
     c.drawCentredString(width / 2, y, "HIỆU TRƯỞNG TRƯỜNG ĐẠI HỌC VIỆT NHẬT")
     y -= 20
     c.setFont(font_name, 9)
-    intro_lines = [
-        "- Căn cứ Quyết định thành lập Trường Đại học Việt Nhật thuộc Đại học Quốc gia Hà Nội;",
-        "- Căn cứ Quy chế đào tạo đại học hiện hành của Đại học Quốc gia Hà Nội;",
-        f"- Xét Đơn xin bảo lưu kết quả học tập của sinh viên {student_name} (Điểm GPA: {gpa});",
-        "- Theo đề nghị của Trưởng phòng Đào tạo và Quản trị người học,",
-    ]
-    for line in intro_lines:
-        c.drawString(50, y, line)
-        y -= 16
+    for line in content["considers"]:
+        for part in _wrap_text(line, font_name, 9, text_width):
+            c.drawString(50, y, part)
+            y -= 14
+        y -= 2
 
     y -= 5
     c.setFont(font_name, 11)
@@ -596,26 +802,18 @@ def generate_decision_pdf(req, verification_code: str, smartca_data: dict = None
     y -= 22
 
     c.setFont(font_name, 9.5)
-    body_lines = [
-        f"Điều 1. Cho phép sinh viên {student_name.upper()} được tạm dừng và bảo lưu kết quả học tập.",
-        f"   • Mã số sinh viên: {mssv}            Lớp: {class_name}        Khóa: {cohort}",
-        f"   • Ngành đào tạo: {major}",
-        f"   • Thời gian bảo lưu: Từ {suspend_from} đến {suspend_to}",
-        f"   • Thời điểm quay trở lại học tập: {return_semester}",
-        f"   • Lý do: {reason}",
-        "Điều 2. Trong thời gian bảo lưu, sinh viên phải thực hiện đúng các quy định hiện hành.",
-        "Điều 3. Trưởng phòng Đào tạo, các đơn vị liên quan và sinh viên chịu trách nhiệm thi hành.",
-    ]
-    for line in body_lines:
-        c.drawString(50, y, line)
-        y -= 20
+    for line in content["articles"]:
+        for part in _wrap_text(line, font_name, 9.5, text_width):
+            c.drawString(50, y, part)
+            y -= 15
+        y -= 5
 
     # Chữ ký & Con dấu
     sig_y = y - 25
     c.setFont(font_name, 9)
     c.drawString(50, sig_y, "Nơi nhận:")
     c.drawString(50, sig_y - 14, "- Như Điều 3;")
-    c.drawString(50, sig_y - 28, "- Lưu: VT, ĐT.")
+    c.drawString(50, sig_y - 28, content["archive"])
 
     c.setFont(font_name, 10)
     c.drawCentredString(width - 150, sig_y, "HIỆU TRƯỞNG")

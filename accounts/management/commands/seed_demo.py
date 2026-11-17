@@ -13,11 +13,21 @@ from accounts.models import (
 DEMO_PASSWORD_MIN_LENGTH = 12
 
 # email, ho ten, vai tro, cap tham quyen, ma phong ban
+# Moi phong co 1 Truong phong + 1 Chuyen vien demo; can bo chi thay don cua phong minh
 DEMO_STAFF = [
-    ('demo.chuyenvien@vju.ac.vn', 'Chuyên viên Demo', 'staff', 1, 'PCTSV'),
-    ('demo.truongphong@vju.ac.vn', 'Trưởng phòng Demo', 'dept_head', 2, 'PCTSV'),
+    ('demo.chuyenvien@vju.ac.vn', 'Chuyên viên Phòng Đào tạo (Demo)', 'staff', 1, 'PDT'),
+    ('demo.truongphong@vju.ac.vn', 'Trưởng phòng Đào tạo (Demo)', 'dept_head', 2, 'PDT'),
+    ('demo.chuyenvien.ctsv@vju.ac.vn', 'Chuyên viên Phòng CTSV (Demo)', 'staff', 1, 'PCTSV'),
+    ('demo.truongphong.ctsv@vju.ac.vn', 'Trưởng phòng CTSV (Demo)', 'dept_head', 2, 'PCTSV'),
+    ('demo.chuyenvien.khtc@vju.ac.vn', 'Chuyên viên Phòng KHTC (Demo)', 'staff', 1, 'PKHTC'),
+    ('demo.truongphong.khtc@vju.ac.vn', 'Trưởng phòng KHTC (Demo)', 'dept_head', 2, 'PKHTC'),
     ('demo.hieutruong@vju.ac.vn', 'Hiệu trưởng Demo', 'principal', 3, None),
 ]
+
+# Ho so mau Mien giam / Hoan tra dang xu ly se chan sinh vien nop don moi (chong trung),
+# nen cac ho so mau cua 2 thu tuc nay luon o trang thai da ket thuc
+TUITION_PROCEDURE_NAMES = ('Miễn giảm học phí', 'Hoàn trả học phí')
+TUITION_SAMPLE_CANCEL_REASON = 'Hồ sơ mẫu demo đã đóng để thử quy trình học phí mới.'
 
 # tieu de, noi dung, da doc
 STUDENT_NOTIFICATIONS = [
@@ -54,6 +64,7 @@ class Command(BaseCommand):
             created = self._seed_notifications(staff, STAFF_NOTIFICATIONS)
             created += self._seed_notifications(students, STUDENT_NOTIFICATIONS)
             req_created = self._seed_demo_requests(students, staff)
+            self._reconcile_demo_requests(staff)
 
         for user in staff + students:
             self.stdout.write(f'  {user.role:<10} {user.email}')
@@ -129,9 +140,7 @@ class Command(BaseCommand):
             return 0
 
         fallback_proc = next(iter(procedures.values()))
-        staff_by_email = {u.email: u for u in staff}
-        demo_cv = staff_by_email.get('demo.chuyenvien@vju.ac.vn')
-        demo_tp = staff_by_email.get('demo.truongphong@vju.ac.vn')
+        demo_team = self._demo_team_by_department(staff)
         now = timezone.now()
 
         # 20 ho so mau cho moi sinh vien demo, trai deu cac thu tuc va trang thai
@@ -159,8 +168,9 @@ class Command(BaseCommand):
              {'subject': 'Xác suất thống kê', 'semester': 'HK1 2025-2026', 'current_grade': 4.5, 'reason': 'Xin rà soát lại phần bài tập lớn.'}),
             ('Giấy giới thiệu thực tập', 'Đang xử lý', 'CV đang thẩm định', True,
              {'company_name': 'FPT Software', 'result_preference': 'Bản cứng', 'purpose': 'Xin việc'}),
-            ('Miễn giảm học phí', 'Đang xử lý', 'CV đang thẩm định', True,
-             {'policy_group': 'Hộ cận nghèo', 'semester': 'HK1 2025-2026'}),
+            ('Miễn giảm học phí', 'Đã hủy', 'Đã hủy', False,
+             {'beneficiary_type': 'Sinh viên thuộc hộ cận nghèo', 'exemption_semester': 'HK1 2025-2026',
+              'cancel_reason': TUITION_SAMPLE_CANCEL_REASON}),
             # 12-15: Cho TP phe duyet (bao gom don phuc khao da nhap diem D4)
             ('Phúc khảo điểm thi', 'Đang xử lý', 'Chờ TP phê duyệt', True,
              {'subject': 'Hệ điều hành', 'semester': 'HK1 2025-2026', 'current_grade': 6.0,
@@ -170,8 +180,9 @@ class Command(BaseCommand):
               'review_data': {'grade_reviewer_1': 7.0, 'grade_reviewer_2': 7.0, 'final_grade': 7.0, 'review_notes': 'Giữ nguyên điểm ban đầu.'}}),
             ('Giấy xác nhận sinh viên', 'Đang xử lý', 'Chờ TP phê duyệt', True,
              {'purpose': 'Visa', 'result_preference': 'Cả hai'}),
-            ('Hoàn trả học phí', 'Đang xử lý', 'Chờ TP phê duyệt', True,
-             {'amount': 3500000, 'reason': 'Đóng thừa học phí học kỳ 1.'}),
+            ('Hoàn trả học phí', 'Đã hủy', 'Đã hủy', False,
+             {'amount': 3500000, 'refund_reason': 'Đóng thừa học phí', 'refund_semester': 'HK1 2025-2026',
+              'cancel_reason': TUITION_SAMPLE_CANCEL_REASON}),
             # 16: Cho HT ky so
             ('Bảo lưu kết quả học tập', 'Đang xử lý', 'Chờ HT ký số', True,
              {'semester': 'HK2 2025-2026', 'gpa': 3.1, 'reason': 'Tham gia chương trình trao đổi ngắn hạn.'}),
@@ -186,7 +197,7 @@ class Command(BaseCommand):
              {'purpose': 'Tạm hoãn NVQS', 'result_preference': 'Bản điện tử'}),
             # 20: Tu choi
             ('Miễn giảm học phí', 'Từ chối', 'Từ chối', True,
-             {'policy_group': 'Khác', 'semester': 'HK1 2025-2026'}),
+             {'beneficiary_type': 'Sinh viên thuộc hộ nghèo', 'exemption_semester': 'HK1 2025-2026'}),
         ]
 
         created_count = 0
@@ -194,6 +205,7 @@ class Command(BaseCommand):
             mssv = student.student_registry.mssv if student.student_registry_id else f'U{student.user_id}'
             for idx, (proc_name, status, internal_status, assigned, extra_form) in enumerate(specs, start=1):
                 proc = procedures.get(proc_name, fallback_proc)
+                demo_cv, demo_tp = demo_team.get(proc.department_id, (None, None))
                 request_code = f'DEMO-{mssv}-{idx:02d}'[:30]
                 form_data = {
                     'full_name': student.full_name,
@@ -240,3 +252,46 @@ class Command(BaseCommand):
                     status_after=internal_status,
                 )
         return created_count
+
+    def _demo_team_by_department(self, staff):
+        """dept_id -> (chuyen vien demo, truong phong demo) cua phong do."""
+        team = {}
+        for user in staff:
+            if not user.department_id or user.role not in ('staff', 'dept_head'):
+                continue
+            cv, tp = team.get(user.department_id, (None, None))
+            team[user.department_id] = (user, tp) if user.role == 'staff' else (cv, user)
+        return team
+
+    def _reconcile_demo_requests(self, staff):
+        """
+        Dong bo ho so mau DEMO-* da tao o cac lan deploy truoc voi phan quyen moi:
+        - Ho so dang giao cho can bo demo khong thuoc phong dang giu don -> giao lai cho can bo demo dung phong
+        - Ho so mau Mien giam / Hoan tra con dang xu ly -> dong lai de sinh vien nop don moi
+        """
+        demo_team = self._demo_team_by_department(staff)
+        demo_ids = [u.user_id for u in staff]
+        demo_requests = Request.objects.filter(request_code__startswith='DEMO-').select_related('procedure_type')
+
+        for req in demo_requests.filter(procedure_type__name__in=TUITION_PROCEDURE_NAMES).exclude(
+            status__in=('Đã xử lý', 'Từ chối', 'Đã hủy'),
+        ):
+            form_data = dict(req.form_data or {})
+            form_data['cancel_reason'] = TUITION_SAMPLE_CANCEL_REASON
+            status_before = req.internal_status
+            req.form_data = form_data
+            req.status = 'Đã hủy'
+            req.internal_status = 'Đã hủy'
+            req.save(update_fields=['form_data', 'status', 'internal_status', 'updated_at'])
+            StateAuditLog.objects.create(
+                request=req, performed_by=None, action='cancel', note=TUITION_SAMPLE_CANCEL_REASON,
+                status_before=status_before, status_after='Đã hủy',
+            )
+
+        for req in demo_requests.filter(assigned_staff_id__in=demo_ids):
+            active_dept_id = req.transferred_to_dept_id or req.procedure_type.department_id
+            demo_cv, demo_tp = demo_team.get(active_dept_id, (None, None))
+            if demo_cv and req.assigned_staff_id != demo_cv.user_id:
+                req.assigned_staff = demo_cv
+                req.assigned_by = demo_tp
+                req.save(update_fields=['assigned_staff', 'assigned_by', 'updated_at'])

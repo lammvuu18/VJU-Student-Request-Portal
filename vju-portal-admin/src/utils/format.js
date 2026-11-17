@@ -32,6 +32,10 @@ export const STATUS_COLORS = {
   'Chờ TP phê duyệt': { bg: '#FEF9C3', color: '#A16207' },
   'Chờ HT ký số': { bg: '#EFF6FF', color: '#1D4ED8' },
   'Cần bổ sung': { bg: '#FFF7ED', color: '#C2410C' },
+  'Đã chuyển PKHTC — chờ phân công': { bg: '#EFF6FF', color: '#1D4ED8' },
+  'HT đã ký — Chờ chi hoàn trả': { bg: '#EFF6FF', color: '#1D4ED8' },
+  'Chờ ngân hàng xác nhận': { bg: '#EFF6FF', color: '#1D4ED8' },
+  'Chi hoàn trả thất bại': { bg: '#FEF2F2', color: '#B91C1C' },
   'Đã duyệt': { bg: '#ECFDF5', color: '#047857' },
   'Đã duyệt — Đang chuẩn bị kết quả': { bg: '#ECFDF5', color: '#047857' },
   'Đã duyệt — Có kết quả': { bg: '#ECFDF5', color: '#047857' },
@@ -75,6 +79,12 @@ export const TIMELINE_ACTION_LABELS = {
   download_result: 'Tải kết quả',
   revoke: 'Thu hồi quyết định duyệt',
   supplement_expired: 'Quá hạn bổ sung',
+  transfer: 'Chuyển phòng ban',
+  finance_record_refund: 'Finance MS ghi nhận khoản hoàn',
+  create_payout_order: 'Internet Banking lập lệnh chi',
+  bank_confirm_payout: 'Ngân hàng xác nhận chuyển khoản',
+  payout_failed: 'Chi hoàn trả thất bại',
+  retry_payout: 'Lập lại lệnh chi',
 };
 
 // Nhãn các trường form_data theo cấu hình seed (dùng khi không gọi được API chi tiết thủ tục)
@@ -111,7 +121,27 @@ export const FIELD_LABELS = {
   grade_reviewer_2: 'Điểm giáo viên 2',
   review_note: 'Ý kiến thẩm định',
   cancel_reason: 'Lý do hủy',
+  beneficiary_type: 'Đối tượng miễn giảm',
+  exemption_semester: 'Học kỳ áp dụng',
+  discount_level: 'Mức đề nghị',
+  circumstances: 'Trình bày hoàn cảnh',
+  refund_semester: 'Học kỳ đề nghị hoàn',
+  refund_reason: 'Lý do hoàn trả',
+  amount: 'Số tiền đề nghị hoàn',
+  bank_name: 'Ngân hàng nhận',
+  bank_account_no: 'Số tài khoản nhận',
+  account_holder: 'Chủ tài khoản',
+  refund_note: 'Diễn giải thêm',
 };
+
+export const formatVnd = (value) => {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return String(value ?? '');
+  return `${Math.round(n).toLocaleString('vi-VN')} đ`;
+};
+
+// Giá trị trường form hiển thị cho người đọc (số tiền có dấu chấm ngăn cách và đơn vị)
+export const formatFieldValue = (key, value) => (key === 'amount' ? formatVnd(value) : String(value));
 
 const getProcNameLower = (item) =>
   String(item?.type_name || item?.name || item?.procedure || '').trim().toLowerCase();
@@ -132,6 +162,20 @@ export const isInternshipProcedure = (item) => {
   const name = getProcNameLower(item);
   if (name) return name.includes('giới thiệu') || name.includes('thực tập');
   return Number(item?.type_id ?? item?.id) === 2;
+};
+
+export const isExemptionProcedure = (item) => {
+  if (item?.procedure_kind) return item.procedure_kind === 'exemption';
+  const name = getProcNameLower(item);
+  if (name) return name.includes('miễn giảm');
+  return Number(item?.type_id ?? item?.id) === 5;
+};
+
+export const isRefundProcedure = (item) => {
+  if (item?.procedure_kind) return item.procedure_kind === 'refund';
+  const name = getProcNameLower(item);
+  if (name) return name.includes('hoàn trả');
+  return Number(item?.type_id ?? item?.id) === 6;
 };
 
 export const isStudentCertProcedure = (item) => {

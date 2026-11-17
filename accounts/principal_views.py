@@ -7,10 +7,35 @@ from django.views.decorators.http import require_http_methods
 
 from .models import Notification, Request, Result, StateAuditLog, User
 from .notification_views import _format_datetime
+from .refund_service import STATUS_WAITING_BANK, payout_to_dict, start_refund_payout
 from .services import (
     AcademicMSService, MockSmartCAService, build_qr_code_data,
-    generate_decision_pdf, generate_verification_code,
+    generate_decision_pdf, generate_verification_code, procedure_kind,
 )
+
+
+def _active_department(req):
+    """Phòng trình ký: phòng nhận chuyển (miễn giảm → KHTC) hoặc phòng phụ trách thủ tục."""
+    return req.transferred_to_dept or req.procedure_type.department
+
+
+def _submission_info(req):
+    """Người thẩm định (CV trình TP) và người trình ký (TP trình HT) lấy từ nhật ký xử lý."""
+    logs = {
+        action: (
+            StateAuditLog.objects.filter(request=req, action=action)
+            .select_related("performed_by").order_by("-log_id").first()
+        )
+        for action in ("submit_to_head", "submit_for_signature")
+    }
+    staff_log, head_log = logs["submit_to_head"], logs["submit_for_signature"]
+    return {
+        "reviewed_by": staff_log.performed_by.full_name if staff_log and staff_log.performed_by else None,
+        "review_note": staff_log.note if staff_log else None,
+        "submitted_by": head_log.performed_by.full_name if head_log and head_log.performed_by else None,
+        "submit_note": head_log.note if head_log else None,
+        "submitted_at": _format_datetime(head_log.created_at) if head_log else None,
+    }
 from .views import _get_authenticated_user, _json_error, _read_json_object
 
 
@@ -35,6 +60,7 @@ def principal_pending_signatures_view(request):
         .select_related(
             "procedure_type",
             "procedure_type__department",
+            "transferred_to_dept",
             "user",
             "user__student_registry",
             "assigned_staff",
@@ -55,12 +81,13 @@ def principal_pending_signatures_view(request):
             .order_by("-log_id")
             .first()
         )
+        dept = _active_department(r)
+        dept_name = dept.name if dept else ""
         if log and log.performed_by:
-            dept_name = r.procedure_type.department.name if r.procedure_type.department else "PĐT"
             submitted_by = f"{log.performed_by.full_name} (TP {dept_name})"
             submitted_at = _format_datetime(log.created_at)
         else:
-            submitted_by = "Trưởng phòng Đào tạo"
+            submitted_by = f"Trưởng phòng {dept_name}".strip()
             submitted_at = _format_datetime(r.updated_at)
 
         sub_sla_deadline = _format_datetime(r.sla_deadline)
@@ -76,6 +103,7 @@ def principal_pending_signatures_view(request):
             "type_name": r.procedure_type.name,
             "student_name": student_name,
             "mssv": mssv,
+            "department_name": dept_name,
             "submitted_by": submitted_by,
             "submitted_at": submitted_at,
             "sub_sla_deadline": sub_sla_deadline,
@@ -128,7 +156,19 @@ def principal_sign_request_view(request, request_id):
 
     # Test 4.4.1: Ký thành công
     sign_data = MockSmartCAService.sign_decision(req, signer_user=user)
+    kind = procedure_kind(req.procedure_type)
+    procedure_name = req.procedure_type.name.lower()
 
+    # Sau khi ký: bảo lưu chờ SV nhận QĐ; miễn giảm kết thúc; hoàn trả chuyển sang bước chi tiền
+    if kind == "exemption":
+        signed_status, signed_internal = "Đã xử lý", "Đã xử lý"
+    elif kind == "refund":
+        signed_status, signed_internal = "Đang xử lý", "HT đã ký — Chờ chi hoàn trả"
+    else:
+        signed_status, signed_internal = "Đã duyệt", "Đã duyệt — Có kết quả"
+
+    refund = None
+    academic_status = None
     with transaction.atomic():
         result, _ = Result.objects.get_or_create(request=req)
         verification_code = result.verification_code or generate_verification_code(req.procedure_type)
@@ -144,35 +184,45 @@ def principal_sign_request_view(request, request_id):
         result.save()
 
         status_before = req.internal_status
-        req.status = "Đã duyệt"
-        req.internal_status = "Đã duyệt — Có kết quả"
+        req.status = signed_status
+        req.internal_status = signed_internal
         req.save(update_fields=["status", "internal_status", "updated_at"])
 
-        # Cập nhật Academic MS: trạng thái học vụ sang suspended
-        reg = getattr(req.user, "student_registry", None)
-        mssv = reg.mssv if reg else (req.form_data or {}).get("mssv", "")
-        if mssv:
-            AcademicMSService.updateStudentStatus(mssv, "suspended")
+        # Chỉ quyết định bảo lưu mới chuyển trạng thái học vụ sang suspended
+        if kind == "preservation":
+            reg = getattr(req.user, "student_registry", None)
+            mssv = reg.mssv if reg else (req.form_data or {}).get("mssv", "")
+            if mssv:
+                AcademicMSService.updateStudentStatus(mssv, "suspended")
+                academic_status = "suspended"
 
-        # StateAuditLog
         StateAuditLog.objects.create(
             request=req,
             performed_by=user,
             action="sign_smartca",
             note=f"Ký số SmartCA thành công (Mã GD: {sign_data['smartca_transaction_id']})",
             status_before=status_before,
-            status_after="Đã duyệt — Có kết quả",
+            status_after=signed_internal,
         )
 
-        # Notification cho sinh viên
+        if kind == "refund":
+            student_message = (
+                f"Quyết định hoàn trả học phí ({req.request_code}) đã được Hiệu trưởng ký. "
+                "Phòng Kế hoạch Tài chính đang chuyển khoản, bạn sẽ nhận thông báo khi ngân hàng xác nhận."
+            )
+        elif kind == "exemption":
+            student_message = f"Quyết định miễn giảm học phí ({req.request_code}) đã được Hiệu trưởng ký. Hồ sơ đã hoàn tất."
+        elif kind == "preservation":
+            student_message = "QĐ bảo lưu đã được HT ký số."
+        else:
+            student_message = f"Quyết định {procedure_name} ({req.request_code}) đã được Hiệu trưởng ký số."
         Notification.objects.create(
             user=req.user,
             request=req,
             title="Quyết định đã được ký duyệt",
-            message="QĐ bảo lưu đã được HT ký số.",
+            message=student_message,
         )
 
-        # Notification cho chuyên viên phụ trách
         if req.assigned_staff:
             Notification.objects.create(
                 user=req.assigned_staff,
@@ -181,18 +231,28 @@ def principal_sign_request_view(request, request_id):
                 message=f"Hồ sơ {req.request_code} đã được Hiệu trưởng ký số thành công.",
             )
 
+        # Hoàn trả: Finance MS ghi nhận → Internet Banking lập lệnh chi → chờ webhook ngân hàng
+        if kind == "refund":
+            refund = payout_to_dict(start_refund_payout(req))
+
     return JsonResponse({
         "success": True,
         "data": {
             "smartca_transaction_id": sign_data["smartca_transaction_id"],
-            "internal_status": "Đã duyệt — Có kết quả",
+            "internal_status": req.internal_status,
+            "status": req.status,
             "signed_at": _format_datetime(sign_data["signed_at"]),
             "signer_name": sign_data["signer_name"],
             "ca_provider": sign_data["ca_provider"],
             "cert_serial": sign_data["cert_serial"],
-            "academic_status": "suspended",
+            "academic_status": academic_status,
+            "refund": refund,
         },
-        "message": "Ký số thành công.",
+        "message": (
+            "Ký số thành công. Đã ghi nhận Finance MS và lập lệnh chi hoàn trả."
+            if kind == "refund" and req.internal_status == STATUS_WAITING_BANK
+            else "Ký số thành công."
+        ),
     })
 
 
@@ -234,12 +294,12 @@ def principal_return_to_head_view(request, request_id):
             status_after="Chờ TP phê duyệt",
         )
 
-        dept_id = req.procedure_type.department_id
+        # Trả về Trưởng phòng đang giữ đơn (đơn miễn giảm đã chuyển thì là TP KHTC)
         dept_heads = User.objects.filter(
-            Q(department_id=dept_id) | Q(email__iexact="demo.truongphong@vju.ac.vn"),
+            department_id=req.transferred_to_dept_id or req.procedure_type.department_id,
             role="dept_head",
             account_status="active",
-        ).distinct()
+        )
         for dh in dept_heads:
             Notification.objects.create(
                 user=dh,
@@ -270,7 +330,8 @@ def principal_decision_detail_view(request, request_id):
     try:
         req = (
             Request.objects.select_related(
-                "procedure_type", "procedure_type__department", "user", "user__student_registry", "assigned_staff"
+                "procedure_type", "procedure_type__department", "transferred_to_dept",
+                "user", "user__student_registry", "assigned_staff",
             )
             .prefetch_related("attachments")
             .get(request_id=request_id)
@@ -302,7 +363,9 @@ def principal_decision_detail_view(request, request_id):
         "request_code": req.request_code,
         "type_id": req.procedure_type_id,
         "type_name": req.procedure_type.name,
-        "department_name": req.procedure_type.department.name if req.procedure_type.department else "",
+        "procedure_kind": procedure_kind(req.procedure_type),
+        "department_name": _active_department(req).name if _active_department(req) else "",
+        "submission": _submission_info(req),
         "status": req.status,
         "internal_status": req.internal_status,
         "student": {

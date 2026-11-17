@@ -475,6 +475,8 @@ class Module4TestCase(TestCase):
             },
         ):
             call_command("seed_demo", stdout=StringIO())
+        # Hồ sơ mẫu của seed_demo (có đơn bảo lưu đang xử lý) chặn nộp trùng
+        Request.objects.filter(request_code__startswith="DEMO-").delete()
 
         demo_tp = User.objects.get(email="demo.truongphong@vju.ac.vn")
         demo_cv = User.objects.get(email="demo.chuyenvien@vju.ac.vn")

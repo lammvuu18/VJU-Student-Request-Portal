@@ -721,6 +721,24 @@ export const staffApi = {
   // TP trả lại hồ sơ cho CV thẩm định lại
   returnToStaff: async (requestId, note = '') =>
     putJson(`/staff/requests/${requestId}/return-to-staff`, note ? { note } : {}),
+
+  // Miễn giảm học phí: CV Phòng CTSV xác minh xong, chuyển Phòng KHTC thẩm định (note bắt buộc)
+  transfer: async (requestId, note, toDepartmentId = null) =>
+    putJson(`/staff/requests/${requestId}/transfer`, {
+      note,
+      ...(toDepartmentId ? { to_department_id: toDepartmentId } : {}),
+    }),
+
+  // Hoàn trả học phí: lập lại lệnh chi sau khi ngân hàng báo thất bại
+  retryRefundPayout: async (requestId) =>
+    putJson(`/staff/requests/${requestId}/refund/retry`),
+
+  // Môi trường demo: giả lập ngân hàng gửi webhook kết quả chuyển khoản (outcome: success | failed)
+  simulateBankCallback: async (requestId, outcome, reason = '') =>
+    apiFetch(`/staff/requests/${requestId}/refund/simulate-bank`, {
+      method: 'POST',
+      body: JSON.stringify({ outcome, ...(reason ? { reason } : {}) }),
+    }),
 };
 
 // =============================================================================

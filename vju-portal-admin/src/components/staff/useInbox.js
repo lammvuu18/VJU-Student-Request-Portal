@@ -11,6 +11,12 @@ export const INBOX_STATUS = {
   'Chờ HT ký số': { label: 'Chờ HT ký số', theme: 'blue' },
   'Đã duyệt — Đang chuẩn bị kết quả': { label: 'Đã duyệt', theme: 'green' },
   'Đã duyệt — Có kết quả': { label: 'Đã ký số', theme: 'green' },
+  // Miễn giảm học phí: PCTSV chuyển sang, chờ TP KHTC phân công
+  'Đã chuyển PKHTC — chờ phân công': { label: 'Chờ phân công', theme: 'yellow' },
+  // Hoàn trả học phí: sau khi HT ký, chi tiền qua Internet Banking
+  'HT đã ký — Chờ chi hoàn trả': { label: 'Chờ chi hoàn trả', theme: 'blue' },
+  'Chờ ngân hàng xác nhận': { label: 'Chờ ngân hàng xác nhận', theme: 'blue' },
+  'Chi hoàn trả thất bại': { label: 'Chi hoàn trả thất bại', theme: 'red' },
 };
 
 // Đơn đã kết thúc (scope=closed), theo status của backend
@@ -21,14 +27,31 @@ export const CLOSED_STATUS = {
   'Đã hủy': { label: 'Đã hủy', theme: 'gray' },
 };
 
-export const INBOX_STATUS_LABELS = Object.values(INBOX_STATUS).map(s => s.label);
-export const CLOSED_STATUS_LABELS = Object.values(CLOSED_STATUS).map(s => s.label);
+// Đơn đã chuyển sang phòng khác (VD: miễn giảm học phí chuyển P.KHTC): phòng gốc chỉ theo dõi
+export const TRANSFERRED_LABEL = 'Đã chuyển P.KHTC';
+
+const unique = (list) => [...new Set(list)];
+export const INBOX_STATUS_LABELS = unique([...Object.values(INBOX_STATUS).map(s => s.label), TRANSFERRED_LABEL]);
+export const CLOSED_STATUS_LABELS = unique(Object.values(CLOSED_STATUS).map(s => s.label));
+
+const shortDeptName = (name) => (name || '')
+  .replace('Phòng Kế hoạch Tài chính', 'P.KHTC')
+  .replace('Phòng Công tác Sinh viên', 'P.CTSV')
+  .replace('Phòng Đào tạo', 'P.ĐT');
 
 export const mapInboxItem = (item) => {
-  const meta = item.is_closed
-    ? (CLOSED_STATUS[item.status] || { label: item.status, theme: 'gray' })
-    : (INBOX_STATUS[item.internal_status] || { label: item.internal_status, theme: 'blue' });
+  const transferredAway = !item.is_closed && Boolean(item.transferred_to_dept_name);
+  let meta;
+  if (item.is_closed) {
+    meta = CLOSED_STATUS[item.status] || { label: item.status, theme: 'gray' };
+  } else if (transferredAway) {
+    meta = { label: `Đã chuyển ${shortDeptName(item.transferred_to_dept_name)}`, theme: 'gray' };
+  } else {
+    meta = INBOX_STATUS[item.internal_status] || { label: item.internal_status, theme: 'blue' };
+  }
   return {
+    isReadOnly: Boolean(item.is_read_only),
+    transferredTo: item.transferred_to_dept_name || '',
     id: item.request_id,
     code: item.request_code,
     procedure: item.type_name,
@@ -40,9 +63,10 @@ export const mapInboxItem = (item) => {
     isClosed: Boolean(item.is_closed),
     assignee: item.assigned_staff?.full_name || '',
     assigneeId: item.assigned_staff?.user_id || null,
-    status: item.is_overdue ? 'Quá hạn' : meta.label,
-    statusTheme: item.is_overdue ? 'red' : meta.theme,
-    isOverdueRow: Boolean(item.is_overdue),
+    // Đơn đã chuyển đi không còn là việc của phòng này, không báo quá hạn
+    status: item.is_overdue && !transferredAway ? 'Quá hạn' : meta.label,
+    statusTheme: item.is_overdue && !transferredAway ? 'red' : meta.theme,
+    isOverdueRow: Boolean(item.is_overdue) && !transferredAway,
     slaRemainingHours: item.sla_remaining_hours,
     createdAt: item.created_at,
   };

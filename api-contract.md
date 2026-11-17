@@ -1268,6 +1268,7 @@ PUT /api/staff/requests/:request_id/transfer
 ```
 
 CV chuyển đơn sang phòng ban khác. assigned_staff_id reset NULL, đơn vào inbox TP PB nhận (BR-25, BR-26).
+Hiện áp dụng cho Miễn giảm học phí: chỉ CV Phòng CTSV đang được giao, đơn ở `CV đang thẩm định`, đích là Phòng KHTC (`to_department_id` tùy chọn, khác KHTC trả `422 INVALID_DEPARTMENT`). `note` bắt buộc.
 
 **Request:**
 ```json
@@ -1455,6 +1456,58 @@ SV đến nhận, cán bộ xác nhận đã giao.
 }
 ```
 
+### 9.15 Phân quyền theo phòng ban (Miễn giảm / Hoàn trả học phí)
+
+- Cán bộ chỉ thấy đơn của phòng phụ trách thủ tục hoặc phòng nhận chuyển. Phòng khác: inbox không có, `GET /api/requests/:id` trả 403.
+- Miễn giảm học phí: đầu tiên chỉ Phòng CTSV thấy. Sau khi CV CTSV chuyển (9.8), Phòng KHTC xử lý; Phòng CTSV vẫn thấy đơn nhưng chỉ xem. Phòng Đào tạo không thấy.
+- Hoàn trả học phí: chỉ Phòng KHTC thấy.
+- CV CTSV phải chuyển (9.8) trước khi trình TP; gọi 9.5 khi chưa chuyển trả `422 TRANSFER_REQUIRED`.
+
+Trường bổ sung trong inbox (9.1) mỗi đơn:
+- `is_read_only`: `true` khi đơn đã chuyển sang phòng khác hoặc CV không còn được giao — chỉ xem, không thao tác
+- `transferred_to_dept_name`: tên phòng nhận nếu đơn đã chuyển khỏi phòng của người xem, ngược lại `null`
+
+Trường bổ sung trong chi tiết đơn (`GET /api/requests/:id`):
+- `procedure_kind`: `exemption` | `refund` | `preservation` | `appeal` | `other`
+- `department_name`: phòng đang xử lý; `origin_department_name`: phòng phụ trách thủ tục
+- `viewer_can_act` (cán bộ): người xem có được thao tác không
+- `transfer_target`: `{dept_id, name}` khi đơn miễn giảm chưa chuyển, ngược lại `null`
+- `finance_check` (cán bộ, đơn hoàn trả): học phí đã đóng theo Finance MS, `is_amount_valid`
+- `refund` (đơn hoàn trả, sau khi HT ký): tiến trình chi — xem 9.16
+- Sinh viên không thấy `result` khi quyết định chưa ký (bản thảo trình ký); tải PDF chưa ký trả 404.
+
+### 9.16 Chi hoàn trả học phí (sau khi HT ký)
+
+Sau khi HT ký (10.2) đơn hoàn trả, hệ thống tự gọi Finance MS ghi nhận khoản hoàn rồi Internet Banking lập lệnh chi; đơn sang `Chờ ngân hàng xác nhận`. Ngân hàng báo kết quả qua webhook (10.3): thành công → `Đã xử lý`; thất bại → `Chi hoàn trả thất bại`.
+
+Object `refund` trong chi tiết đơn:
+```json
+{
+  "amount": 3500000, "amount_text": "3.500.000 đ",
+  "bank_name": "Vietcombank", "bank_account_no": "0011004123456", "account_holder": "NGUYEN VAN A",
+  "status": "pending_bank",
+  "finance_ref": "FMS-RF-20261118-00021", "finance_recorded_at": "2026-11-18T10:00:00+07:00",
+  "payout_order_id": "IB-20261118100000-1-1", "payout_created_at": "2026-11-18T10:00:00+07:00",
+  "source_account": "0011 0040 12345 — Trường ĐH Việt Nhật (Vietcombank)",
+  "bank_txn_id": null, "bank_confirmed_at": null,
+  "failure_reason": null, "attempt_count": 1, "sandbox_enabled": true
+}
+```
+`status`: `pending_finance` | `pending_bank` | `succeeded` | `failed`
+
+**Lập lại lệnh chi** (CV phụ trách / TP Phòng KHTC, khi đơn `Chi hoàn trả thất bại`):
+```
+PUT /api/staff/requests/:request_id/refund/retry
+```
+Finance MS chỉ ghi nhận 1 lần; mỗi lần lập lại sinh mã lệnh chi mới, đơn về `Chờ ngân hàng xác nhận`.
+
+**Giả lập ngân hàng** (môi trường demo, bật bằng `BANKING_SANDBOX_ENABLED=True`; tắt thì trả 403):
+```
+POST /api/staff/requests/:request_id/refund/simulate-bank
+{ "outcome": "success" | "failed", "reason": "Sai tên chủ tài khoản" }
+```
+Dựng payload như ngân hàng, ký HMAC và đi qua đúng hàm xử lý webhook 10.3.
+
 ---
 
 ## 10. PRINCIPAL — Hiệu trưởng ký số
@@ -1517,6 +1570,31 @@ HT bấm "Ký số". Backend gọi API SmartCA, SmartCA đẩy thông báo lên 
   }
 }
 ```
+
+Trạng thái sau khi ký theo thủ tục:
+| Thủ tục | `status` / `internal_status` | Việc hệ thống làm thêm |
+|---|---|---|
+| Bảo lưu KQHT | `Đã duyệt` / `Đã duyệt — Có kết quả` | Academic MS chuyển SV sang `suspended` |
+| Miễn giảm học phí | `Đã xử lý` / `Đã xử lý` | — |
+| Hoàn trả học phí | `Đang xử lý` / `Chờ ngân hàng xác nhận` | Finance MS ghi nhận + Internet Banking lập lệnh chi (9.16); response có thêm `refund` |
+
+### 10.3 Webhook ngân hàng (kết quả lệnh chi hoàn trả)
+
+```
+POST /api/webhooks/banking
+X-Bank-Signature: <HMAC-SHA256(BANKING_WEBHOOK_SECRET, raw body), hex>
+```
+```json
+{
+  "event": "payout.succeeded",
+  "order_id": "IB-20261118100000-1-1",
+  "amount": 3500000,
+  "bank_txn_id": "FT2611181005000001",
+  "beneficiary_account": "0011004123456",
+  "occurred_at": "2026-11-18T10:05:00+07:00"
+}
+```
+`event = payout.failed` kèm `failure_reason`. Lỗi: 401 `INVALID_SIGNATURE`, 404 `ORDER_NOT_FOUND`, 422 `AMOUNT_MISMATCH`, 400 `INVALID_EVENT`. Gửi lại webhook cho lệnh chi đã kết thúc trả 200 với `"duplicate": true`, không ghi trùng.
 
 ---
 

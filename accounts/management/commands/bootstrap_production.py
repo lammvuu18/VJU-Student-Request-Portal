@@ -19,6 +19,7 @@ SAMPLE_CREDENTIALS = {
 }
 ADMIN_PASSWORD_MIN_LENGTH = 12
 LIVE_TYPE_IDS = {1, 2, 3, 4, 5, 6}  # type_id 7, 8 chi dung de test
+TUITION_TYPE_IDS = {5, 6}  # Mien giam / Hoan tra hoc phi: dong bo form khi thu tuc da ton tai
 REJECTION_REASONS = [
     'Hồ sơ không đầy đủ theo yêu cầu',
     'Giấy tờ minh chứng không hợp lệ hoặc đã hết hiệu lực',
@@ -147,6 +148,8 @@ class Command(BaseCommand):
                         'display_order': 1,
                     },
                 )
+            if type_id in TUITION_TYPE_IDS and not created:
+                self._sync_tuition_procedure(procedure, type_id, dept_code, levels)
             if not created:
                 continue
             created_count += 1
@@ -165,3 +168,43 @@ class Command(BaseCommand):
                         allowed_formats=FORMATS, max_size_mb=5, display_order=order,
                     )
         return created_count
+
+    def _sync_tuition_procedure(self, procedure, type_id, dept_code, levels):
+        """
+        Miễn giảm / Hoàn trả học phí đã có trên các môi trường cũ với form chưa đầy đủ:
+        cập nhật phòng phụ trách, số cấp duyệt, trường form và mục đính kèm theo cấu hình hiện tại.
+        """
+        department = Department.objects.get(code=dept_code)
+        updated_fields = []
+        if procedure.department_id != department.dept_id:
+            procedure.department = department
+            updated_fields.append('department')
+        if procedure.approval_levels != levels:
+            procedure.approval_levels = levels
+            updated_fields.append('approval_levels')
+        if updated_fields:
+            procedure.save(update_fields=updated_fields)
+
+        for _, field_type, field_name, key, data_type, required, placeholder, auto_fill, opts, order in FORM_FIELDS:
+            if field_type != type_id:
+                continue
+            FormField.objects.update_or_create(
+                procedure_type=procedure,
+                field_key=key,
+                defaults={
+                    'field_name': field_name, 'data_type': data_type, 'is_required': required,
+                    'placeholder': placeholder, 'auto_fill_field': auto_fill,
+                    'dropdown_options': opts, 'display_order': order,
+                },
+            )
+        for _, config_type, item_name, required, order in ATTACHMENT_CONFIGS:
+            if config_type != type_id:
+                continue
+            AttachmentConfig.objects.get_or_create(
+                procedure_type=procedure,
+                item_name=item_name,
+                defaults={
+                    'is_required': required, 'allowed_formats': FORMATS,
+                    'max_size_mb': 5, 'display_order': order,
+                },
+            )

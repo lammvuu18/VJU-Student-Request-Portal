@@ -4,6 +4,7 @@ import RejectRequestModal from '../common/RejectRequestModal';
 import DigitalSignModal from './DigitalSignModal';
 import { allRequests } from '../../data/mockData';
 import { principalApi } from '../../services/api';
+import { formatDate, formatVnd } from '../../utils/format';
 import './PrincipalPages.css';
 
 function PrincipalDecisionDetail() {
@@ -35,7 +36,8 @@ function PrincipalDecisionDetail() {
         const res = await principalApi.getDecisionDetail(id).catch(() => null);
         if (isMounted && res && res.data) {
           setDecisionData(res.data);
-          if (res.data.internal_status === 'Đã duyệt — Có kết quả') {
+          // Đã ký khi kết quả có thời điểm ký (miễn giảm / hoàn trả chuyển sang trạng thái khác sau khi ký)
+          if (res.data.result?.signed_at || res.data.internal_status === 'Đã duyệt — Có kết quả') {
             setIsSigned(true);
           }
         }
@@ -57,6 +59,22 @@ function PrincipalDecisionDetail() {
   const mssv = decisionData?.student?.mssv || foundReq?.mssv || '23110150';
   const department = decisionData?.department_name || foundReq?.department || foundReq?.department_name || 'Phòng Đào tạo';
   const previewUrl = decisionData?.pdf_preview_url || `/api/results/${id}/preview`;
+  const submission = decisionData?.submission || {};
+  const formData = decisionData?.form_data || {};
+  const kind = decisionData?.procedure_kind;
+
+  // Nội dung Điều 1 của quyết định theo loại thủ tục
+  let decisionSubject = `${procedure} cho sinh viên ${student}`;
+  let articleOne = `${procedure} cho sinh viên ${student}`;
+  if (kind === 'exemption') {
+    decisionSubject = `Miễn, giảm học phí cho sinh viên ${student}`;
+    articleOne = `${formData.discount_level || 'Miễn giảm học phí'} ${formData.exemption_semester || ''} cho sinh viên ${student}`
+      + ` (đối tượng: ${formData.beneficiary_type || '—'})`;
+  } else if (kind === 'refund') {
+    decisionSubject = `Hoàn trả học phí cho sinh viên ${student}`;
+    articleOne = `Hoàn trả ${formatVnd(formData.amount)} học phí ${formData.refund_semester || ''} cho sinh viên ${student}`
+      + ` qua TK ${formData.bank_account_no || '—'} (${formData.bank_name || '—'})`;
+  }
 
   const showToast = (msg) => {
     setToastMsg(msg);
@@ -92,7 +110,7 @@ function PrincipalDecisionDetail() {
             ? {
                 ...prev,
                 internal_status: res.data.internal_status || 'Đã duyệt — Có kết quả',
-                status: 'Đã duyệt',
+                status: res.data.status || 'Đã duyệt',
                 result: {
                   ...(prev.result || {}),
                   smartca_transaction_id: res.data.smartca_transaction_id,
@@ -391,7 +409,7 @@ function PrincipalDecisionDetail() {
                   wordWrap: 'break-word',
                 }}
               >
-                Về việc: {procedure} cho sinh viên {student}
+                Về việc: {decisionSubject}
               </div>
               <div style={{ width: 10, height: 8 }} />
               <div
@@ -408,8 +426,8 @@ function PrincipalDecisionDetail() {
                 Căn cứ Quy chế đào tạo...<br />
                 Căn cứ đề nghị của {department}...<br /><br />
                 QUYẾT ĐỊNH:<br /><br />
-                Điều 1. {procedure} cho sinh viên {student},<br />
-                MSSV: {mssv}, ngành Khoa học máy tính.<br /><br />
+                Điều 1. {articleOne},<br />
+                MSSV: {mssv}{decisionData?.student?.major ? `, ngành ${decisionData.student.major}` : ''}.<br /><br />
                 Điều 2. Quyết định có hiệu lực kể từ ngày ký.
               </div>
               <div style={{ width: 10, flex: '1 1 0' }} />
@@ -728,7 +746,7 @@ function PrincipalDecisionDetail() {
               wordWrap: 'break-word',
             }}
           >
-            Lê Hoàng Nam
+            {submission.reviewed_by || '—'}
           </div>
         </div>
         <div style={{ alignSelf: 'stretch', height: 1, background: '#E2E5EA' }} />
@@ -769,7 +787,7 @@ function PrincipalDecisionDetail() {
               wordWrap: 'break-word',
             }}
           >
-            Trần Thu Hà
+            {submission.submitted_by ? `${submission.submitted_by} (${department})` : '—'}
           </div>
         </div>
         <div style={{ alignSelf: 'stretch', height: 1, background: '#E2E5EA' }} />
@@ -811,7 +829,7 @@ function PrincipalDecisionDetail() {
               wordWrap: 'break-word',
             }}
           >
-            Đã kiểm tra hồ sơ đầy đủ. Đề nghị Hiệu trưởng ký duyệt cấp bảng điểm cho sinh viên.
+            {submission.submit_note || submission.review_note || '—'}
           </div>
         </div>
         <div style={{ alignSelf: 'stretch', height: 1, background: '#E2E5EA' }} />
@@ -852,7 +870,7 @@ function PrincipalDecisionDetail() {
               wordWrap: 'break-word',
             }}
           >
-            26/10/2026
+            {submission.submitted_at ? formatDate(submission.submitted_at) : '—'}
           </div>
         </div>
       </div>

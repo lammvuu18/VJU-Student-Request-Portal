@@ -17,6 +17,27 @@ from accounts.models import (
 FORMATS = 'PDF,JPG,PNG'
 PURPOSES = ['Vay vốn', 'Visa', 'Tạm hoãn NVQS', 'Xin việc', 'Khác']
 RESULT_OPTIONS = ['Bản điện tử', 'Bản cứng', 'Cả hai']
+# Đối tượng và mức miễn giảm học phí theo Nghị định 81/2021/NĐ-CP
+EXEMPTION_BENEFICIARIES = [
+    'Con của người có công với cách mạng',
+    'Sinh viên khuyết tật',
+    'Sinh viên mồ côi cả cha lẫn mẹ',
+    'Sinh viên thuộc hộ nghèo',
+    'Sinh viên thuộc hộ cận nghèo',
+    'Sinh viên dân tộc thiểu số ở vùng có điều kiện kinh tế - xã hội đặc biệt khó khăn',
+]
+EXEMPTION_LEVELS = ['Miễn 100% học phí', 'Giảm 70% học phí', 'Giảm 50% học phí']
+REFUND_REASONS = [
+    'Đóng thừa học phí',
+    'Rút bớt học phần đã đăng ký',
+    'Được miễn giảm sau khi đã đóng học phí',
+    'Thôi học / chuyển trường',
+    'Khác',
+]
+REFUND_BANKS = [
+    'Vietcombank', 'BIDV', 'VietinBank', 'Agribank', 'Techcombank',
+    'MB Bank', 'VPBank', 'TPBank', 'ACB', 'Sacombank',
+]
 
 # type_id, ma phong ban, ten, mo ta, SLA, so cap duyet, co phi, phi, dang hoat dong
 PROCEDURES = [
@@ -74,7 +95,19 @@ FORM_FIELDS = [
     (402, 4, 'Số kỳ bảo lưu', 'semester_count', 'number', False, None, None, None, 3),
     (403, 4, 'Lý do bảo lưu', 'reason', 'textarea', True, None, None, None, 1),
 
-    (501, 5, 'Đối tượng miễn giảm', 'beneficiary_type', 'text', True, None, None, None, 1),
+    (501, 5, 'Đối tượng miễn giảm', 'beneficiary_type', 'dropdown', True, 'Chọn đối tượng', None, EXEMPTION_BENEFICIARIES, 1),
+    (502, 5, 'Học kỳ áp dụng', 'exemption_semester', 'text', True, 'VD: HK1 2026-2027', None, None, 2),
+    (503, 5, 'Mức đề nghị', 'discount_level', 'dropdown', True, 'Chọn mức miễn giảm', None, EXEMPTION_LEVELS, 3),
+    (504, 5, 'Trình bày hoàn cảnh', 'circumstances', 'textarea', False, 'Mô tả ngắn hoàn cảnh gia đình (nếu cần)', None, None, 4),
+
+    (601, 6, 'Học kỳ đề nghị hoàn', 'refund_semester', 'text', True, 'VD: HK1 2026-2027', None, None, 1),
+    (602, 6, 'Lý do hoàn trả', 'refund_reason', 'dropdown', True, 'Chọn lý do', None, REFUND_REASONS, 2),
+    (603, 6, 'Số tiền đề nghị hoàn (VNĐ)', 'amount', 'number', True, 'VD: 3500000', None, None, 3),
+    (604, 6, 'Ngân hàng nhận', 'bank_name', 'dropdown', True, 'Chọn ngân hàng', None, REFUND_BANKS, 4),
+    (605, 6, 'Số tài khoản nhận', 'bank_account_no', 'text', True, 'Chỉ gồm chữ số', None, None, 5),
+    (606, 6, 'Chủ tài khoản', 'account_holder', 'text', True, 'Tên in hoa không dấu, VD: NGUYEN VAN A', None, None, 6),
+    (607, 6, 'Diễn giải thêm', 'refund_note', 'textarea', False, 'Thông tin bổ sung (nếu có)', None, None, 7),
+
     (701, 7, 'Trường của thủ tục ẩn', 'hidden_field', 'text', False, None, None, None, 1),
 ]
 
@@ -87,6 +120,7 @@ ATTACHMENT_CONFIGS = [
     (6, 5, 'Giấy khai sinh', True, 2),
     (7, 5, 'CCCD', True, 3),
     (8, 5, 'Giấy XN khuyết tật (nếu áp dụng)', False, 4),
+    (9, 6, 'Biên lai / chứng từ đóng học phí', False, 1),
 ]
 
 WELCOME_TITLE = 'Chào mừng bạn đến với VJU Portal'

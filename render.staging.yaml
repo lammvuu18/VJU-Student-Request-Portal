@@ -38,7 +38,7 @@ services:
         sync: false
       # Email Google được đăng nhập vai trò sinh viên, cách nhau bằng dấu phẩy
       - key: DEMO_STUDENT_EMAILS
-        value: "guenkokuain020411@gmail.com"
+        value: "guenkokuain020411@gmail.com,23110185@st.vju.ac.vn,thithanhxuanlai@gmail.com"
       # URL frontend staging, điền sau khi frontend được tạo (không có dấu / ở cuối)
       - key: CORS_ALLOWED_ORIGINS
         sync: false

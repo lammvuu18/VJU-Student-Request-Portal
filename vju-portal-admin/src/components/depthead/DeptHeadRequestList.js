@@ -8,8 +8,9 @@ const WAITING_ASSIGN = 'Chờ phân công';
 const ASSIGNABLE_STATUSES = ['Chờ phân công', 'CV đang thẩm định', 'Cần bổ sung', 'Chờ TP phê duyệt'];
 const UNASSIGNED_KEY = 'unassigned';
 
+// Đơn đã chuyển sang phòng khác chỉ để theo dõi, phòng hiện tại không phân công được
 const canChangeAssignee = (row) => Boolean(
-  row && (
+  row && !row.isReadOnly && (
     ASSIGNABLE_STATUSES.includes(row.internalStatus) ||
     (row.internalStatus && row.internalStatus.endsWith('chờ phân công'))
   )
@@ -98,14 +99,16 @@ function DeptHeadRequestList() {
     };
   }, []);
 
-  const countUnassigned = requests.filter(r => !r.assigneeId).length;
+  const countUnassigned = requests.filter(r => !r.assigneeId && !r.isReadOnly).length;
   const procedureOptions = ['', ...Array.from(new Set(requests.map(r => r.procedure)))];
 
   const handleOpenAssigneeMenu = (e, rowCode) => {
     e.stopPropagation();
     const row = requests.find(r => r.id === rowCode);
     if (!canChangeAssignee(row)) {
-      showToast('Không thể thay đổi chuyên viên phụ trách đối với hồ sơ đã kết thúc.');
+      showToast(row?.isReadOnly && row?.transferredTo
+        ? `Hồ sơ đã chuyển sang ${row.transferredTo}, phòng bạn chỉ theo dõi.`
+        : 'Không thể thay đổi chuyên viên phụ trách đối với hồ sơ đã kết thúc.');
       return;
     }
     if (activeAssigneeRow === rowCode) {
@@ -143,7 +146,7 @@ function DeptHeadRequestList() {
   // Filter & sort requests
   const filteredRequests = requests.filter(r => {
     if (selectedSpecialist) {
-      if (selectedSpecialist === UNASSIGNED_KEY && r.assigneeId) return false;
+      if (selectedSpecialist === UNASSIGNED_KEY && (r.assigneeId || r.isReadOnly)) return false;
       if (selectedSpecialist !== UNASSIGNED_KEY && r.assigneeId !== selectedSpecialist) return false;
     }
     if (filterStatus && r.status !== filterStatus) return false;
@@ -401,7 +404,9 @@ function DeptHeadRequestList() {
                     className={`depthead-assignee-select-btn ${!row.assignee ? 'depthead-assignee-select-btn--empty' : ''}`}
                     onClick={(e) => handleOpenAssigneeMenu(e, row.id)}
                     style={{ cursor: canChangeAssignee(row) ? 'pointer' : 'default' }}
-                    title={canChangeAssignee(row) ? (row.assignee ? 'Bấm để thay đổi chuyên viên phụ trách' : 'Bấm để phân công chuyên viên') : 'Hồ sơ đã kết thúc'}
+                    title={canChangeAssignee(row)
+                      ? (row.assignee ? 'Bấm để thay đổi chuyên viên phụ trách' : 'Bấm để phân công chuyên viên')
+                      : (row.isReadOnly && row.transferredTo ? `Hồ sơ đã chuyển sang ${row.transferredTo}` : 'Hồ sơ đã kết thúc')}
                   >
                     <span>{row.assignee || 'Chưa có ai'}</span>
                     {canChangeAssignee(row) && <span>▾</span>}

@@ -168,6 +168,12 @@ PAYOS_CHECKSUM_KEY = os.getenv("PAYOS_CHECKSUM_KEY", "")
 PAYOS_RETURN_URL = os.getenv("PAYOS_RETURN_URL", "http://localhost:3000/student/requests")
 PAYOS_CANCEL_URL = os.getenv("PAYOS_CANCEL_URL", "http://localhost:3000/student/requests")
 
+# Internet Banking (chi hoàn trả học phí)
+# Ngân hàng ký webhook bằng HMAC-SHA256 với khóa này. Không đặt biến thì suy ra từ SECRET_KEY để không lộ khóa cố định trong repo
+BANKING_WEBHOOK_SECRET = os.getenv("BANKING_WEBHOOK_SECRET") or f"bank-webhook:{SECRET_KEY}"
+# Bật nút "Giả lập ngân hàng xác nhận" cho Phòng KHTC khi chưa kết nối ngân hàng thật. Tắt (False) khi lên production
+BANKING_SANDBOX_ENABLED = os.getenv("BANKING_SANDBOX_ENABLED", "True") == "True"
+
 
 
 # Email
