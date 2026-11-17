@@ -10,7 +10,7 @@ from django.utils import timezone
 
 from accounts.jwt_utils import generate_jwt_token
 from accounts.models import (
-    FormField, LoginAttempt, Notification, ProcedureType, RejectionReason, StudentRegistry, User,
+    FormField, LoginAttempt, Notification, ProcedureType, RejectionReason, Request, StudentRegistry, User,
 )
 
 
@@ -139,6 +139,18 @@ class SeedDemoTests(TestCase):
         self.seed(DEMO_STUDENT_EMAILS='staff.person@gmail.com')
         self.assertEqual(User.objects.get(email='staff.person@gmail.com').role, 'staff')
         self.assertFalse(StudentRegistry.objects.filter(email='staff.person@gmail.com').exists())
+
+    def test_seeds_20_demo_requests_per_student_idempotently(self):
+        call_command('bootstrap_production', stdout=StringIO())
+        self.seed(DEMO_STUDENT_EMAILS='23110315@st.vju.ac.vn')
+        student = User.objects.get(email='23110315@st.vju.ac.vn')
+        reqs = Request.objects.filter(user=student)
+        self.assertEqual(reqs.count(), 20)
+        statuses = set(reqs.values_list('internal_status', flat=True))
+        self.assertTrue({'Chờ thanh toán', 'Chờ phân công', 'CV đang thẩm định', 'Chờ TP phê duyệt'}.issubset(statuses))
+
+        self.seed(DEMO_STUDENT_EMAILS='23110315@st.vju.ac.vn')
+        self.assertEqual(Request.objects.filter(user=student).count(), 20)
 
 
 @override_settings(DEBUG=True)
