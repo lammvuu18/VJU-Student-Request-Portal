@@ -439,7 +439,7 @@ function RequestDetail() {
       {/* Kết quả */}
       {result && (
         <div className="req-detail-card" style={{ marginTop: 16 }}>
-          <div className="req-detail-card-title">Kết quả</div>
+          <div className="req-detail-card-title">Kết quả & Quyết định</div>
           <div className="req-detail-divider" />
           <div className="req-detail-row">
             <div className="req-detail-label">Mã xác minh</div>
@@ -447,8 +447,41 @@ function RequestDetail() {
           </div>
           <div className="req-detail-divider" />
           <div className="req-detail-row">
-            <div className="req-detail-label">Người duyệt</div>
+            <div className="req-detail-label">Người ký duyệt</div>
             <div className="req-detail-value">{result.signed_by || '—'} · {formatDateTime(result.signed_at)}</div>
+          </div>
+          <div className="req-detail-divider" />
+          {/* Tải quyết định / kết quả điện tử */}
+          <div className="req-detail-row" style={{ alignItems: 'center' }}>
+            <div className="req-detail-label">Văn bản Quyết định</div>
+            <div className="req-detail-value" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="btn-view-document"
+                style={{
+                  background: '#AA2327',
+                  color: 'white',
+                  border: 'none',
+                  padding: '7px 16px',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: 12,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+                onClick={() => handleDownload(`/api/results/${result.result_id}/download`, `Quyet_dinh_${result.verification_code || request.request_code}.pdf`)}
+              >
+                <span>📄</span>
+                <span>Tải Quyết định (PDF có ký số)</span>
+              </button>
+              {result.smartca_transaction_id && (
+                <span style={{ fontSize: 11, color: '#059669', fontWeight: 600, background: '#DEF7EC', padding: '3px 8px', borderRadius: 4 }}>
+                  ✓ Đã ký số điện tử (MISA eSign)
+                </span>
+              )}
+            </div>
           </div>
           <div className="req-detail-divider" />
           {result.pickup_date && (

@@ -1,0 +1,401 @@
+/* DigitalSignModal.css — MISA eSign Pattern */
+
+.digital-sign-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 1050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeInModal 0.2s ease-out;
+}
+
+@keyframes fadeInModal {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.digital-sign-modal {
+  width: 100%;
+  max-width: 580px;
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: slideUpModal 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUpModal {
+  from {
+    transform: translateY(20px) scale(0.97);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.digital-sign-header {
+  padding: 18px 24px;
+  border-bottom: 1px solid #E5E7EB;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #FDF8F6;
+}
+
+.digital-sign-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.digital-sign-icon-badge {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: #FEE2E2;
+  color: #DC2626;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+.digital-sign-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  color: #111827;
+  font-family: 'Inter', sans-serif;
+}
+
+.digital-sign-subtitle {
+  font-size: 12px;
+  color: #6B7280;
+  margin-top: 2px;
+}
+
+.digital-sign-close-btn {
+  background: transparent;
+  border: none;
+  font-size: 24px;
+  line-height: 1;
+  color: #9CA3AF;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  transition: all 0.15s;
+}
+
+.digital-sign-close-btn:hover {
+  color: #374151;
+  background: #E5E7EB;
+}
+
+.digital-sign-body {
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-height: 75vh;
+  overflow-y: auto;
+}
+
+/* Document details */
+.digital-sign-doc-summary {
+  background: #F9FAFB;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.digital-sign-doc-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  padding: 4px 0;
+}
+
+.digital-sign-doc-label {
+  color: #6B7280;
+}
+
+.digital-sign-doc-value {
+  color: #111827;
+  font-weight: 500;
+  text-align: right;
+}
+
+/* Certificate card */
+.digital-sign-cert-card {
+  border: 1.5px solid #FCA5A5;
+  background: #FFFBFB;
+  border-radius: 10px;
+  padding: 14px 16px;
+  position: relative;
+}
+
+.digital-sign-cert-badge {
+  position: absolute;
+  top: -10px;
+  right: 14px;
+  background: #DC2626;
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.digital-sign-cert-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #991B1B;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.digital-sign-cert-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  padding: 3px 0;
+  color: #4B5563;
+}
+
+.digital-sign-cert-item strong {
+  color: #111827;
+  font-weight: 600;
+}
+
+/* Visual signature preview in modal */
+.digital-sign-preview-box {
+  background: #FFFFFF;
+  border: 1px dashed #D1D5DB;
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  min-height: 110px;
+}
+
+.digital-sign-preview-stamp {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Circular Seal */
+.seal-circle {
+  width: 82px;
+  height: 82px;
+  border: 2px solid #C92127;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: rgba(201, 33, 39, 0.03);
+  box-shadow: 0 0 0 1.5px #C92127 inset;
+  flex-shrink: 0;
+}
+
+.seal-circle-inner {
+  text-align: center;
+  color: #C92127;
+  font-family: 'Inter', sans-serif;
+  line-height: 1.1;
+}
+
+.seal-univ {
+  font-size: 6px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.seal-school {
+  font-size: 6.5px;
+  font-weight: 800;
+  margin-top: 1px;
+}
+
+.seal-star {
+  font-size: 9px;
+  margin: 1px 0;
+}
+
+.seal-role {
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+}
+
+/* Cursive handwritten signature */
+.cursive-sig-svg {
+  width: 140px;
+  height: 60px;
+}
+
+/* MISA eSign box preview */
+.misa-cert-preview {
+  border: 1px solid #DC2626;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: #FEF2F2;
+  font-size: 10px;
+  color: #111827;
+  line-height: 1.4;
+  width: 190px;
+}
+
+.misa-cert-preview-header {
+  color: #DC2626;
+  font-weight: 700;
+  font-size: 9px;
+  border-bottom: 1px dashed #FCA5A5;
+  padding-bottom: 3px;
+  margin-bottom: 4px;
+}
+
+/* PIN section */
+.digital-sign-pin-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.digital-sign-pin-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.digital-sign-pin-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.digital-sign-pin-input {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 15px;
+  letter-spacing: 2px;
+  font-family: monospace;
+  border: 1.5px solid #D1D5DB;
+  border-radius: 8px;
+  outline: none;
+  transition: all 0.15s;
+}
+
+.digital-sign-pin-input:focus {
+  border-color: #DC2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
+}
+
+.digital-sign-pin-toggle {
+  position: absolute;
+  right: 12px;
+  background: transparent;
+  border: none;
+  color: #6B7280;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 6px;
+}
+
+.digital-sign-commitment {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 12px;
+  color: #4B5563;
+  line-height: 1.4;
+}
+
+.digital-sign-commitment input[type="checkbox"] {
+  margin-top: 2px;
+  accent-color: #DC2626;
+  width: 16px;
+  height: 16px;
+}
+
+/* Footer */
+.digital-sign-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #E5E7EB;
+  background: #F9FAFB;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.digital-sign-btn-cancel {
+  padding: 9px 18px;
+  background: #FFFFFF;
+  border: 1px solid #D1D5DB;
+  border-radius: 8px;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.digital-sign-btn-cancel:hover {
+  background: #F3F4F6;
+  border-color: #9CA3AF;
+}
+
+.digital-sign-btn-submit {
+  padding: 9px 22px;
+  background: #AA2327;
+  border: none;
+  border-radius: 8px;
+  color: #FFFFFF;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.15s;
+  box-shadow: 0 2px 4px rgba(170, 35, 39, 0.2);
+}
+
+.digital-sign-btn-submit:hover:not(:disabled) {
+  background: #8E1C20;
+}
+
+.digital-sign-btn-submit:disabled {
+  background: #E5E7EB;
+  color: #9CA3AF;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.digital-sign-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #FFFFFF;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

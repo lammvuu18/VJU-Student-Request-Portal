@@ -187,6 +187,10 @@ def principal_sign_request_view(request, request_id):
             "smartca_transaction_id": sign_data["smartca_transaction_id"],
             "internal_status": "Đã duyệt — Có kết quả",
             "signed_at": _format_datetime(sign_data["signed_at"]),
+            "signer_name": sign_data["signer_name"],
+            "ca_provider": sign_data["ca_provider"],
+            "cert_serial": sign_data["cert_serial"],
+            "academic_status": "suspended",
         },
         "message": "Ký số thành công.",
     })

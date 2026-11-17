@@ -137,15 +137,15 @@ class MockSmartCAService:
         now = timezone.now()
         timestamp = int(now.timestamp())
         transaction_id = f"MOCK-SMARTCA-{timestamp}"
-        signer_name = signer_user.full_name if signer_user else "GS.TS. Furuta Motoo"
+        signer_name = signer_user.full_name if signer_user else "PGS.TS. Nguyễn Văn Bình"
         return {
             "success": True,
             "smartca_transaction_id": transaction_id,
             "signed_at": now,
             "signer_name": signer_name,
             "signer_title": "Hiệu trưởng Trường Đại học Việt Nhật",
-            "ca_provider": "VNPT SmartCA",
-            "cert_serial": "5402 1890 9982 7716 3302",
+            "ca_provider": "VJU Digital CA (Demo eSign / SmartCA)",
+            "cert_serial": "5402-1890-9982-7716-VJU",
         }
 
 
@@ -292,6 +292,121 @@ def _get_vietnamese_font_name() -> str:
             except Exception:
                 continue
     return "Helvetica"
+
+
+def _draw_viet_nhat_seal(c, cx: float, cy: float, radius: float = 36, font_name: str = "Helvetica"):
+    """
+    Vẽ con dấu tròn đỏ tổ chức của Trường Đại học Việt Nhật - ĐHQGHN
+    chuẩn quy cách con dấu hành chính (Điều 22 Nghị định 30/2020/NĐ-CP).
+    """
+    c.saveState()
+    seal_red = (0.78, 0.12, 0.12)
+    c.setStrokeColorRGB(*seal_red)
+    c.setFillColorRGB(*seal_red)
+
+    # Vành tròn ngoài (đậm)
+    c.setLineWidth(1.5)
+    c.circle(cx, cy, radius, stroke=1, fill=0)
+
+    # Vành tròn trong (mảnh)
+    c.setLineWidth(0.6)
+    c.circle(cx, cy, radius - 3.2, stroke=1, fill=0)
+
+    # Dòng chữ cơ quan chủ quản (nửa trên)
+    c.setFont(font_name, 5.2)
+    c.drawCentredString(cx, cy + radius - 10, "ĐẠI HỌC QUỐC GIA HÀ NỘI")
+
+    # Dòng chữ đơn vị trực thuộc (giữa)
+    c.setFont(font_name, 5.8)
+    c.drawCentredString(cx, cy + 7, "TRƯỜNG ĐẠI HỌC")
+    c.drawCentredString(cx, cy - 1, "VIỆT NHẬT")
+
+    # Ngôi sao trung tâm
+    c.setFont(font_name, 7.0)
+    c.drawCentredString(cx, cy - 10, "★")
+
+    # Chức danh thủ trưởng đơn vị (nửa dưới)
+    c.setFont(font_name, 6.2)
+    c.drawCentredString(cx, cy - radius + 6.5, "HIỆU TRƯỞNG")
+
+    c.restoreState()
+
+
+def _draw_cursive_signature(c, x: float, y: float):
+    """
+    Vẽ nét chữ ký tay uốn lượn màu xanh mực bút máy (#002B7F)
+    của Hiệu trưởng bằng ReportLab bezier path.
+    """
+    c.saveState()
+    pen_blue = (0.0, 0.18, 0.50)
+    c.setStrokeColorRGB(*pen_blue)
+    c.setLineWidth(1.6)
+    c.setLineCap(1)  # Round cap
+    c.setLineJoin(1)  # Round join
+
+    # Nét vẽ chữ ký chính
+    p = c.beginPath()
+    p.moveTo(x, y - 5)
+    p.curveTo(x + 5, y + 18, x + 12, y + 22, x + 16, y + 5)
+    p.curveTo(x + 19, y - 10, x + 23, y + 15, x + 28, y + 12)
+    p.curveTo(x + 35, y + 8, x + 40, y + 25, x + 48, y + 18)
+    p.curveTo(x + 54, y + 12, x + 44, y - 2, x + 58, y + 4)
+    p.curveTo(x + 68, y + 10, x + 75, y + 24, x + 82, y + 15)
+    p.curveTo(x + 88, y + 6, x + 92, y - 6, x + 98, y - 2)
+    c.drawPath(p, stroke=1, fill=0)
+
+    # Nét gạch chân bay bổng dưới chữ ký (flourish underline)
+    p2 = c.beginPath()
+    c.setLineWidth(1.2)
+    p2.moveTo(x + 8, y - 10)
+    p2.curveTo(x + 40, y - 16, x + 75, y - 14, x + 105, y - 8)
+    c.drawPath(p2, stroke=1, fill=0)
+
+    # Dấu chấm kết thúc chữ ký
+    c.setFillColorRGB(*pen_blue)
+    c.circle(x + 109, y - 7, 1.2, stroke=0, fill=1)
+
+    c.restoreState()
+
+
+def _draw_misa_esign_box(
+    c, x: float, y: float, w: float, h: float,
+    signer_name: str, ca_provider: str, serial: str, signed_at_str: str,
+    font_name: str = "Helvetica"
+):
+    """
+    Vẽ khung thông tin chứng thực chữ ký số điện tử theo chuẩn MISA eSign.
+    """
+    c.saveState()
+    border_red = (0.78, 0.12, 0.12)
+    bg_tint = (0.99, 0.96, 0.96)
+    c.setStrokeColorRGB(*border_red)
+    c.setFillColorRGB(*bg_tint)
+    c.setLineWidth(0.9)
+
+    # Khung bo góc
+    c.roundRect(x, y, w, h, radius=4, stroke=1, fill=1)
+
+    # Header dải banner
+    c.setFillColorRGB(0.78, 0.12, 0.12)
+    c.rect(x, y + h - 14, w, 14, stroke=0, fill=1)
+    c.setFillColorRGB(1.0, 1.0, 1.0)
+    c.setFont(font_name, 6.8)
+    c.drawString(x + 8, y + h - 10, "✓ CHỨNG NHẬN KÝ SỐ ĐIỆN TỬ (MISA eSign Standard)")
+
+    # Nội dung chi tiết
+    c.setFillColorRGB(0.12, 0.12, 0.12)
+    c.setFont(font_name, 7.2)
+    c.drawString(x + 8, y + h - 25, f"Ký bởi: {str(signer_name).upper()}")
+    c.setFont(font_name, 6.5)
+    c.drawString(x + 8, y + h - 36, "Chức vụ: Hiệu trưởng — Trường Đại học Việt Nhật")
+    c.drawString(x + 8, y + h - 47, f"Thời gian ký: {signed_at_str} (GMT+07:00)")
+    c.drawString(x + 8, y + h - 58, f"Chứng thư: {ca_provider} | Serial: {serial}")
+    c.setFont(font_name, 6.2)
+    c.setFillColorRGB(0.08, 0.52, 0.22)
+    c.drawString(x + 8, y + h - 68, "● Trạng thái: Chữ ký số hợp lệ — Văn bản gốc toàn vẹn")
+
+    c.restoreState()
 
 
 def generate_verification_code(procedure_type, now: datetime = None) -> str:
@@ -506,7 +621,7 @@ def generate_decision_pdf(req, verification_code: str, smartca_data: dict = None
     c.drawCentredString(width - 150, sig_y, "HIỆU TRƯỞNG")
 
     if not smartca_data:
-        # Bản thảo trình ký
+        # Bản thảo trình ký (chưa ký số)
         c.setFont(font_name, 9)
         c.setFillColorRGB(0.45, 0.45, 0.45)
         c.setDash(3, 3)
@@ -516,34 +631,36 @@ def generate_decision_pdf(req, verification_code: str, smartca_data: dict = None
         c.setDash()  # reset dash
         c.setFillColorRGB(0, 0, 0)
     else:
-        # Chữ ký số SmartCA chính thức
-        signer_name = smartca_data.get("signer_name", "GS.TS. Furuta Motoo")
-        ca_provider = smartca_data.get("ca_provider", "VNPT SmartCA")
-        serial = smartca_data.get("cert_serial", "5402 1890 9982 7716 3302")
+        # Chữ ký số chính thức (Mô phỏng MISA eSign theo Nghị định 30/2020/NĐ-CP)
+        signer_name = smartca_data.get("signer_name", "PGS.TS. Nguyễn Văn Bình")
+        ca_provider = smartca_data.get("ca_provider", "VJU Digital CA (Demo eSign)")
+        serial = smartca_data.get("cert_serial", "5402-1890-9982-7716-VJU")
         signed_at_dt = smartca_data.get("signed_at") or now_local
         if hasattr(signed_at_dt, "strftime"):
             signed_at_str = signed_at_dt.strftime("%Y-%m-%d %H:%M:%S")
         else:
             signed_at_str = str(signed_at_dt)
 
-        stamp_x = width - 245
-        stamp_y = sig_y - 95
-        stamp_w = 190
-        stamp_h = 75
+        # 1. Vẽ nét chữ ký tay mực xanh bút máy của Hiệu trưởng
+        _draw_cursive_signature(c, width - 190, sig_y - 40)
 
-        # Khung viền đỏ chữ ký điện tử
-        c.setStrokeColorRGB(0.8, 0.1, 0.1)
-        c.setLineWidth(1.2)
-        c.rect(stamp_x, stamp_y, stamp_w, stamp_h, fill=0, stroke=1)
+        # 2. Vẽ con dấu tròn đỏ tổ chức ĐH Việt Nhật đè 1/3 lên chữ ký tay về bên trái
+        _draw_viet_nhat_seal(c, width - 195, sig_y - 36, radius=35, font_name=font_name)
 
-        c.setFillColorRGB(0.75, 0.1, 0.1)
-        c.setFont(font_name, 8.5)
-        c.drawString(stamp_x + 8, stamp_y + stamp_h - 14, "✓ KÝ BỞI: " + str(signer_name).upper())
-        c.setFont(font_name, 7.5)
-        c.drawString(stamp_x + 8, stamp_y + stamp_h - 28, "Hiệu trưởng Trường Đại học Việt Nhật")
-        c.drawString(stamp_x + 8, stamp_y + stamp_h - 42, f"Thời gian: {signed_at_str}")
-        c.drawString(stamp_x + 8, stamp_y + stamp_h - 56, f"Chứng thư số: {ca_provider}")
-        c.drawString(stamp_x + 8, stamp_y + stamp_h - 68, f"Serial: {serial}")
+        # 3. Họ tên Hiệu trưởng dưới chữ ký
+        c.setFillColorRGB(0.08, 0.08, 0.08)
+        c.setFont(font_name, 9.5)
+        c.drawCentredString(width - 145, sig_y - 62, signer_name)
+
+        # 4. Khung chứng nhận chữ ký số điện tử MISA eSign
+        _draw_misa_esign_box(
+            c, width - 250, sig_y - 148, 205, 76,
+            signer_name=signer_name,
+            ca_provider=ca_provider,
+            serial=serial,
+            signed_at_str=signed_at_str,
+            font_name=font_name,
+        )
 
         c.setFillColorRGB(0, 0, 0)
         c.setStrokeColorRGB(0, 0, 0)

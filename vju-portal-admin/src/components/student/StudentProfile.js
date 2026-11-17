@@ -1,18 +1,67 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { users } from '../../data/mockData';
+import { authApi } from '../../services/api';
 import './StudentPages.css';
 
 function StudentProfile() {
-  const student = users?.student || {};
+  const fallback = users?.student || {};
+  const [profile, setProfile] = useState(fallback);
 
-  // Exact Figma values with fallback to mock data
-  const fullName = student.name || student.full_name || 'Nguyễn Minh Anh';
-  const studentCode = '23110150'; // Figma spec
-  const email = '23110150@vnu.edu.vn'; // Figma spec
-  const className = 'QH-2023-I/CQ-M-CLC'; // Figma spec
-  const cohort = 'QH-2023'; // Figma spec
-  const major = 'Khoa học máy tính'; // Figma spec
-  const status = 'Đang học'; // Figma spec
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchMe() {
+      try {
+        const res = await authApi.getMe();
+        if (isMounted && res && res.data) {
+          setProfile(res.data);
+        }
+      } catch (err) {
+        console.warn('Could not fetch /auth/me:', err);
+      }
+    }
+    fetchMe();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const fullName = profile.full_name || profile.name || fallback.name || 'Nguyễn Minh Anh';
+  const studentCode = profile.mssv || '21CS001';
+  const email = profile.email || 'minhanh@st.vju.ac.vn';
+  const className = profile.class_name || profile.lop || 'QH-2023-I/CQ-M-CLC';
+  const cohort = profile.cohort || profile.khoa || 'QH-2023';
+  const major = profile.major || profile.nganh || 'Khoa học máy tính';
+
+  // Map academic_status to display label & style
+  const academicStatus = profile.academic_status || 'active';
+  let statusText = 'Đang học';
+  let badgeStyle = {};
+
+  if (academicStatus === 'suspended') {
+    statusText = 'Bảo lưu';
+    badgeStyle = {
+      background: '#FEF3C7',
+      color: '#B45309',
+      border: '1px solid #FCD34D',
+      fontWeight: 600,
+    };
+  } else if (academicStatus === 'graduated') {
+    statusText = 'Đã tốt nghiệp';
+    badgeStyle = {
+      background: '#E0E7FF',
+      color: '#4338CA',
+      border: '1px solid #C7D2FE',
+    };
+  } else if (academicStatus === 'dismissed') {
+    statusText = 'Buộc thôi học';
+    badgeStyle = {
+      background: '#FEE2E2',
+      color: '#DC2626',
+      border: '1px solid #FCA5A5',
+    };
+  } else {
+    statusText = 'Đang học';
+  }
 
   return (
     <div className="student-profile-container">
@@ -71,8 +120,13 @@ function StudentProfile() {
         {/* Row 7: Tình trạng học tập */}
         <div className="student-profile-row">
           <div className="student-profile-label">Tình trạng học tập</div>
-          <div className="student-status-badge">
-            <span className="student-status-badge-text">{status}</span>
+          <div className="student-status-badge" style={badgeStyle}>
+            <span
+              className="student-status-badge-text"
+              style={badgeStyle.color ? { color: badgeStyle.color } : {}}
+            >
+              {statusText}
+            </span>
           </div>
         </div>
         <div className="req-detail-divider" />

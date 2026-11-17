@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import RejectRequestModal from '../common/RejectRequestModal';
+import DigitalSignModal from './DigitalSignModal';
 import { allRequests } from '../../data/mockData';
 import { principalApi } from '../../services/api';
 import './PrincipalPages.css';
@@ -22,6 +23,8 @@ function PrincipalDecisionDetail() {
   const [isSigned, setIsSigned] = useState(false);
   const [isRejected, setIsRejected] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showDigitalSignModal, setShowDigitalSignModal] = useState(false);
+  const [signingLoading, setSigningLoading] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
 
   useEffect(() => {
@@ -68,24 +71,35 @@ function PrincipalDecisionDetail() {
     if (zoom > 70) setZoom((prev) => prev - 10);
   };
 
-  const handleSignSmartCA = async () => {
+  const handleOpenSignModal = () => {
+    setShowDigitalSignModal(true);
+  };
+
+  const handleSignConfirm = async ({ pin } = {}) => {
     try {
+      setSigningLoading(true);
       const targetId = decisionData?.request_id || foundReq?.request_id || id;
       const res = await principalApi.signSmartCA(targetId, {
         provider: 'vnpt_smartca',
+        pin: pin || '123456',
       });
       setIsSigned(true);
-      showToast(res?.message || `Đã ký số SmartCA thành công quyết định ${requestCode}`);
+      setShowDigitalSignModal(false);
+      showToast(res?.message || `Đã ký số thành công quyết định ${requestCode}`);
       if (res?.data) {
         setDecisionData((prev) =>
           prev
             ? {
                 ...prev,
                 internal_status: res.data.internal_status || 'Đã duyệt — Có kết quả',
+                status: 'Đã duyệt',
                 result: {
                   ...(prev.result || {}),
                   smartca_transaction_id: res.data.smartca_transaction_id,
                   signed_at: res.data.signed_at,
+                  signer_name: res.data.signer_name || 'PGS.TS. Nguyễn Văn Bình',
+                  ca_provider: res.data.ca_provider || 'VJU Digital CA (Demo eSign)',
+                  cert_serial: res.data.cert_serial || '5402-1890-9982-7716-VJU',
                 },
               }
             : null
@@ -93,6 +107,8 @@ function PrincipalDecisionDetail() {
       }
     } catch (err) {
       showToast(err?.message || 'Lỗi khi thực hiện ký số SmartCA');
+    } finally {
+      setSigningLoading(false);
     }
   };
 
@@ -421,73 +437,187 @@ function PrincipalDecisionDetail() {
                 >
                   <div
                     style={{
-                  textAlign: 'center',
-                  color: '#1F2937',
-                  fontSize: 9,
-                  fontFamily: 'Inter',
-                  fontWeight: '600',
-                  wordWrap: 'break-word',
-                }}
-              >
-                HIỆU TRƯỞNG
-              </div>
-              {isSigned ? (
-                <div
-                  style={{
-                    textAlign: 'center',
-                    color: '#168039',
-                    fontSize: 8,
-                    fontFamily: 'Inter',
-                    fontWeight: '600',
-                    wordWrap: 'break-word',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 3,
-                  }}
-                >
-                  <span>✓</span> ĐÃ KÝ SỐ SMARTCA
+                      textAlign: 'center',
+                      color: '#1F2937',
+                      fontSize: 10,
+                      fontFamily: 'Inter',
+                      fontWeight: '700',
+                      wordWrap: 'break-word',
+                    }}
+                  >
+                    HIỆU TRƯỞNG
+                  </div>
+                  {isSigned ? (
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        position: 'relative',
+                        marginTop: 4,
+                        marginBottom: 4,
+                      }}
+                    >
+                      {/* Dấu tròn đỏ + Chữ ký tay nét mực uốn lượn */}
+                      <div
+                        style={{
+                          position: 'relative',
+                          width: 170,
+                          height: 70,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        {/* Con dấu đỏ tròn ĐH Việt Nhật (đè 1/3 chữ ký tay về bên trái) */}
+                        <div
+                          style={{
+                            position: 'absolute',
+                            left: 6,
+                            width: 68,
+                            height: 68,
+                            borderRadius: '50%',
+                            border: '1.8px solid #C92127',
+                            boxShadow: '0 0 0 1px #C92127 inset',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#C92127',
+                            fontFamily: 'Inter, sans-serif',
+                            textAlign: 'center',
+                            lineHeight: 1.1,
+                            background: 'rgba(201, 33, 39, 0.04)',
+                            zIndex: 2,
+                            opacity: 0.92,
+                          }}
+                        >
+                          <div style={{ fontSize: 5, fontWeight: 700 }}>ĐHQG HÀ NỘI</div>
+                          <div style={{ fontSize: 5.5, fontWeight: 800 }}>ĐH VIỆT NHẬT</div>
+                          <div style={{ fontSize: 7, margin: '1px 0' }}>★</div>
+                          <div style={{ fontSize: 5.8, fontWeight: 800 }}>HIỆU TRƯỞNG</div>
+                        </div>
+
+                        {/* Chữ ký tay nét mực xanh bút máy */}
+                        <div style={{ position: 'absolute', left: 40, zIndex: 1 }}>
+                          <svg width="125" height="50" viewBox="0 0 160 70" fill="none">
+                            <path
+                              d="M10,40 C18,10 32,8 38,32 C42,48 48,15 56,22 C64,30 70,12 80,18 C90,24 82,48 100,35 C115,25 125,10 138,20 C146,26 150,42 155,38"
+                              stroke="#002D72"
+                              strokeWidth="2.6"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                            <path
+                              d="M20,52 C60,46 110,48 152,54"
+                              stroke="#002D72"
+                              strokeWidth="1.8"
+                              strokeLinecap="round"
+                            />
+                            <circle cx="156" cy="54" r="2.2" fill="#002D72" />
+                          </svg>
+                        </div>
+                      </div>
+
+                      {/* Họ tên Hiệu trưởng */}
+                      <div
+                        style={{
+                          textAlign: 'center',
+                          color: '#1F2937',
+                          fontSize: 9.5,
+                          fontFamily: 'Inter',
+                          fontWeight: '700',
+                          marginTop: 2,
+                          marginBottom: 4,
+                        }}
+                      >
+                        PGS.TS. Nguyễn Văn Bình
+                      </div>
+
+                      {/* Khung chứng nhận chữ ký số MISA eSign */}
+                      <div
+                        style={{
+                          border: '1px solid #DC2626',
+                          borderRadius: 5,
+                          padding: '4px 8px',
+                          background: '#FEF2F2',
+                          fontSize: 7.5,
+                          color: '#111827',
+                          lineHeight: 1.35,
+                          width: 175,
+                          textAlign: 'left',
+                          boxShadow: '0 1px 2px rgba(220, 38, 38, 0.08)',
+                        }}
+                      >
+                        <div
+                          style={{
+                            color: '#DC2626',
+                            fontWeight: 700,
+                            fontSize: 7.2,
+                            borderBottom: '0.5px dashed #FCA5A5',
+                            paddingBottom: 2,
+                            marginBottom: 3,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 3,
+                          }}
+                        >
+                          <span>✓</span> MISA eSign Digital Signature
+                        </div>
+                        <div><strong>Ký bởi:</strong> PGS.TS. NGUYỄN VĂN BÌNH</div>
+                        <div><strong>Ngày ký:</strong> {decisionData?.result?.signed_at || 'Vừa ký xong'}</div>
+                        <div style={{ color: '#059669', fontWeight: 600, fontSize: 7, marginTop: 2 }}>
+                          ● Chữ ký số hợp lệ — Toàn vẹn
+                        </div>
+                      </div>
+                    </div>
+                  ) : isRejected ? (
+                    <div
+                      style={{
+                        textAlign: 'center',
+                        color: '#AA2327',
+                        fontSize: 8,
+                        fontFamily: 'Inter',
+                        fontWeight: '600',
+                        wordWrap: 'break-word',
+                        margin: '12px 0',
+                      }}
+                    >
+                      (ĐÃ TỪ CHỐI KÝ)
+                    </div>
+                  ) : (
+                    <div
+                      style={{
+                        border: '1px dashed #9CA3AF',
+                        borderRadius: 6,
+                        padding: '8px 12px',
+                        textAlign: 'center',
+                        background: '#F9FAFB',
+                        color: '#6B7280',
+                        fontSize: 8,
+                        margin: '8px 0',
+                      }}
+                    >
+                      <div style={{ fontWeight: 600, color: '#4B5563' }}>[BẢN THẢO TRÌNH KÝ]</div>
+                      <div style={{ fontSize: 7 }}>Chưa có hiệu lực pháp lý</div>
+                    </div>
+                  )}
+                  {!isSigned && (
+                    <div
+                      style={{
+                        textAlign: 'center',
+                        color: '#1F2937',
+                        fontSize: 9,
+                        fontFamily: 'Inter',
+                        fontWeight: '600',
+                        wordWrap: 'break-word',
+                        marginTop: 4,
+                      }}
+                    >
+                      Nguyễn Văn Bình
+                    </div>
+                  )}
                 </div>
-              ) : isRejected ? (
-                <div
-                  style={{
-                    textAlign: 'center',
-                    color: '#AA2327',
-                    fontSize: 8,
-                    fontFamily: 'Inter',
-                    fontWeight: '600',
-                    wordWrap: 'break-word',
-                  }}
-                >
-                  (ĐÃ TỪ CHỐI KÝ)
-                </div>
-              ) : (
-                <div
-                  style={{
-                    textAlign: 'center',
-                    color: '#6B7280',
-                    fontSize: 8,
-                    fontFamily: 'Inter',
-                    fontWeight: '400',
-                    wordWrap: 'break-word',
-                  }}
-                >
-                  (Chờ ký số)
-                </div>
-              )}
-              <div style={{ width: 10, height: 24 }} />
-              <div
-                style={{
-                  textAlign: 'center',
-                  color: '#1F2937',
-                  fontSize: 9,
-                  fontFamily: 'Inter',
-                  fontWeight: '600',
-                  wordWrap: 'break-word',
-                }}
-              >
-                Nguyễn Văn Bình
-              </div>
-            </div>
           </div>
         </div>
 
@@ -739,11 +869,11 @@ function PrincipalDecisionDetail() {
           display: 'flex',
         }}
       >
-        {/* Nút: Ký số SmartCA */}
+        {/* Nút: Ký số SmartCA / Demo eSign */}
         <button
           type="button"
           disabled={isSigned}
-          onClick={handleSignSmartCA}
+          onClick={handleOpenSignModal}
           style={{
             alignSelf: 'stretch',
             paddingLeft: 16,
@@ -759,6 +889,7 @@ function PrincipalDecisionDetail() {
             display: 'inline-flex',
             cursor: isSigned ? 'not-allowed' : 'pointer',
             transition: 'background-color 0.15s ease',
+            boxShadow: isSigned ? 'none' : '0 2px 4px rgba(170, 35, 39, 0.2)',
           }}
           onMouseEnter={(e) => {
             if (!isSigned) e.currentTarget.style.background = '#931E22';
@@ -778,7 +909,7 @@ function PrincipalDecisionDetail() {
               wordWrap: 'break-word',
             }}
           >
-            {isSigned ? '✓ Đã ký số SmartCA thành công' : 'Ký số SmartCA →'}
+            {isSigned ? '✓ Đã ký số thành công (MISA eSign)' : '✍️ Ký số Quyết định (Demo eSign) →'}
           </div>
         </button>
 
@@ -833,6 +964,20 @@ function PrincipalDecisionDetail() {
       </div>
     </div>
   </div>
+
+  {/* Modal Ký số điện tử Demo (MISA eSign) */}
+  <DigitalSignModal
+    isOpen={showDigitalSignModal}
+    onClose={() => setShowDigitalSignModal(false)}
+    onConfirm={handleSignConfirm}
+    loading={signingLoading}
+    requestCode={requestCode}
+    studentName={student}
+    mssv={mssv}
+    procedureName={procedure}
+    signerName="PGS.TS. Nguyễn Văn Bình"
+    signerRole="Hiệu trưởng Trường Đại học Việt Nhật"
+  />
 
   {/* Modal Từ chối ký */}
   <RejectRequestModal
