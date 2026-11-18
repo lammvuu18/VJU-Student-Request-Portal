@@ -203,8 +203,10 @@ def handle_bank_webhook(raw_body: bytes, signature: str) -> dict:
         raise WebhookError(400, "INVALID_EVENT", "Sự kiện webhook không được hỗ trợ.")
 
     with transaction.atomic():
+        # Chỉ khóa dòng refund_payout: PostgreSQL không cho FOR UPDATE trên bảng ở phía có thể NULL
+        # của LEFT JOIN (request.assigned_staff), khóa cả câu sẽ lỗi 500. SQLite bỏ qua FOR UPDATE nên test không bắt được
         payout = (
-            RefundPayout.objects.select_for_update()
+            RefundPayout.objects.select_for_update(of=("self",))
             .select_related("request", "request__user", "request__procedure_type", "request__assigned_staff")
             .filter(payout_order_id=payload.get("order_id"))
             .first()

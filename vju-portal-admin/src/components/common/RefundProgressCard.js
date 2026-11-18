@@ -59,12 +59,13 @@ function RefundProgressCard({
   else if (status === 'pending_bank') bankState = 'pending';
   else if (status === 'failed' && refund.payout_order_id) bankState = 'failed';
 
+  // COLORS có khóa "text" (màu chữ) nên nhãn đặt tên khác để không bị ghi đè
   const summary = {
-    succeeded: { text: `Đã chuyển khoản ${refund.amount_text}`, ...COLORS.done },
-    pending_bank: { text: 'Đang chờ ngân hàng xác nhận chuyển khoản', ...COLORS.pending },
-    pending_finance: { text: 'Đang ghi nhận khoản hoàn trên Finance MS', ...COLORS.pending },
-    failed: { text: 'Chi hoàn trả chưa thành công', ...COLORS.failed },
-  }[status] || { text: status, ...COLORS.idle };
+    succeeded: { label: `Đã chuyển khoản ${refund.amount_text}`, ...COLORS.done },
+    pending_bank: { label: 'Đang chờ ngân hàng xác nhận chuyển khoản', ...COLORS.pending },
+    pending_finance: { label: 'Đang ghi nhận khoản hoàn trên Finance MS', ...COLORS.pending },
+    failed: { label: 'Chi hoàn trả chưa thành công', ...COLORS.failed },
+  }[status] || { label: status, ...COLORS.idle };
 
   return (
     <div className={cardClassName} style={{ marginTop: 16 }}>
@@ -74,7 +75,7 @@ function RefundProgressCard({
         background: summary.bg, color: summary.text, borderRadius: 8, padding: '10px 14px',
         fontWeight: 600, fontSize: 14, marginBottom: 16,
       }}>
-        {summary.text}
+        {summary.label}
       </div>
 
       <Step
