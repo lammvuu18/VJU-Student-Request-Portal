@@ -324,6 +324,26 @@ class TuitionWorkflowTestCase(TestCase):
         req.refresh_from_db()
         self.assertEqual(req.internal_status, "Đã xử lý")
 
+    def test_signed_decision_pdf_regenerated_when_file_lost(self):
+        """Render gói free xóa file khi deploy lại: tải PDF quyết định đã ký vẫn phải được (tạo lại từ dữ liệu)."""
+        from django.core.files.storage import default_storage
+        from django.utils import timezone
+
+        req_id = self.bring_refund_to_principal()
+        self.post(f"/api/principal/requests/{req_id}/sign", {}, self.principal)
+        result = Request.objects.get(request_id=req_id).result
+        signed_day = timezone.localtime(result.signed_at).strftime("%d")
+        default_storage.delete(result.pdf_file_path)
+        self.assertFalse(default_storage.exists(result.pdf_file_path))
+
+        for url in (f"/api/results/{result.result_id}/preview", f"/api/results/{result.result_id}/download"):
+            res = self.client.get(url, **self.auth(self.student))
+            self.assertEqual(res.status_code, 200, url)
+            self.assertTrue(res.content.startswith(b"%PDF"))
+        result.refresh_from_db()
+        self.assertTrue(default_storage.exists(result.pdf_file_path))
+        self.assertEqual(timezone.localtime(result.signed_at).strftime("%d"), signed_day)
+
     @override_settings(BANKING_SANDBOX_ENABLED=False)
     def test_refund_sandbox_disabled(self):
         req_id = self.bring_refund_to_principal()

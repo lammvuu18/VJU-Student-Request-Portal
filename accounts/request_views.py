@@ -1,5 +1,6 @@
 from datetime import date, datetime, timedelta
 import json
+import logging
 from math import ceil
 import re
 
@@ -26,9 +27,11 @@ from .payment_service import (
 )
 from .services import (
     AcademicMSService, ExternalServiceError, FinanceMSService, calculate_sla_deadline,
-    format_vnd, procedure_kind, validate_uploaded_file,
+    ensure_result_pdf, format_vnd, procedure_kind, validate_uploaded_file,
 )
 from .views import _get_authenticated_user, _json_error, _read_json_object
+
+logger = logging.getLogger(__name__)
 
 CLOSED_REQUEST_STATUSES = {"Đã duyệt", "Đã xử lý", "Từ chối", "Đã hủy"}
 ATTACHMENT_KEY_RE = re.compile(r"^attachments\[(\d+)\]\[(config_id|file)\]$")
@@ -1090,6 +1093,15 @@ def request_feedback_view(request, request_id):
     }, status=201)
 
 
+def _ensure_pdf_or_none(result) -> bool:
+    """File PDF mất (ổ đĩa Render bị xóa khi deploy) thì tạo lại từ dữ liệu đã lưu."""
+    try:
+        return ensure_result_pdf(result)
+    except Exception:
+        logger.exception("Không tạo lại được PDF cho result_id=%s", result.result_id)
+        return False
+
+
 @require_http_methods(["GET"])
 def result_download_view(request, result_id):
     """
@@ -1126,7 +1138,7 @@ def result_download_view(request, result_id):
             status=403,
         )
 
-    if not result.pdf_file_path or not default_storage.exists(result.pdf_file_path):
+    if not _ensure_pdf_or_none(result):
         return _json_error("NOT_FOUND", "File PDF không tồn tại trên hệ thống.", status=404)
 
     if user.role == "student" and req.user_id == user.user_id:
@@ -1185,7 +1197,7 @@ def result_preview_view(request, result_id):
     else:
         return _json_error("FORBIDDEN", "Bạn không có quyền xem trước kết quả này.", status=403)
 
-    if not result.pdf_file_path or not default_storage.exists(result.pdf_file_path):
+    if not _ensure_pdf_or_none(result):
         return _json_error("NOT_FOUND", "File PDF không tồn tại trên hệ thống.", status=404)
 
     with default_storage.open(result.pdf_file_path, "rb") as f:

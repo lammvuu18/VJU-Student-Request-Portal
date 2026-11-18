@@ -527,7 +527,7 @@ def build_qr_code_data(verification_code: str) -> str:
     return f"{base_url}/{verification_code}"
 
 
-def generate_result_pdf(req, verification_code: str, qr_code_data: str) -> str:
+def generate_result_pdf(req, verification_code: str, qr_code_data: str, issued_at=None) -> str:
     """
     Tạo file PDF kết quả kèm mã QR bằng reportlab + qrcode và lưu vào Django storage.
     Trả về đường dẫn tương đối trong storage (Result.pdf_file_path).
@@ -589,7 +589,7 @@ def generate_result_pdf(req, verification_code: str, qr_code_data: str) -> str:
             }
             lines.append(f"{label_map.get(key, key)}: {val}")
     lines.append(f"Mã xác minh: {verification_code}")
-    lines.append(f"Ngày cấp: {timezone.localtime(timezone.now()).strftime('%Y-%m-%d')}")
+    lines.append(f"Ngày cấp: {timezone.localtime(issued_at or timezone.now()).strftime('%Y-%m-%d')}")
 
     for line in lines:
         c.drawString(60, y, str(line))
@@ -727,7 +727,7 @@ def _wrap_text(text: str, font_name: str, font_size: float, max_width: float) ->
     return [(indent if i == 0 else indent + "    ") + line for i, line in enumerate(lines)] or [text]
 
 
-def generate_decision_pdf(req, verification_code: str, smartca_data: dict = None) -> str:
+def generate_decision_pdf(req, verification_code: str, smartca_data: dict = None, issued_at=None) -> str:
     """
     Tạo file PDF Quyết định trình Hiệu trưởng ký (A4, layout chính thức VJU).
     Nội dung theo loại thủ tục: bảo lưu KQHT, miễn giảm học phí, hoàn trả học phí.
@@ -757,7 +757,8 @@ def generate_decision_pdf(req, verification_code: str, smartca_data: dict = None
     c = canvas.Canvas(pdf_buffer, pagesize=A4)
     width, height = A4
 
-    now_local = timezone.localtime(timezone.now())
+    # Tạo lại PDF đã mất thì giữ ngày ký gốc thay vì ngày hôm nay
+    now_local = timezone.localtime(issued_at or timezone.now())
     decision_num = f"{req.request_id:03d}"
     year = now_local.year
 
@@ -879,3 +880,39 @@ def generate_decision_pdf(req, verification_code: str, smartca_data: dict = None
         default_storage.delete(storage_rel_path)
     saved_path = default_storage.save(storage_rel_path, ContentFile(pdf_bytes))
     return saved_path
+
+
+def ensure_result_pdf(result) -> bool:
+    """
+    Đảm bảo file PDF của kết quả còn trên ổ đĩa. Render gói free xóa file sau mỗi lần deploy nên
+    PDF có thể mất dù dữ liệu trong database còn; khi đó tạo lại từ dữ liệu đơn và thông tin ký đã lưu.
+    Trả về True nếu có file để đọc.
+    """
+    if result.pdf_file_path and default_storage.exists(result.pdf_file_path):
+        return True
+    if not result.verification_code:
+        return False
+
+    req = result.request
+    is_decision = bool(result.smartca_transaction_id) or req.procedure_type.approval_levels == 3
+    if is_decision:
+        smartca_data = None
+        if result.smartca_transaction_id and result.signed_at:
+            signer = result.signed_by
+            smartca_data = {
+                "smartca_transaction_id": result.smartca_transaction_id,
+                "signed_at": timezone.localtime(result.signed_at),
+                "signer_name": signer.full_name if signer else "PGS.TS. Nguyễn Văn Bình",
+                "ca_provider": "VJU Digital CA (Demo eSign / SmartCA)",
+                "cert_serial": "5402-1890-9982-7716-VJU",
+            }
+        path = generate_decision_pdf(
+            req, result.verification_code, smartca_data=smartca_data, issued_at=result.signed_at or result.created_at,
+        )
+    else:
+        qr_code_data = result.qr_code_data or build_qr_code_data(result.verification_code)
+        path = generate_result_pdf(req, result.verification_code, qr_code_data, issued_at=result.signed_at or result.created_at)
+
+    result.pdf_file_path = path
+    result.save(update_fields=["pdf_file_path"])
+    return True
