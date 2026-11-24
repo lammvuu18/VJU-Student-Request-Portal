@@ -33,6 +33,18 @@ const REGISTERED_STUDENTS = [
     avatar: 'QA',
     color: '#DB2777',
   },
+  {
+    name: 'Cựu sinh viên Demo (Graduated)',
+    email: 'alumni@vju.ac.vn',
+    avatar: 'AL',
+    color: '#4F46E5',
+  },
+  {
+    name: 'SV Buộc thôi học Demo (Dismissed)',
+    email: 'dismissed@vju.ac.vn',
+    avatar: 'DM',
+    color: '#DC2626',
+  },
 ];
 
 function GoogleChooserPage() {

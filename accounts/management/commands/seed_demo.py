@@ -24,6 +24,12 @@ DEMO_STAFF = [
     ('demo.hieutruong@vju.ac.vn', 'Hiệu trưởng Demo', 'principal', 3, None),
 ]
 
+# email, mssv, ho ten, academic_status (dung de test trang thai Graduated va Dismissed)
+DEMO_STATUS_STUDENTS = [
+    ('alumni@vju.ac.vn', '20CS901', 'Cựu sinh viên Demo (Graduated)', 'graduated'),
+    ('dismissed@vju.ac.vn', '21CS902', 'Sinh viên Buộc thôi học Demo (Dismissed)', 'dismissed'),
+]
+
 # Ho so mau Mien giam / Hoan tra dang xu ly se chan sinh vien nop don moi (chong trung),
 # nen cac ho so mau cua 2 thu tuc nay luon o trang thai da ket thuc
 TUITION_PROCEDURE_NAMES = ('Miễn giảm học phí', 'Hoàn trả học phí')
@@ -61,12 +67,13 @@ class Command(BaseCommand):
         with transaction.atomic():
             staff = self._seed_staff(password)
             students = self._seed_students(student_emails)
+            status_students = self._seed_status_students(password)
             created = self._seed_notifications(staff, STAFF_NOTIFICATIONS)
             created += self._seed_notifications(students, STUDENT_NOTIFICATIONS)
             req_created = self._seed_demo_requests(students, staff)
             self._reconcile_demo_requests(staff)
 
-        for user in staff + students:
+        for user in staff + students + status_students:
             self.stdout.write(f'  {user.role:<10} {user.email}')
         self.stdout.write(self.style.SUCCESS(
             f'Da chuan bi {len(staff)} can bo, {len(students)} sinh vien demo, '
@@ -114,6 +121,34 @@ class Command(BaseCommand):
             )
             students.append(user)
         return students
+
+    def _seed_status_students(self, password):
+        status_users = []
+        for email, mssv, full_name, academic_status in DEMO_STATUS_STUDENTS:
+            registry, _ = StudentRegistry.objects.update_or_create(
+                email=email,
+                defaults={
+                    'mssv': mssv,
+                    'full_name': full_name,
+                    'class_name': 'CS2020A',
+                    'cohort': 'K2020',
+                    'major': 'Khoa học Máy tính',
+                    'academic_status': academic_status,
+                },
+            )
+            user, _ = User.objects.update_or_create(
+                email=email,
+                defaults={
+                    'full_name': full_name,
+                    'role': 'student',
+                    'student_registry': registry,
+                    'account_status': 'active',
+                },
+            )
+            user.set_password(password)
+            user.save(update_fields=['password'])
+            status_users.append(user)
+        return status_users
 
     def _next_demo_mssv(self):
         number = 1

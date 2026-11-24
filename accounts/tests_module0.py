@@ -152,6 +152,34 @@ class SeedDemoTests(TestCase):
         self.seed(DEMO_STUDENT_EMAILS='23110315@st.vju.ac.vn')
         self.assertEqual(Request.objects.filter(user=student).count(), 20)
 
+    def test_seeds_alumni_and_dismissed_demo_accounts(self):
+        self.seed()
+        # 1. Cựu sinh viên (alumni@vju.ac.vn) đăng nhập được cả qua Google lẫn mật khẩu demo
+        res_alumni_pw = self.login('alumni@vju.ac.vn', 'demo-password-123')
+        self.assertEqual(res_alumni_pw.status_code, 200)
+        self.assertEqual(res_alumni_pw.json()['data']['user']['academic_status'], 'graduated')
+
+        res_alumni_gg = self.client.post(
+            '/api/auth/google',
+            data=json.dumps({'google_token': 'alumni@vju.ac.vn'}),
+            content_type='application/json',
+        )
+        self.assertEqual(res_alumni_gg.status_code, 200)
+        self.assertEqual(res_alumni_gg.json()['data']['user']['academic_status'], 'graduated')
+
+        # 2. Sinh viên buộc thôi học (dismissed@vju.ac.vn) bị chặn 403 ACCOUNT_DISMISSED
+        res_dismissed_pw = self.login('dismissed@vju.ac.vn', 'demo-password-123')
+        self.assertEqual(res_dismissed_pw.status_code, 403)
+        self.assertEqual(res_dismissed_pw.json()['error']['code'], 'ACCOUNT_DISMISSED')
+
+        res_dismissed_gg = self.client.post(
+            '/api/auth/google',
+            data=json.dumps({'google_token': 'dismissed@vju.ac.vn'}),
+            content_type='application/json',
+        )
+        self.assertEqual(res_dismissed_gg.status_code, 403)
+        self.assertEqual(res_dismissed_gg.json()['error']['code'], 'ACCOUNT_DISMISSED')
+
 
 @override_settings(DEBUG=True)
 class SeedModule1Tests(TestCase):

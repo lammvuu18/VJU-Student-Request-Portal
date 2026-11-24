@@ -18,6 +18,7 @@ GOOGLE_TOKENINFO_URL = 'https://oauth2.googleapis.com/tokeninfo'
 LOGIN_MAX_FAILURES = 5
 LOGIN_LOCK_MINUTES = 15
 EMAIL_MAX_LENGTH = 254
+DEMO_STUDENT_STATUS_EMAILS = {'alumni@vju.ac.vn', 'dismissed@vju.ac.vn'}
 
 
 def _json_error(code: str, message: str, status: int = 400):
@@ -78,8 +79,10 @@ def _verify_google_token(token: str):
     Xác thực Google ID token với Google và trả về email đã được xác minh.
     Trả về None nếu token không hợp lệ.
     """
-    # Chỉ bật ở môi trường dev: google_token là email để thử luồng đăng nhập
-    if settings.GOOGLE_AUTH_DEV_BYPASS and '@' in token:
+    # Chỉ bật ở môi trường dev hoặc với 2 tài khoản demo trạng thái sinh viên (alumni / dismissed)
+    if (settings.GOOGLE_AUTH_DEV_BYPASS and '@' in token) or (
+        isinstance(token, str) and token.strip().lower() in DEMO_STUDENT_STATUS_EMAILS
+    ):
         return token.strip().lower()
 
     if not settings.GOOGLE_CLIENT_ID:
@@ -265,7 +268,8 @@ def password_login_view(request):
         return _json_error("INVALID_CREDENTIALS", "Email hoặc mật khẩu không chính xác.", status=401)
 
     # Sinh viên đã có tài khoản User trong hệ thống cũng không được đăng nhập mật khẩu
-    if user.role == 'student':
+    # Ngoại trừ 2 tài khoản demo trạng thái sinh viên (alumni@vju.ac.vn & dismissed@vju.ac.vn) để tester test trên Render
+    if user.role == 'student' and email not in DEMO_STUDENT_STATUS_EMAILS:
         return _json_error(
             "STUDENT_PASSWORD_LOGIN_DENIED",
             "Sinh viên chỉ có thể đăng nhập bằng tài khoản Google VJU (@st.vju.ac.vn), không được dùng mật khẩu.",
@@ -278,6 +282,13 @@ def password_login_view(request):
     if not user.check_password(password):
         _record_login_failure(email)
         return _json_error("INVALID_CREDENTIALS", "Email hoặc mật khẩu không chính xác.", status=401)
+
+    if user.role == 'student' and user.student_registry and user.student_registry.academic_status == 'dismissed':
+        return _json_error(
+            "ACCOUNT_DISMISSED",
+            "Tài khoản sinh viên đã bị đình chỉ/buộc thôi học. Vui lòng liên hệ Phòng Đào tạo.",
+            status=403
+        )
 
     LoginAttempt.objects.filter(email=email).delete()
 
