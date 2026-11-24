@@ -163,14 +163,23 @@ export const getCurrentUser = () => {
   return acc.userObj;
 };
 
-// Render free tier có thể mất gần 1 phút để khởi động lại backend sau khi ngủ
-const REQUEST_TIMEOUT_MS = 60000;
+// Render free tier có thể mất 60-90 giây để khởi động lại backend sau khi ngủ hoặc đang deploy
+const REQUEST_TIMEOUT_MS = 90000;
 
 // Đường dẫn backend trả về dạng /api/..., ghép với gốc của BASE_URL
 const toAbsoluteUrl = (endpoint) => {
   if (/^https?:\/\//.test(endpoint)) return endpoint;
   if (endpoint.startsWith('/api/')) return BASE_URL.replace(/\/api\/?$/, '') + endpoint;
   return `${BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+};
+
+// Giữ kết nối ấm với backend để tránh Render Free Tier sleep khi người dùng đang điền form lâu
+export const warmupBackend = () => {
+  const token = getAuthToken();
+  fetch(toAbsoluteUrl('/auth/me'), {
+    method: 'GET',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  }).catch(() => {});
 };
 
 const handleUnauthorized = (endpoint) => {
@@ -198,8 +207,18 @@ async function sendRequest(endpoint, options = {}) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
-    return await fetch(toAbsoluteUrl(endpoint), { ...options, headers, signal: controller.signal });
+    const res = await fetch(toAbsoluteUrl(endpoint), { ...options, headers, signal: controller.signal });
+    // Nếu Render đang thức dậy hoặc chuyển container lúc deploy (502/503/504), tự động đợi 3s và thử lại 1 lần
+    if ([502, 503, 504].includes(res.status) && !options._retried) {
+      await new Promise((r) => setTimeout(r, 3000));
+      return await sendRequest(endpoint, { ...options, _retried: true });
+    }
+    return res;
   } catch (err) {
+    if (!options._retried) {
+      await new Promise((r) => setTimeout(r, 2500));
+      return await sendRequest(endpoint, { ...options, _retried: true });
+    }
     const networkErr = new Error(
       err.name === 'AbortError'
         ? 'Máy chủ phản hồi quá lâu. Vui lòng thử lại.'

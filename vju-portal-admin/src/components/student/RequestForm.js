@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import api, { getCurrentUser } from '../../services/api';
+import api, { getCurrentUser, warmupBackend } from '../../services/api';
 import { isInternshipProcedure } from '../../utils/format';
 import './StudentPages.css';
 
@@ -84,7 +84,12 @@ function RequestForm({ initialStep }) {
       }
     };
     load();
-    return () => { isMounted = false; };
+    // Giữ kết nối backend không bị sleep trên Render Free Tier trong lúc SV điền form và chọn file
+    const keepAliveId = setInterval(() => warmupBackend(), 4 * 60 * 1000);
+    return () => {
+      isMounted = false;
+      clearInterval(keepAliveId);
+    };
   }, [procedureId]);
 
   // Payment State (Step 2) — Tích hợp cổng thanh toán PayOS thật
