@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Modal from '../../../components/common/Modal';
+import api from '../../../services/api';
 import './ProcedureList.css';
 
 function ProcedureList() {
@@ -170,10 +171,76 @@ function ProcedureList() {
   const deptOptions = ['Tất cả', 'Phòng Đào tạo', 'Phòng CTSV', 'Phòng KHTC'];
   const statusOptions = ['Tất cả', 'Hoạt động', 'Tạm dừng'];
 
+  const mapBackendProc = (p) => {
+    const deptMap = {
+      PDT: 'Phòng Đào tạo',
+      'Phòng Đào tạo': 'Phòng Đào tạo',
+      PCTSV: 'Phòng CTSV',
+      'Phòng Công tác Sinh viên': 'Phòng CTSV',
+      PKHTC: 'Phòng KHTC',
+      'Phòng Kế hoạch Tài chính': 'Phòng KHTC',
+    };
+    const isActive = p.is_active !== undefined ? Boolean(p.is_active) : p.status === 'active';
+    const feeVal = p.is_fee_required && p.fee_amount ? `${Number(p.fee_amount).toLocaleString('vi-VN')} VNĐ` : 'Miễn phí';
+    return {
+      id: p.type_id || p.id,
+      type_id: p.type_id || p.id,
+      name: p.name,
+      department: deptMap[p.department_code] || deptMap[p.department_name] || p.department_name || p.department || 'Phòng Đào tạo',
+      approvalLevels: `${p.approval_levels || 1} cấp`,
+      sla: `${p.sla_total_days || 3} ngày`,
+      fee: p.fee || feeVal,
+      status: isActive ? 'active' : 'paused',
+      statusLabel: isActive ? 'Hoạt động' : 'Tạm dừng',
+    };
+  };
+
+  useEffect(() => {
+    let mounted = true;
+    api.admin
+      .getProcedures()
+      .then((res) => {
+        if (mounted && res && Array.isArray(res.data) && res.data.length > 0) {
+          setProceduresList(res.data.map(mapBackendProc));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   // Add procedure handler
-  const handleAddProcedure = (e) => {
+  const handleAddProcedure = async (e) => {
     e.preventDefault();
     if (!newProcName.trim()) return;
+
+    const slaNum = parseInt(String(newProcSla).replace(/\D/g, ''), 10) || 5;
+    const lvlNum = parseInt(String(newProcApproval).replace(/\D/g, ''), 10) || 2;
+    const feeDigits = parseInt(String(newProcFee).replace(/\D/g, ''), 10) || 0;
+    const isFeeRequired = feeDigits > 0 && !String(newProcFee).toLowerCase().includes('miễn');
+
+    try {
+      const res = await api.admin.createProcedure({
+        name: newProcName.trim(),
+        department: newProcDept,
+        approval_levels: lvlNum,
+        sla_total_days: slaNum,
+        is_fee_required: isFeeRequired,
+        fee_amount: isFeeRequired ? feeDigits : 0,
+        result_type: 'PDF',
+      });
+      if (res && res.data) {
+        const mapped = mapBackendProc(res.data);
+        setProceduresList((prev) => [mapped, ...prev]);
+        setIsAddModalOpen(false);
+        setNewProcName('');
+        showToast(res.message || `Đã thêm thành công thủ tục "${mapped.name}"`);
+        return;
+      }
+    } catch (err) {
+      // Fallback to local state if offline
+    }
 
     const newProc = {
       id: Date.now(),
@@ -193,11 +260,25 @@ function ProcedureList() {
   };
 
   // Toggle status
-  const handleToggleStatus = (id) => {
+  const handleToggleStatus = async (id) => {
+    const target = proceduresList.find((p) => p.id === id);
+    if (!target) return;
+    const nextActive = target.status !== 'active';
+
+    try {
+      if (!nextActive) {
+        await api.admin.deleteProcedure(id);
+      } else {
+        await api.admin.updateProcedure(id, { is_active: true });
+      }
+    } catch (err) {
+      // Fallback to local UI update
+    }
+
     setProceduresList((prev) =>
       prev.map((p) => {
         if (p.id === id) {
-          const newStatus = p.status === 'active' ? 'paused' : 'active';
+          const newStatus = nextActive ? 'active' : 'paused';
           const newLabel = newStatus === 'active' ? 'Hoạt động' : 'Tạm dừng';
           showToast(`Đã chuyển thủ tục "${p.name}" sang trạng thái "${newLabel}"`);
           return { ...p, status: newStatus, statusLabel: newLabel };

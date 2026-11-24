@@ -1,7 +1,8 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import EditStudentModal from './modals/EditStudentModal';
 import CustomDropdown from '../../../components/common/CustomDropdown';
 import { students, studentStatusMap } from '../../../data/mockData';
+import api from '../../../services/api';
 import './StudentTab.css';
 
 function StudentTab() {
@@ -42,7 +43,55 @@ function StudentTab() {
     setModalOpen(true);
   };
 
-  const handleSaveStudent = (updated) => {
+  const mapBackendStudent = (s) => {
+    const stMap = {
+      active: 'studying',
+      studying: 'studying',
+      suspended: 'reserved',
+      reserved: 'reserved',
+      graduated: 'graduated',
+      dismissed: 'quit',
+    };
+    return {
+      id: s.user_id || s.registry_id || s.id,
+      name: s.full_name || s.name || '',
+      mssv: s.mssv || '',
+      email: s.email || '',
+      classGroup: s.class_name || s.classGroup || s.cohort || '',
+      status: stMap[s.academic_status || s.status] || 'studying',
+    };
+  };
+
+  const loadStudentsFromApi = () => {
+    api.admin
+      .getUsers({ role: 'student' })
+      .then((res) => {
+        if (res && Array.isArray(res.data) && res.data.length > 0) {
+          setStudentList(res.data.map(mapBackendStudent));
+        }
+      })
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    loadStudentsFromApi();
+  }, []);
+
+  const handleSaveStudent = async (updated) => {
+    const revStatus = {
+      studying: 'active',
+      reserved: 'suspended',
+      graduated: 'graduated',
+      quit: 'dismissed',
+    };
+    try {
+      await api.admin.updateUser(updated.id, {
+        full_name: updated.name,
+        class_name: updated.classGroup,
+        academic_status: revStatus[updated.status] || 'active',
+      });
+    } catch (err) {}
+
     setStudentList((prev) =>
       prev.map((s) => (s.id === updated.id ? updated : s))
     );
@@ -55,9 +104,23 @@ function StudentTab() {
     }
   };
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const file = e.target.files && e.target.files[0];
     if (file) {
+      const formData = new FormData();
+      formData.append('file', file);
+      try {
+        const res = await api.admin.importStudents(formData);
+        if (res && res.data) {
+          const imp = res.data.imported ?? res.data.imported_count ?? 0;
+          const skip = res.data.skipped ?? res.data.failed_count ?? 0;
+          loadStudentsFromApi();
+          showToast(`Đã import ${imp} sinh viên (bỏ qua ${skip} dòng lỗi/trùng) từ "${file.name}"!`);
+          return;
+        }
+      } catch (err) {
+        // Fallback to demo mock import
+      }
       const imported = [
         {
           id: Date.now() + 1,

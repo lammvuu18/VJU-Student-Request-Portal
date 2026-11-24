@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AssignPrincipalModal from './modals/AssignPrincipalModal';
 import EditPrincipalModal from './modals/EditPrincipalModal';
 import { principal } from '../../../data/mockData';
+import api from '../../../services/api';
 import './PrincipalTab.css';
 
 function PrincipalTab() {
@@ -15,14 +16,55 @@ function PrincipalTab() {
   });
   const [toastMessage, setToastMessage] = useState('');
 
-  const handleAssign = (assigned) => {
+  useEffect(() => {
+    let mounted = true;
+    api.admin
+      .getUsers({ role: 'principal' })
+      .then((res) => {
+        if (mounted && res && Array.isArray(res.data) && res.data.length > 0) {
+          const p = res.data[0];
+          const name = p.full_name || p.name || 'PGS.TS Nguyễn Văn Bình';
+          const parts = name.trim().split(/\s+/);
+          const initials = parts.slice(-3).map((w) => w[0]?.toUpperCase() || '').join('') || 'NVB';
+          setCurrentPrincipal({
+            id: p.user_id || p.id,
+            name,
+            email: p.email,
+            initials,
+            status: p.account_status === 'locked' ? 'inactive' : 'active',
+          });
+        }
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleAssign = async (assigned) => {
+    try {
+      await api.admin.createUser({
+        full_name: assigned.name,
+        email: assigned.email,
+        role: 'principal',
+        authority_level: 3,
+      });
+    } catch (err) {}
     setCurrentPrincipal(assigned);
     setToastMessage(`Đã gán thành công Hiệu trưởng mới: ${assigned.name}!`);
     setTimeout(() => setToastMessage(''), 3500);
   };
 
-  const handleSave = (updated) => {
-    setCurrentPrincipal(updated);
+  const handleSave = async (updated) => {
+    if (currentPrincipal.id) {
+      try {
+        await api.admin.updateUser(currentPrincipal.id, {
+          full_name: updated.name,
+          account_status: updated.status === 'inactive' ? 'locked' : 'active',
+        });
+      } catch (err) {}
+    }
+    setCurrentPrincipal({ ...currentPrincipal, ...updated });
     setToastMessage(`Đã cập nhật thông tin Hiệu trưởng: ${updated.name}!`);
     setTimeout(() => setToastMessage(''), 3500);
   };

@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import EditStaffModal from './modals/EditStaffModal';
 import Modal from '../../../components/common/Modal';
 import Button from '../../../components/common/Button';
 import CustomDropdown from '../../../components/common/CustomDropdown';
 import { staff, staffStatusMap } from '../../../data/mockData';
+import api from '../../../services/api';
 import './StaffTab.css';
 
 function StaffTab() {
@@ -49,16 +50,83 @@ function StaffTab() {
     setModalOpen(true);
   };
 
-  const handleSaveStaff = (updated) => {
+  const mapBackendStaff = (u) => {
+    const deptCodeMap = {
+      'Phòng Đào tạo': 'PĐT',
+      PDT: 'PĐT',
+      PĐT: 'PĐT',
+      'Phòng Công tác Sinh viên': 'PCTSV',
+      PCTSV: 'PCTSV',
+      'Phòng Kế hoạch Tài chính': 'PKHTC',
+      PKHTC: 'PKHTC',
+    };
+    const levelLabel = u.role === 'dept_head' || u.authority_level === 2 ? 'Trưởng phòng' : 'Chuyên viên';
+    return {
+      id: u.user_id || u.id,
+      name: u.full_name || u.name || '',
+      email: u.email || '',
+      department: deptCodeMap[u.department_name] || u.department || 'PĐT',
+      level: u.level || levelLabel,
+      status: u.account_status === 'locked' ? 'locked' : (u.status || 'active'),
+    };
+  };
+
+  useEffect(() => {
+    let mounted = true;
+    api.admin
+      .getUsers({ role: 'staff_all' })
+      .then((res) => {
+        if (mounted && res && Array.isArray(res.data) && res.data.length > 0) {
+          setStaffList(res.data.map(mapBackendStaff));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleSaveStaff = async (updated) => {
+    const isHead = updated.level === 'Trưởng phòng';
+    try {
+      await api.admin.updateUser(updated.id, {
+        full_name: updated.name,
+        department: updated.department,
+        role: isHead ? 'dept_head' : 'staff',
+        authority_level: isHead ? 2 : 1,
+        account_status: updated.status === 'locked' ? 'locked' : 'active',
+      });
+    } catch (err) {}
+
     setStaffList((prev) =>
       prev.map((s) => (s.id === updated.id ? updated : s))
     );
     showToast(`Đã cập nhật thông tin cán bộ ${updated.name}!`);
   };
 
-  const handleAddStaff = (e) => {
+  const handleAddStaff = async (e) => {
     e.preventDefault();
     if (!newName.trim() || !newEmail.trim()) return;
+
+    const isHead = newLevel === 'Trưởng phòng';
+    try {
+      const res = await api.admin.createUser({
+        full_name: newName.trim(),
+        email: newEmail.trim(),
+        department: newDept,
+        role: isHead ? 'dept_head' : 'staff',
+        authority_level: isHead ? 2 : 1,
+      });
+      if (res && res.data) {
+        const mapped = mapBackendStaff(res.data);
+        setStaffList([...staffList, mapped]);
+        setIsAddModalOpen(false);
+        setNewName('');
+        setNewEmail('');
+        showToast(res.message || `Đã thêm thành công cán bộ ${mapped.name}!`);
+        return;
+      }
+    } catch (err) {}
 
     const newMember = {
       id: Date.now(),

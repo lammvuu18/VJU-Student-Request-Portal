@@ -6,6 +6,7 @@ from . import request_views
 from . import staff_views
 from . import payment_views
 from . import principal_views
+from . import admin_views
 
 urlpatterns = [
     # Authentication endpoints
@@ -65,4 +66,16 @@ urlpatterns = [
     path('principal/requests/<int:request_id>', principal_views.principal_decision_detail_view, name='principal_decision_detail'),
     path('principal/requests/<int:request_id>/sign', principal_views.principal_sign_request_view, name='principal_sign_request'),
     path('principal/requests/<int:request_id>/return-to-head', principal_views.principal_return_to_head_view, name='principal_return_to_head'),
+
+    # Module 7: Admin Management & Dashboard
+    path('admin/procedures', admin_views.admin_procedures_collection_view, name='admin_procedures_collection'),
+    path('admin/procedures/<int:type_id>', admin_views.admin_procedure_detail_view, name='admin_procedure_detail'),
+    path('admin/users/import-students', admin_views.admin_import_students_view, name='admin_import_students'),
+    path('admin/users', admin_views.admin_users_collection_view, name='admin_users_collection'),
+    path('admin/users/<int:user_id>', admin_views.admin_user_detail_view, name='admin_user_detail'),
+    path('admin/dashboard', admin_views.admin_dashboard_view, name='admin_dashboard'),
+    path('admin/holidays', admin_views.admin_holidays_collection_view, name='admin_holidays_collection'),
+    path('admin/holidays/<int:holiday_id>', admin_views.admin_holiday_detail_view, name='admin_holiday_detail'),
+    path('admin/rejection-reasons', admin_views.admin_rejection_reasons_collection_view, name='admin_rejection_reasons_collection'),
+    path('admin/rejection-reasons/<int:reason_id>', admin_views.admin_rejection_reason_detail_view, name='admin_rejection_reason_detail'),
 ]

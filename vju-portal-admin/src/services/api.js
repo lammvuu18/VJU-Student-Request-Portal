@@ -815,6 +815,13 @@ export const adminApi = {
     }));
   },
 
+  getProcedureDetail: async (id) => {
+    return apiFetch(`/admin/procedures/${id}`, { method: 'GET' }, () => ({
+      success: true,
+      data: mock.procedures.find((p) => String(p.id || p.type_id) === String(id)) || mock.procedures[0],
+    }));
+  },
+
   createProcedure: async (payload) => {
     return apiFetch('/admin/procedures', {
       method: 'POST',
@@ -915,19 +922,68 @@ export const adminApi = {
     }, () => ({
       success: true,
       data: {
-        imported_count: 50,
-        failed_count: 0,
+        total_rows: 50,
+        imported: 50,
+        skipped: 0,
         errors: [],
       },
       message: 'Import danh sách sinh viên từ Excel thành công (50 tài khoản)',
     }));
   },
 
+  getHolidays: async (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return apiFetch(`/admin/holidays${qs ? `?${qs}` : ''}`, { method: 'GET' }, () => ({
+      success: true,
+      data: [],
+    }));
+  },
+
+  createHoliday: async (payload) => {
+    return apiFetch('/admin/holidays', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  updateHoliday: async (id, payload) => {
+    return apiFetch(`/admin/holidays/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  deleteHoliday: async (id) => {
+    return apiFetch(`/admin/holidays/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
   getRejectionReasons: async () => {
-    return apiFetch('/rejection-reasons', { method: 'GET' }, () => ({
+    return apiFetch('/admin/rejection-reasons', { method: 'GET' }, () => ({
       success: true,
       data: mock.rejectionReasons,
     }));
+  },
+
+  createRejectionReason: async (payload) => {
+    return apiFetch('/admin/rejection-reasons', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  updateRejectionReason: async (id, payload) => {
+    return apiFetch(`/admin/rejection-reasons/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  deleteRejectionReason: async (id) => {
+    return apiFetch(`/admin/rejection-reasons/${id}`, {
+      method: 'DELETE',
+    });
   },
 
   getDashboard: async (params = {}) => {
