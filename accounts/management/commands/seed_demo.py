@@ -22,6 +22,7 @@ DEMO_STAFF = [
     ('demo.chuyenvien.khtc@vju.ac.vn', 'Chuyên viên Phòng KHTC (Demo)', 'staff', 1, 'PKHTC'),
     ('demo.truongphong.khtc@vju.ac.vn', 'Trưởng phòng KHTC (Demo)', 'dept_head', 2, 'PKHTC'),
     ('demo.hieutruong@vju.ac.vn', 'Hiệu trưởng Demo', 'principal', 3, None),
+    ('demo.admin@vju.ac.vn', 'Quản trị viên Hệ thống (Demo)', 'admin', None, None),
 ]
 
 # email, mssv, ho ten, academic_status (dung de test trang thai Graduated va Dismissed)

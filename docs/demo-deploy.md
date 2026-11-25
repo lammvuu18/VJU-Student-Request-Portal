@@ -23,7 +23,7 @@ Mỗi email sinh viên cũng phải có trong **Test users** trên Google Cloud 
 | Chuyên viên (PCTSV) | `demo.chuyenvien@vju.ac.vn` và `DEMO_PASSWORD` |
 | Trưởng phòng (PCTSV) | `demo.truongphong@vju.ac.vn` và `DEMO_PASSWORD` |
 | Hiệu trưởng | `demo.hieutruong@vju.ac.vn` và `DEMO_PASSWORD` |
-| Admin | `BOOTSTRAP_ADMIN_EMAIL` và `BOOTSTRAP_ADMIN_PASSWORD` |
+| Admin (Demo) | `demo.admin@vju.ac.vn` và `DEMO_PASSWORD` (hoặc `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD`) |
 | Sinh viên | Nút "Đăng nhập Google" với email trong `DEMO_STUDENT_EMAILS` |
 
 Danh mục thủ tục và lý do từ chối do `bootstrap_production` tạo, không phụ thuộc `SEED_DEMO`.

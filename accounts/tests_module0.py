@@ -109,6 +109,11 @@ class SeedDemoTests(TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.json()['data']['user']['redirect_url'], '/dept-head')
 
+        res_admin = self.login('demo.admin@vju.ac.vn', 'demo-password-123')
+        self.assertEqual(res_admin.status_code, 200)
+        self.assertEqual(res_admin.json()['data']['user']['role'], 'admin')
+        self.assertEqual(res_admin.json()['data']['user']['redirect_url'], '/admin')
+
         student = User.objects.get(email='demo.one@gmail.com')
         self.assertEqual(student.role, 'student')
         self.assertEqual(student.student_registry.mssv, 'DEMO001')
