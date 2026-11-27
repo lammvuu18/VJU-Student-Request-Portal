@@ -45,6 +45,12 @@ const REGISTERED_STUDENTS = [
     avatar: 'DM',
     color: '#DC2626',
   },
+  {
+    name: 'Trần Bảo Lưu (SV Bảo lưu - Suspended)',
+    email: 'suspended@st.vju.ac.vn',
+    avatar: 'BL',
+    color: '#D97706',
+  },
 ];
 
 function GoogleChooserPage() {

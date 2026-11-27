@@ -185,6 +185,19 @@ class SeedDemoTests(TestCase):
         self.assertEqual(res_dismissed_gg.status_code, 403)
         self.assertEqual(res_dismissed_gg.json()['error']['code'], 'ACCOUNT_DISMISSED')
 
+        # 3. Sinh viên bảo lưu (suspended@st.vju.ac.vn) đăng nhập được với academic_status = suspended
+        res_susp_pw = self.login('suspended@st.vju.ac.vn', 'demo-password-123')
+        self.assertEqual(res_susp_pw.status_code, 200)
+        self.assertEqual(res_susp_pw.json()['data']['user']['academic_status'], 'suspended')
+
+        res_susp_gg = self.client.post(
+            '/api/auth/google',
+            data=json.dumps({'google_token': 'suspended@st.vju.ac.vn'}),
+            content_type='application/json',
+        )
+        self.assertEqual(res_susp_gg.status_code, 200)
+        self.assertEqual(res_susp_gg.json()['data']['user']['academic_status'], 'suspended')
+
 
 @override_settings(DEBUG=True)
 class SeedModule1Tests(TestCase):

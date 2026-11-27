@@ -18,7 +18,7 @@ GOOGLE_TOKENINFO_URL = 'https://oauth2.googleapis.com/tokeninfo'
 LOGIN_MAX_FAILURES = 5
 LOGIN_LOCK_MINUTES = 15
 EMAIL_MAX_LENGTH = 254
-DEMO_STUDENT_STATUS_EMAILS = {'alumni@vju.ac.vn', 'dismissed@vju.ac.vn'}
+DEMO_STUDENT_STATUS_EMAILS = {'alumni@vju.ac.vn', 'dismissed@vju.ac.vn', 'suspended@st.vju.ac.vn'}
 
 
 def _json_error(code: str, message: str, status: int = 400):

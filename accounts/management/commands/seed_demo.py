@@ -25,10 +25,11 @@ DEMO_STAFF = [
     ('demo.admin@vju.ac.vn', 'Quản trị viên Hệ thống (Demo)', 'admin', None, None),
 ]
 
-# email, mssv, ho ten, academic_status (dung de test trang thai Graduated va Dismissed)
+# email, mssv, ho ten, academic_status (dung de test trang thai Graduated, Dismissed, Suspended)
 DEMO_STATUS_STUDENTS = [
     ('alumni@vju.ac.vn', '20CS901', 'Cựu sinh viên Demo (Graduated)', 'graduated'),
     ('dismissed@vju.ac.vn', '21CS902', 'Sinh viên Buộc thôi học Demo (Dismissed)', 'dismissed'),
+    ('suspended@st.vju.ac.vn', '21CS004', 'Trần Bảo Lưu (SV Bảo lưu Demo)', 'suspended'),
 ]
 
 # Ho so mau Mien giam / Hoan tra dang xu ly se chan sinh vien nop don moi (chong trung),
